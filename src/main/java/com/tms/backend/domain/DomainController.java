@@ -14,12 +14,12 @@ public class DomainController {
     @Autowired
     private DomainService domainService;
     
-    @GetMapping("/active")
+    @GetMapping
     public List<Domain> getActiveClients() {
         return domainService.getActiveDomains();
     }
 
-    @GetMapping("/active-ordered")
+    @GetMapping("/ordered")
     public List<Domain> getActiveOrdered() {
         return domainService.getActiveDomOrdered();
     }

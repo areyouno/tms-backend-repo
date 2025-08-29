@@ -14,12 +14,12 @@ public class BusinessUnitController {
     @Autowired
     private BusinessUnitService businessUnitService;
     
-    @GetMapping("/active")
+    @GetMapping
     public List<BusinessUnit> getActiveBusinessUnits() {
         return businessUnitService.getActiveBusinessUnits();
     }
 
-    @GetMapping("/active-ordered")
+    @GetMapping("/ordered")
     public List<BusinessUnit> getActiveOrdered() {
         return businessUnitService.getActiveBUOrdered();
     }

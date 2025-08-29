@@ -62,6 +62,7 @@ public class UserService {
         User user = userRepo.findByUid(uid)
             .orElseThrow(() -> new ResourceNotFoundException("User not found"));
             updateUserFields(user, request);
+        user.setProfileComplete(true);
 
        return userRepo.save(user);
     }

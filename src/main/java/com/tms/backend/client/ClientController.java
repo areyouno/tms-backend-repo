@@ -14,12 +14,12 @@ public class ClientController {
     @Autowired
     private ClientService clientService;
     
-    @GetMapping("/active")
+    @GetMapping
     public List<Client> getActiveClients() {
         return clientService.getActiveClients();
     }
 
-    @GetMapping("/active-ordered")
+    @GetMapping("/ordered")
     public List<Client> getActiveOrdered() {
         return clientService.getActiveCLOrdered();
     }

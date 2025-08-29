@@ -13,12 +13,12 @@ public class SubDomainController {
     @Autowired
     private SubDomainService subDomainService;
     
-    @GetMapping("/active")
+    @GetMapping
     public List<SubDomain> getActiveClients() {
         return subDomainService.getActiveSubDomains();
     }
 
-    @GetMapping("/active-ordered")
+    @GetMapping("/ordered")
     public List<SubDomain> getActiveOrdered() {
         return subDomainService.getActiveSDOrdered();
     }

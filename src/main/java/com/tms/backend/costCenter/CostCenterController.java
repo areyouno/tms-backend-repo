@@ -14,12 +14,12 @@ public class CostCenterController {
     @Autowired
     private CostCenterService costCenterService;
     
-    @GetMapping("/active")
+    @GetMapping
     public List<CostCenter> getActiveCostCenters() {
         return costCenterService.getActiveCostCenters();
     }
 
-    @GetMapping("/active-ordered")
+    @GetMapping("/ordered")
     public List<CostCenter> getActiveOrdered() {
         return costCenterService.getActiveCCOrdered();
     }
