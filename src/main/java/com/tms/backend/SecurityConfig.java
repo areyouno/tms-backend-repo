@@ -20,7 +20,8 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 import com.tms.backend.jwt.JwtAuthenticationFilter;
-import com.tms.backend.auth.CustomUserDetailsService; // Add your UserDetailsService import
+import com.tms.backend.auth.CustomUserDetailsService;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 
 
@@ -72,15 +73,14 @@ public class SecurityConfig {
     CorsConfigurationSource corsConfigurationSource() {
         var config = new CorsConfiguration();
         config.setAllowedOriginPatterns(List.of(
-                "http://localhost:5173",
-                "https://*.ngrok-free.app"
+                "http://localhost:5173"
         ));
         
         config.setAllowedMethods(List.of("GET","POST","PUT", "PATCH","DELETE","OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
-        var source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);
         return source;
     }

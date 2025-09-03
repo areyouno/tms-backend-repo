@@ -3,21 +3,25 @@ package com.tms.backend.project;
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectSummaryDTO;
 import com.tms.backend.user.CustomUserDetails;
 
+import jakarta.validation.Valid;
+
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 
@@ -47,36 +51,40 @@ public class ProjectController {
     }
 
     @PostMapping("/create")
-    public ProjectDTO saveProject(@RequestBody ProjectDTO dto) {
-        return projectService.save(
-            dto.name(),
-            dto.clientId(),
-            dto.sourceLang(),
-            dto.targetLang(),
-            dto.businessUnitId(),
-            dto.dueDate(),
-            dto.purchaseOrder(),
-            dto.costCenterId(),
-            dto.domainId(),
-            dto.subdomainId(),
-            dto.workflowSteps(),
-            dto.fileHandover()
-        );
+    public ResponseEntity<ProjectDTO> createProject(
+            @Valid @RequestBody ProjectCreateDTO createDTO,
+            Authentication authentication) {
+
+        // Extract user details from JWT
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        String uid = userDetails.getUid();
+
+        ProjectDTO createdProject = projectService.createProject(createDTO, uid);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdProject);
     }
 
-    @PatchMapping("/{id}")
-    public ResponseEntity<ProjectDTO> update(
-        @PathVariable Long id,
-        @RequestBody ProjectDTO dto)
-        {
-        ProjectDTO updated = projectService.update(id, dto);
-        return ResponseEntity.ok(updated);
+    @PutMapping("/{id}")
+    public ResponseEntity<ProjectDTO> updateProject(
+            @PathVariable Long id,
+            @Valid @RequestBody ProjectDTO updateDTO,
+            Authentication authentication) {
+        
+        // Extract user details for authorization check if needed
+        // CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        // String uid = userDetails.getUid();
+        
+        ProjectDTO updatedProject = projectService.updateProject(id, updateDTO);
+        return ResponseEntity.ok(updatedProject);
     }
     
     @DeleteMapping("/{id}")
-    public ResponseEntity<String> deleteProject(@PathVariable Long id) {
-        projectService.deleteProject(id);
-        return ResponseEntity.ok("Project deleted successfully");
+    public ResponseEntity<Void> deleteProject(@PathVariable Long id, Authentication authentication) {
+        // Extract user details for authorization check
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        String uid = userDetails.getUid();
+        
+        projectService.deleteProject(id, uid);
+        return ResponseEntity.noContent().build();
     }
 
     // GET /projects/{projectId}/target-languages

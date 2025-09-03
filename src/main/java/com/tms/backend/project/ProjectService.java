@@ -4,25 +4,34 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.tms.backend.businessUnit.BusinessUnit;
 import com.tms.backend.businessUnit.BusinessUnitRepository;
 import com.tms.backend.client.Client;
 import com.tms.backend.client.ClientRepository;
+import com.tms.backend.costCenter.CostCenter;
+import com.tms.backend.costCenter.CostCenterRepository;
 import com.tms.backend.domain.Domain;
 import com.tms.backend.domain.DomainRepository;
+import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectSummaryDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
+import com.tms.backend.machineTranslation.MachineTranslation;
+import com.tms.backend.machineTranslation.MachineTranslationRepository;
 import com.tms.backend.subDomain.SubDomain;
 import com.tms.backend.subDomain.SubDomainRepository;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
 import com.tms.backend.workflowSteps.WorkflowSteps;
+import com.tms.backend.workflowSteps.WorkflowStepsRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -35,6 +44,10 @@ public class ProjectService {
     private DomainRepository domainRepo;
     private SubDomainRepository subDomainRepo;
     private UserRepository userRepo;
+    private MachineTranslationRepository mtRepo;
+    private BusinessUnitRepository buRepo;
+    private CostCenterRepository ccRepo;
+    private WorkflowStepsRepository wfRepo;
 
     public ProjectService(
         ProjectRepository projectRepo,
@@ -42,7 +55,11 @@ public class ProjectService {
         ClientRepository clientRepo,
         DomainRepository domainRepo,
         SubDomainRepository subDomainRepo,
-        UserRepository userRepo
+        UserRepository userRepo,
+        MachineTranslationRepository mtRepo,
+        BusinessUnitRepository buRepo,
+        CostCenterRepository ccRepo,
+        WorkflowStepsRepository wfRepo
     ) {
         this.projectRepo = projectRepo;
         this.businessUnitRepo = businessUnitRepo;
@@ -50,6 +67,10 @@ public class ProjectService {
         this.domainRepo = domainRepo;
         this.subDomainRepo = subDomainRepo;
         this.userRepo = userRepo;
+        this.mtRepo = mtRepo;
+        this.buRepo = buRepo;
+        this.ccRepo = ccRepo;
+        this.wfRepo = wfRepo;
     }
 
     @Transactional(readOnly = true)
@@ -107,18 +128,94 @@ public class ProjectService {
                 project.getProgress());
     }
 
+    public ProjectDTO createProject(ProjectCreateDTO createDTO, String ownerUid) {
+        // Create new project entity
+        Project project = new Project();
+        
+        // Map fields from DTO
+        project.setName(createDTO.name());
+        project.setDueDate(createDTO.dueDate());
+        project.setSourceLang(createDTO.sourceLang());
+        project.setTargetLanguages(createDTO.targetLang());
+
+        if (createDTO.machineTranslationId() != null) {
+            MachineTranslation mt = mtRepo.findById(createDTO.machineTranslationId())
+                .orElseThrow(() -> new RuntimeException("MachineTranslation not found: " + createDTO.machineTranslationId()));
+            project.setMachineTranslation(mt);
+        }
+
+        if (createDTO.businessUnitId() != null) {
+            BusinessUnit bu = buRepo.findById(createDTO.businessUnitId())
+                .orElseThrow(() -> new RuntimeException("Business unit not found: " + createDTO.businessUnitId()));
+            project.setBusinessUnit(bu);
+        }
+
+        project.setPurchaseOrderNum(createDTO.purchaseOrder());
+        project.setType(createDTO.type());
+        
+        if (createDTO.clientId() != null) {
+            Client cl = clientRepo.findById(createDTO.clientId())
+                .orElseThrow(() -> new RuntimeException("Client not found: " + createDTO.businessUnitId()));
+            project.setClient(cl);
+        }
+
+        project.setNote(createDTO.note());
+
+        if (createDTO.costCenterId() != null) {
+            CostCenter cc = ccRepo.findById(createDTO.costCenterId())
+                    .orElseThrow(() -> new RuntimeException("Cost center not found: " + createDTO.costCenterId()));
+            project.setCostCenter(cc);
+        }
+
+        if (createDTO.domainId() != null) {
+            Domain domain = domainRepo.findById(createDTO.domainId())
+                    .orElseThrow(() -> new RuntimeException("Cost center not found: " + createDTO.domainId()));
+            project.setDomain(domain);
+        }
+
+        if (createDTO.subdomainId() != null) {
+            SubDomain subdomain = subDomainRepo.findById(createDTO.subdomainId())
+                    .orElseThrow(() -> new RuntimeException("Cost center not found: " + createDTO.subdomainId()));
+            project.setSubdomain(subdomain);
+        }
+
+        if (createDTO.workflowSteps() != null && !createDTO.workflowSteps().isEmpty()) {
+            Set<WorkflowSteps> steps = createDTO.workflowSteps().stream()
+                     .map(id -> wfRepo.findById(id)
+                    .orElseThrow(() -> new RuntimeException("WorkflowStep not found: " + id)))
+                    .collect(Collectors.toSet());
+            project.setWorkflowSteps(steps);
+        }
+        
+        if (ownerUid != null && ownerUid.isEmpty()){
+            User owner = userRepo.findByUid(ownerUid)
+            .orElseThrow(() -> new RuntimeException("user not found: " + ownerUid));
+            project.setOwner(owner);
+        }
+
+        project.setCreatedBy(ownerUid);
+        project.setCreateDate(LocalDateTime.now());
+        project.setStatus("Standard"); 
+
+        // Save project
+        Project savedProject = projectRepo.save(project);
+        
+        // Convert to response DTO
+        return convertToFullDTO(savedProject);
+    }
+
     private ProjectDTO convertToFullDTO(Project project) {
+        if (project == null) {
+            return null;
+        }
+
         return new ProjectDTO(
                 project.getId(),
                 project.getName(),
-                project.getCreatedBy(),
-                project.getCreateDate(),
-                project.getStatus(),
                 project.getDueDate(),
                 project.getSourceLang(),
                 project.getTargetLanguages(),
                 project.getMachineTranslation() != null ? project.getMachineTranslation().getId() : null,
-                project.getOwner() != null ? project.getOwner().getUid() : null,
                 project.getBusinessUnit() != null ? project.getBusinessUnit().getId() : null,
                 project.getPurchaseOrderNum(),
                 project.getType(),
@@ -128,53 +225,19 @@ public class ProjectService {
                 project.getDomain() != null ? project.getDomain().getId() : null,
                 project.getSubdomain() != null ? project.getSubdomain().getId() : null,
                 project.getWorkflowSteps().stream()
-                        .map(WorkflowSteps::getId) // get uid of each workflow; .map(workflowStep ->
-                        .collect(Collectors.toSet()), // put them into Set<String>
-                project.getFileHandover());
-    }
-
-     @Transactional
-    public ProjectDTO save(String name, Long clientId, String sourceLang, Set<String> targetLangs,
-            Long businessUnitId, LocalDateTime dueDate, String purchaseOrder, Long costCenterId, Long domainId,
-            Long subdomainId, Set<Long> workFlowSteps, Boolean fileHandover) {
-
-        Project project = new Project();
-        project.setName(name);
-        project.setSourceLang(sourceLang);
-        project.setTargetLanguages(targetLangs);
-        project.setDueDate(dueDate);
-        project.setPurchaseOrderNum(purchaseOrder);
-
-        if (businessUnitId != null) {
-            BusinessUnit bu = businessUnitRepo.findById(businessUnitId)
-                    .orElseThrow(() -> new EntityNotFoundException("Business Unit not found"));
-            project.setBusinessUnit(bu);
-        }
-
-        if (clientId != null) {
-            Client client = clientRepo.findById(clientId)
-                    .orElseThrow(() -> new EntityNotFoundException("Client not found"));
-            project.setClient(client);
-        }
-
-        if (domainId != null) {
-            Domain domain = domainRepo.findById(domainId)
-                    .orElseThrow(() -> new EntityNotFoundException("Domain not found"));
-            project.setDomain(domain);
-        }
-
-        if (subdomainId != null) {
-            SubDomain subDomain = subDomainRepo.findById(subdomainId)
-                    .orElseThrow(() -> new EntityNotFoundException("Subdomain not found"));
-            project.setSubdomain(subDomain);
-        }
-
-        Project saved = projectRepo.save(project);
-        return convertToFullDTO(saved);
+                .map(WorkflowSteps::getId) // get uid of each workflow; .map(workflowStep ->
+                .collect(Collectors.toSet()), // put them into Set<String>
+                project.getOwner() != null ? project.getOwner().getUid() : null,
+                project.getCreatedBy(),
+                project.getCreateDate(),
+                project.getStatus(),
+                "0",
+                project.getFileHandover()
+                );
     }
 
     @Transactional
-    public ProjectDTO update(Long id, ProjectDTO updatedData) {
+    public ProjectDTO updateProject(Long id, ProjectDTO updatedData) {
         Project project = projectRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + id));
 
@@ -225,10 +288,17 @@ public class ProjectService {
         return convertToFullDTO(saved);
     }
 
-     @Transactional
-    public void deleteProject(Long id) {
+    @Transactional
+    public void deleteProject(Long id, String uid) {
         if (!projectRepo.existsById(id)) {
             throw new ResourceNotFoundException("Project not found with id: " + id);
+        }
+
+        Project project = projectRepo.findById(id)
+        .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+    
+        if (!project.getOwner().getUid().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot delete this project");
         }
 
         projectRepo.deleteById(id);
