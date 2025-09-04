@@ -8,7 +8,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.tms.backend.dto.UpdateUserDTO;
-import com.tms.backend.dto.UserDTO;
 import com.tms.backend.email.EmailService;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.role.Role;
@@ -125,23 +124,6 @@ public class UserService {
         return userRepo.findByRoleNameIn(ownerRoles);
     }
     
-    public UserDTO login(String email, String rawPassword) {
-    User user = userRepo.findByEmail(email)
-            .orElseThrow(() -> new RuntimeException("Invalid credentials"));
-
-    // verify password
-    if (!rawPassword.equals(user.getPassword()))
-        throw new RuntimeException("Invalid credentials");
-
-    return new UserDTO(
-            user.getUid(),
-            user.getEmail(),
-            user.getFirstName(),
-            user.isVerified(),
-            user.isProfileComplete()
-    );
-    }
-
     @Transactional
     public void markUserAsVerified(String token) {
         VerificationToken vToken = tokenRepo.findByToken(token)

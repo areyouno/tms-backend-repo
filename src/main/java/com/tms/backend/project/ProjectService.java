@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -128,7 +129,7 @@ public class ProjectService {
                 project.getProgress());
     }
 
-    public ProjectDTO createProject(ProjectCreateDTO createDTO, String ownerUid) {
+    public ProjectDTO createProject(ProjectCreateDTO createDTO, String userEmail) throws UsernameNotFoundException {
         // Create new project entity
         Project project = new Project();
         
@@ -187,13 +188,12 @@ public class ProjectService {
             project.setWorkflowSteps(steps);
         }
         
-        if (ownerUid != null && ownerUid.isEmpty()){
-            User owner = userRepo.findByUid(ownerUid)
-            .orElseThrow(() -> new RuntimeException("user not found: " + ownerUid));
-            project.setOwner(owner);
-        }
+        User currentUser = userRepo.findByEmail(userEmail)
+                    .orElseThrow(() -> new UsernameNotFoundException("User not found: " + userEmail));
 
-        project.setCreatedBy(ownerUid);
+        project.setOwner(currentUser);
+
+        project.setCreatedBy(currentUser.getFirstName() + " " + currentUser.getLastName());
         project.setCreateDate(LocalDateTime.now());
         project.setStatus("Standard"); 
 

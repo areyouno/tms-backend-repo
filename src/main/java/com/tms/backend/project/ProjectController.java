@@ -55,11 +55,10 @@ public class ProjectController {
             @Valid @RequestBody ProjectCreateDTO createDTO,
             Authentication authentication) {
 
-        // Extract user details from JWT
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        String uid = userDetails.getUid();
+        // Extract user from authentication
+        String email = authentication.getName();
 
-        ProjectDTO createdProject = projectService.createProject(createDTO, uid);
+        ProjectDTO createdProject = projectService.createProject(createDTO, email);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdProject);
     }
 
