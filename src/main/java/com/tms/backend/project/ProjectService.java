@@ -288,12 +288,16 @@ public class ProjectService {
         return convertToFullDTO(saved);
     }
 
+    // Get soft deleted projects for user
+    public List<ProjectDTO> getSoftDeletedProjects(String uid) {
+        List<Project> deletedProjects = projectRepo.findSoftDeletedByOwner(uid);
+        return deletedProjects.stream()
+            .map(this::convertToFullDTO)
+            .collect(Collectors.toList());
+    }
+
     @Transactional
     public void deleteProject(Long id, String uid) {
-        if (!projectRepo.existsById(id)) {
-            throw new ResourceNotFoundException("Project not found with id: " + id);
-        }
-
         Project project = projectRepo.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
     
@@ -301,7 +305,50 @@ public class ProjectService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot delete this project");
         }
 
-        projectRepo.deleteById(id);
+        // soft delete
+        project.setDeleted(true);
+        project.setDeletedDate(LocalDateTime.now());
+
+        // set deletedBy
+        User currentUser = userRepo.findByUid(uid)
+        .orElseThrow(() -> new RuntimeException("User not found"));
+        project.setDeletedBy(currentUser.getFirstName() + " " + currentUser.getLastName());
+
+        projectRepo.save(project);
+    }
+
+    public void hardDeleteProject(Long id, String uid) {
+        // First check if project exists and user has permission
+        Project project = projectRepo.findByIdIncludingDeleted(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+            
+        if (!project.getOwner().getUid().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot delete this project");
+        }
+        
+        // Permanently delete from database
+        projectRepo.hardDeleteById(id);
+    }
+
+    @Transactional
+    public ProjectDTO restoreProject(Long id, String uid) {
+        Project project = projectRepo.findByIdIncludingDeleted(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+
+        if (!project.getOwner().getUid().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot restore this project");
+        }
+
+        if (!project.isDeleted()) {
+            throw new RuntimeException("Project is not deleted");
+        }
+
+        project.setDeleted(false);
+        project.setDeletedDate(null);
+        project.setDeletedBy(null);
+
+        Project restored = projectRepo.save(project);
+        return convertToFullDTO(restored);
     }
 
     @Transactional

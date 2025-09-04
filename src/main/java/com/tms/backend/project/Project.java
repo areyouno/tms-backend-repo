@@ -110,6 +110,9 @@ public class Project {
 
     BigDecimal progress;
 
+    private boolean deleted = false;
+    private LocalDateTime deletedDate;
+    private String deletedBy;
 
     public BigDecimal getProgress() {
         return progress;
@@ -295,6 +298,30 @@ public class Project {
 
     public void setFileHandover(Boolean fileHandover) {
         this.fileHandover = fileHandover;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
+    }
+
+    public LocalDateTime getDeletedDate() {
+        return deletedDate;
+    }
+
+    public void setDeletedDate(LocalDateTime deletedDate) {
+        this.deletedDate = deletedDate;
+    }
+
+    public String getDeletedBy() {
+        return deletedBy;
+    }
+
+    public void setDeletedBy(String deletedBy) {
+        this.deletedBy = deletedBy;
     }
 
 }

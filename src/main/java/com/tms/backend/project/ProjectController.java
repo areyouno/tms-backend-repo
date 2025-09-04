@@ -86,6 +86,31 @@ public class ProjectController {
         return ResponseEntity.noContent().build();
     }
 
+    @DeleteMapping("/{id}/hard")
+    public ResponseEntity<Void> hardDeleteProject(@PathVariable Long id, Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        String uid = userDetails.getUid();
+        projectService.hardDeleteProject(id, uid);
+        return ResponseEntity.noContent().build();
+    }
+
+    // Restore soft deleted project
+    @PutMapping("/{id}/restore")
+    public ResponseEntity<ProjectDTO> restoreProject(@PathVariable Long id, Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        String uid = userDetails.getUid();
+        ProjectDTO restored = projectService.restoreProject(id, uid);
+        return ResponseEntity.ok(restored);
+    }
+
+    @GetMapping("/deleted")
+    public ResponseEntity<List<ProjectDTO>> getSoftDeletedProjects(Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        String uid = userDetails.getUid();
+        List<ProjectDTO> deletedProjects = projectService.getSoftDeletedProjects(uid);
+        return ResponseEntity.ok(deletedProjects);
+    }
+
     // GET /projects/{projectId}/target-languages
     @GetMapping("/{projectId}/targetLanguages")
     public Set<String> getProjectTargetLanguages(@PathVariable Long projectId) {
