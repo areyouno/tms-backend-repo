@@ -24,5 +24,8 @@ public record ProjectDTO (
     LocalDateTime createDate,
     String status,
     String progress,
-    Boolean fileHandover
+    Boolean fileHandover,
+    boolean deleted,
+    String deletedBy,
+    LocalDateTime deletedDate
 ) {}

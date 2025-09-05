@@ -14,21 +14,21 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long>{
-    @Query("SELECT p FROM projects p WHERE p.owner.uid = :uid AND p.deleted = false")
+    @Query("SELECT p FROM Project p WHERE p.owner.uid = :uid AND p.deleted = false")
     List<Project> findByOwnerUid(String uid);
 
     // Find all non-deleted projects
-    @Query("SELECT p FROM projects p WHERE p.deleted = false")
-    List<Project> findAll();
+    @Query("SELECT p FROM Project p WHERE p.deleted = false")
+    List<Project> findAllActive();
     
     // Find by ID (non-deleted only)
-    @Query("SELECT p FROM projects p WHERE p.id = :id AND p.deleted = false")
-    Optional<Project> findById(@Param("id") Long id);
+    @Query("SELECT p FROM Project p WHERE p.id = :id AND p.deleted = false")
+    Optional<Project> findByIdAndNotDeleted(@Param("id") Long id);
 
-    @Query("SELECT p FROM projects p WHERE p.owner.email = :email AND p.deleted = false")
+    @Query("SELECT p FROM Project p WHERE p.owner.email = :email AND p.deleted = false")
     List<Project> findByOwnerEmail(@Param("email") String email);
 
-    @Query("SELECT p FROM projects p WHERE p.deleted = true")
+    @Query("SELECT p FROM Project p WHERE p.deleted = true")
     List<Project> findDeleted();
 
     @Query("SELECT p FROM Project p WHERE p.id = :id")

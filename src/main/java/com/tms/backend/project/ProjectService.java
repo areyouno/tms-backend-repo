@@ -76,7 +76,7 @@ public class ProjectService {
 
     @Transactional(readOnly = true)
     public List<ProjectSummaryDTO> getAllProjects() {
-        return projectRepo.findAll()
+        return projectRepo.findAllActive()
                 .stream()
                 .map(this::convertToSummaryDTO)
                 .collect(Collectors.toList());
@@ -97,7 +97,7 @@ public class ProjectService {
         User user = userRepo.findByEmail(email)
         .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        Project project = projectRepo.findById(id)
+        Project project = projectRepo.findByIdAndNotDeleted(id)
                 .orElseThrow(() -> new RuntimeException("Project not found with id: " + id));
 
         if(!project.getOwner().getId().equals(user.getId())){
@@ -232,17 +232,28 @@ public class ProjectService {
                 project.getCreateDate(),
                 project.getStatus(),
                 "0",
-                project.getFileHandover()
+                project.getFileHandover(),
+                project.isDeleted(),
+                project.getDeletedBy(),
+                project.getDeletedDate()
                 );
     }
 
     @Transactional
-    public ProjectDTO updateProject(Long id, ProjectDTO updatedData) {
+    public ProjectDTO updateProject(Long id, ProjectDTO updatedData, String uid) {
         Project project = projectRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + id));
 
+        if (!project.getOwner().getUid().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot update this project");
+        }
+
         if (updatedData.name() != null) {
             project.setName(updatedData.name());
+        }
+
+        if (updatedData.status() != null) {
+            project.setStatus(updatedData.status());
         }
 
         if (updatedData.sourceLang() != null) {
@@ -282,7 +293,6 @@ public class ProjectService {
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
             project.setOwner(newOwner);
         }
-
 
         Project saved = projectRepo.save(project);
         return convertToFullDTO(saved);

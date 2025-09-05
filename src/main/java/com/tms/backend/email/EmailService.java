@@ -5,7 +5,6 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
 import jakarta.mail.internet.MimeMessage;
 
 
@@ -18,12 +17,6 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-    @PostConstruct
-    public void init() {
-        System.out.println("EMAIL_USERNAME from env: " + System.getProperty("EMAIL_USERNAME"));
-        System.out.println("fromEmail from @Value: " + fromEmail);
-    }
-    
     @Value("${app.name:Your App}")
     private String appName;
 
