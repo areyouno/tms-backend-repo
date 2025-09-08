@@ -35,7 +35,7 @@ public class ProjectController {
     }
 
     @GetMapping
-    public List<ProjectSummaryDTO> getAllProjects(Authentication authentication){
+    public List<ProjectDTO> getAllProjects(Authentication authentication){
         // Extract user details from JWT
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         String uid = userDetails.getUid();

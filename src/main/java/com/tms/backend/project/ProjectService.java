@@ -83,10 +83,13 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProjectSummaryDTO> getProjectsByOwner(String uid) {
-        List<Project> projects = projectRepo.findByOwnerUid(uid);
+    public List<ProjectDTO> getProjectsByOwner(String uid) {
+        User user = userRepo.findByUid(uid)
+        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        List<Project> projects = projectRepo.findByOwnerId(user.getId());
         return projects.stream()
-                .map(this::convertToSummaryDTO)
+                .map(this::convertToFullDTO)
                 .collect(Collectors.toList());
     }
 
