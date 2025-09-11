@@ -26,10 +26,6 @@ public class UserController {
 
     private final UserService userService;
 
-
-    // @Value("${app.frontend-url}")
-    // private String frontendUrl;
-
     public UserController(UserService userService) {
         this.userService = userService;
     }

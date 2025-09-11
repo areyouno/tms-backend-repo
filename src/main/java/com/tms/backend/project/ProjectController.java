@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
-import com.tms.backend.dto.ProjectSummaryDTO;
 import com.tms.backend.user.CustomUserDetails;
 
 import jakarta.validation.Valid;
@@ -55,7 +54,6 @@ public class ProjectController {
             @Valid @RequestBody ProjectCreateDTO createDTO,
             Authentication authentication) {
 
-        // Extract user from authentication
         String email = authentication.getName();
 
         ProjectDTO createdProject = projectService.createProject(createDTO, email);
@@ -68,7 +66,6 @@ public class ProjectController {
             @Valid @RequestBody ProjectDTO updateDTO,
             Authentication authentication) {
         
-        // Extract user details for authorization check if needed
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         String uid = userDetails.getUid();
         
@@ -78,7 +75,6 @@ public class ProjectController {
     
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id, Authentication authentication) {
-        // Extract user details for authorization check
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         String uid = userDetails.getUid();
         

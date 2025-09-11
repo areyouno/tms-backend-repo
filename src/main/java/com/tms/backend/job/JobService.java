@@ -6,46 +6,54 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.tms.backend.dto.FileDownloadDTO;
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.JobEditDTO;
+import com.tms.backend.dto.JobWorkflowStepDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.project.Project;
 import com.tms.backend.project.ProjectRepository;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
+import com.tms.backend.workflowSteps.WorkflowStep;
+import com.tms.backend.workflowSteps.WorkflowStepRepository;
 
-// @Service
+@Service
 public class JobService {
     
-    private final JobRepository repo;
+    private final JobRepository jobRepo;
     private final ProjectRepository projectRepo;
     private final UserRepository userRepo;
+    private final WorkflowStepRepository wfRepo;
+    private final JobWorkflowStepRepository jobWfRepo;
 
-    public JobService(JobRepository repo, ProjectRepository projectRepo, UserRepository userRepo){
-        this.repo = repo;
+    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo){
+        this.jobRepo = jobRepo;
         this.projectRepo = projectRepo;
-        this.userRepo = userRepo;    
+        this.userRepo = userRepo;
+        this.wfRepo = wfRepo;
+        this.jobWfRepo = jobWfRepo;
     }
 
-    public List<JobDTO> getAllJobs() {
-        return repo.findAll()
-        .stream()
-        .map(this::convertToDTO)
-        .collect(Collectors.toList());
+    // @Transactional(readOnly = true)
+    public List<JobDTO> getJobs() {
+        List<Job> jobs = jobRepo.findAll();
+        return jobs.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
     }
 
     public JobDTO findById(Long id, Long currentUserId) throws AccessDeniedException {
-        Job job = repo.findById(id)
+        Job job = jobRepo.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Job", "id", id));
 
         if (!job.getJobOwner().getId().equals(currentUserId)){
@@ -56,7 +64,7 @@ public class JobService {
     }
 
     public FileDownloadDTO downloadJobFile(Long jobId, Long currentUserId) throws AccessDeniedException {
-        Job job = repo.findById(jobId)
+        Job job = jobRepo.findById(jobId)
         .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
 
         if(!job.getJobOwner().getId().equals(currentUserId)){
@@ -66,41 +74,7 @@ public class JobService {
         return new FileDownloadDTO(
             job.getFileName(), 
             job.getContentType(),
-            job.getData());
-    }
-
-    public Job saveFile(MultipartFile file, String status, Set<String> targetLangs, String provider, LocalDateTime dueDate, Long projectId) throws IOException {
-
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-
-        User user = userRepo.findByEmail(email)
-        .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
-
-        //Read file content
-        String filename = file.getOriginalFilename();
-        String contentType = file.getContentType();
-        byte[] data = file.getBytes();
-
-        Job job = new Job();
-        job.setJobOwner(user);
-        job.setFileName(filename);
-        job.setContentType(contentType);
-        job.setData(data);
-
-        // job.setConfirmPct(null);
-        job.setStatus(status);
-        job.setTargetLangs(targetLangs);
-        job.setProvider(provider);
-        job.setDueDate(dueDate);
-
-        //associate with project
-        if(projectId != null){
-            Project project = projectRepo.findById(projectId)
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
-            job.setProject(project);
-        }
-        
-        return repo.save(job);
+            job.getFilePath());
     }
 
     @Value("${file.upload-dir}")
@@ -110,29 +84,114 @@ public class JobService {
         return Paths.get(baseUploadDir, String.valueOf(userId));
     }
 
-    public void saveFile2(MultipartFile file) throws IOException {
-        // Path userDir = getUserUploadPath(userId);
+    public JobDTO saveFileToLocal(MultipartFile file, JobDTO jobDTO) throws IOException {
 
-        Path userDir = Paths.get(baseUploadDir);
+        // set job details
+        Job job = createJobFromDTO(jobDTO);
+
+        // save to get the generated id
+        Job savedJob = jobRepo.save(job);
+
+        // add zero padding to ids
+        String zeroPaddedProjId = String.format("%03d", jobDTO.projectId());
+        String zeroPaddedJobId = String.format("%03d", jobDTO.id());
+
+        // build folder name
+        String projectFolder = "project-" + zeroPaddedProjId + "_" + LocalDateTime.now();
+        String jobFolder = "job-" + zeroPaddedJobId + "_" + LocalDateTime.now();
+
+
+        // Create folder structure: base/project/job
+        Path uploadDirectory = Paths.get(baseUploadDir, projectFolder, jobFolder);
 
         // Create user folder if it doesn’t exist
-        Files.createDirectories(userDir);
+        Files.createDirectories(uploadDirectory);
 
         // Resolve file path
-        Path targetPath = userDir.resolve(file.getOriginalFilename());
+        Path targetPath = uploadDirectory.resolve(file.getOriginalFilename());
 
         // Save file
         Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+        savedJob.setFilePath(targetPath.toString());
+        savedJob = jobRepo.save(savedJob);
+
+        List<JobWorkflowStep> jobSteps = createWorkflowSteps(jobDTO.workflowSteps(), savedJob);
+
+        //save workflow steps
+        List<JobWorkflowStep> savedSteps = jobWfRepo.saveAll(jobSteps);
+        savedJob.setWorkflowSteps(savedSteps);
+
+         return convertToDTO(savedJob);
+    }
+
+    private List<JobWorkflowStep> createWorkflowSteps(List<JobWorkflowStepDTO> stepDTOs, Job job) {
+        List<JobWorkflowStep> jobSteps = new ArrayList<>();
+
+        for (JobWorkflowStepDTO stepDTO : stepDTOs) {
+            JobWorkflowStep jobWfStep = new JobWorkflowStep();
+            jobWfStep.setJob(job);
+
+            WorkflowStep wfStepReference = wfRepo.findById(stepDTO.workflowStepId())
+                    .orElseThrow(() -> new ResourceNotFoundException("WorkflowStep not found"));
+            jobWfStep.setWorkflowStep(wfStepReference);
+
+            User wfStepProvider = userRepo.findById(stepDTO.providerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
+            jobWfStep.setProvider(wfStepProvider);
+
+            User notifyUser = userRepo.findById(stepDTO.notifyUserId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            jobWfStep.setNotifyUser(notifyUser);
+
+            jobWfStep.setDueDate(stepDTO.dueDate());
+            jobWfStep.setStepOrder(stepDTO.stepOrder());
+
+            jobSteps.add(jobWfStep);
+        }
+
+        return jobSteps;
+    }
+
+    private Job createJobFromDTO(JobDTO jobDTO) {
+        Job job = new Job();
+        job.setSourceLang(jobDTO.sourceLang());
+        job.setTargetLangs(jobDTO.targetLangs());
+        job.setStatus(jobDTO.status());
+        job.setContentType(jobDTO.contentType());
+        job.setDueDate(jobDTO.dueDate());
+        job.setFileName(jobDTO.fileName());
+        job.setFileSize(jobDTO.fileSize());
+        job.setProgress(jobDTO.progress().longValue());
+        job.setWordCount(jobDTO.wordCount());
+
+        // Set relationships
+        User owner = userRepo.findById(jobDTO.jobOwnerId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        job.setJobOwner(owner);
+
+        Project project = projectRepo.findById(jobDTO.projectId())
+                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+        job.setProject(project);
+
+        User provider = userRepo.findById(jobDTO.providerId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        job.setProvider(provider);
+
+        return job;
     }
 
     public JobEditDTO update(Long id, JobEditDTO updatedData){
-        Job job = repo.findById(id)
+        Job job = jobRepo.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
 
-        if (updatedData.provider() != null){
-            job.setProvider(updatedData.provider());
+        if (updatedData.providerId() != null){
+            User provider = userRepo.findById(updatedData.providerId())
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            job.setProvider(provider);
         }
-        if (updatedData.status() != null){
+
+        if (updatedData.status() != null) {
             job.setStatus(updatedData.status());
         }
 
@@ -140,33 +199,56 @@ public class JobService {
             job.setDueDate(updatedData.dueDate());
         }
 
-        Job saved = repo.save(job);
+        Job saved = jobRepo.save(job);
         return new JobEditDTO(
-            saved.getProvider(),
-            saved.getStatus(),
-            saved.getDueDate()
+                saved.getProvider() != null ? saved.getProvider().getId() : null,
+                saved.getStatus(),
+                saved.getDueDate()
         );
     }
 
     public void deleteJob(Long id) {
-        if (!repo.existsById(id)){
+        if (!jobRepo.existsById(id)){
             throw new ResourceNotFoundException("Project not found with id: " + id);
         }   
         
-        repo.deleteById(id);    
+        jobRepo.deleteById(id);    
     }
 
     public JobDTO convertToDTO(Job job) {
+         List<JobWorkflowStepDTO> stepDTOs = job.getWorkflowSteps().stream()
+        .map(this::convertStepToDTO)  // Convert each entity to DTO
+        .toList();
+
         return new JobDTO(
                 job.getId(),
                 job.getStatus(),
+                job.getSourceLang(),
                 job.getTargetLangs(),
-                job.getProvider(),
+                job.getProvider() != null ? job.getProvider().getId() : null,
                 job.getDueDate(),
                 job.getJobOwner() != null ? job.getJobOwner().getId() : null,
                 job.getFileName(),
+                job.getFileSize(),
                 job.getContentType(),
-                job.getProject() != null ? job.getProject().getId() : null
+                job.getProject() != null ? job.getProject().getId() : null,
+                stepDTOs,
+                job.getWordCount(),
+                job.getProgress(),
+                job.getCreateDate()
         );
     }
+
+    private JobWorkflowStepDTO convertStepToDTO(JobWorkflowStep step) {
+    return new JobWorkflowStepDTO(
+        step.getId(),
+        step.getWorkflowStep().getId(),
+        step.getWorkflowStep().getName(),
+        step.getProvider() != null ? step.getProvider().getId() : null,
+        step.getDueDate(),
+        step.getNotifyUser() != null ? step.getNotifyUser().getId() : null,
+        step.getWorkflowStatus(),
+        step.getStepOrder()
+    );
+}
 }

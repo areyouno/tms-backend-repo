@@ -16,7 +16,7 @@ import com.tms.backend.job.Job;
 import com.tms.backend.machineTranslation.MachineTranslation;
 import com.tms.backend.subDomain.SubDomain;
 import com.tms.backend.user.User;
-import com.tms.backend.workflowSteps.WorkflowSteps;
+import com.tms.backend.workflowSteps.WorkflowStep;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
@@ -76,7 +76,7 @@ public class Project {
     private String type;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "client_id", nullable = false) // FK in the "projects" table
+    @JoinColumn(name = "client_id", nullable = false)
     private Client client;
 
     @Size(max = 200, message = "Note cannot exceed 200 characters")
@@ -101,7 +101,7 @@ public class Project {
         joinColumns = @JoinColumn(name = "project_id"),
         inverseJoinColumns = @JoinColumn(name = "workflow_step_id")
     )
-    private Set<WorkflowSteps> workflowSteps = new HashSet<>();
+    private Set<WorkflowStep> workflowSteps = new HashSet<>();
 
     Boolean fileHandover;
 
@@ -114,214 +114,89 @@ public class Project {
     private LocalDateTime deletedDate;
     private String deletedBy;
 
-    public BigDecimal getProgress() {
-        return progress;
-    }
-
-    public void setProgress(BigDecimal progress) {
-        this.progress = progress;
-    }
-
     public void addJob(Job job) {
         jobs.add(job);
         job.setProject(this);
     }
 
     public void deleteJob(Job job) {
-        jobs.remove(job);         // removes it from the collection
-        job.setProject(null);     // marks it as orphaned
+        jobs.remove(job); // removes it from the collection
+        job.setProject(null); // marks it as orphaned
     }
 
-    public List<Job> getJobs() {
-        return jobs;
-    }
+    public List<Job> getJobs() { return jobs; }
+    public void setJobs(List<Job> jobs) { this.jobs = jobs; }
 
-    public void setJobs(List<Job> jobs) {
-        this.jobs = jobs;
-    }
+    public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
 
-    public Long getId() {
-        return id;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public void setId(Long id) {
-        this.id = id;
-    }
+    public String getCreatedBy() { return createdBy; }
+    public void setCreatedBy(String createdBy) { this.createdBy = createdBy; }
 
-    public String getName() {
-        return name;
-    }
+    public LocalDateTime getCreateDate() { return createDate; }
+    public void setCreateDate(LocalDateTime createDate) { this.createDate = createDate;}
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
-    public String getCreatedBy() {
-        return createdBy;
-    }
+    public LocalDateTime getDueDate() { return dueDate; }
+    public void setDueDate(LocalDateTime dueDate) { this.dueDate = dueDate; }
 
-    public void setCreatedBy(String createdBy) {
-        this.createdBy = createdBy;
-    }
+    public String getSourceLang() { return sourceLang; }
+    public void setSourceLang(String sourceLang) { this.sourceLang = sourceLang; }
 
-    public LocalDateTime getCreateDate() {
-        return createDate;
-    }
+    public Set<String> getTargetLanguages() { return targetLanguages; }
+    public void setTargetLanguages(Set<String> targetLanguages) { this.targetLanguages = targetLanguages; }
 
-    public void setCreateDate(LocalDateTime createDate) {
-        this.createDate = createDate;
-    }
+    public MachineTranslation getMachineTranslation() { return machineTranslation; }
+    public void setMachineTranslation(MachineTranslation machineTranslation) { this.machineTranslation = machineTranslation; }
 
-    public String getStatus() {
-        return status;
-    }
+    public User getOwner() { return owner; }
+    public void setOwner(User owner) { this.owner = owner; }
 
-    public void setStatus(String status) {
-        this.status = status;
-    }
+    public BusinessUnit getBusinessUnit() { return businessUnit; }
+    public void setBusinessUnit(BusinessUnit businessUnit) { this.businessUnit = businessUnit; }
 
-    public LocalDateTime getDueDate() {
-        return dueDate;
-    }
-    
-    public void setDueDate(LocalDateTime dueDate) {
-        this.dueDate = dueDate;
-    }
+    public String getPurchaseOrderNum() { return purchaseOrderNum; }
+    public void setPurchaseOrderNum(String purchaseOrder) { this.purchaseOrderNum = purchaseOrder; }
 
-    public String getSourceLang() {
-        return sourceLang;
-    }
+    public String getType() { return type; }
+    public void setType(String type) { this.type = type; }
 
-    public void setSourceLang(String sourceLang) {
-        this.sourceLang = sourceLang;
-    }
+    public Client getClient() { return client; }
+    public void setClient(Client client) { this.client = client; }
 
-    public Set<String> getTargetLanguages() {
-        return targetLanguages;
-    }
+    public String getNote() { return note; }
+    public void setNote(String note) { this.note = note; }
 
-    public void setTargetLanguages(Set<String> targetLanguages) {
-        this.targetLanguages = targetLanguages;
-    }
+    public CostCenter getCostCenter() { return costCenter; }
+    public void setCostCenter(CostCenter costCenter) { this.costCenter = costCenter; }
 
-    public MachineTranslation getMachineTranslation() {
-        return machineTranslation;
-    }
+    public Domain getDomain() { return domain; }
+    public void setDomain(Domain domain) { this.domain = domain; }
 
-    public void setMachineTranslation(MachineTranslation machineTranslation) {
-        this.machineTranslation = machineTranslation;
-    }
+    public SubDomain getSubdomain() { return subdomain; }
+    public void setSubdomain(SubDomain subdomain) { this.subdomain = subdomain; }
 
-    public User getOwner() {
-        return owner;
-    }
+    public Set<WorkflowStep> getWorkflowSteps() { return workflowSteps; }
+    public void setWorkflowSteps(Set<WorkflowStep> workflowSteps) { this.workflowSteps = workflowSteps; }
 
-    public void setOwner(User owner) {
-        this.owner = owner;
-    }
+    public Boolean getFileHandover() { return fileHandover; }
+    public void setFileHandover(Boolean fileHandover) { this.fileHandover = fileHandover; }
 
-    public BusinessUnit getBusinessUnit() {
-        return businessUnit;
-    }
+    public BigDecimal getProgress() { return progress; }
+    public void setProgress(BigDecimal progress) { this.progress = progress; }
 
-    public void setBusinessUnit(BusinessUnit businessUnit) {
-        this.businessUnit = businessUnit;
-    }
+    public boolean isDeleted() { return deleted; }
+    public void setDeleted(boolean deleted) { this.deleted = deleted; }
 
-    public String getPurchaseOrderNum() {
-        return purchaseOrderNum;
-    }
+    public LocalDateTime getDeletedDate() { return deletedDate; }
+    public void setDeletedDate(LocalDateTime deletedDate) { this.deletedDate = deletedDate; }
 
-    public void setPurchaseOrderNum(String purchaseOrder) {
-        this.purchaseOrderNum = purchaseOrder;
-    }
-
-    public String getType() {
-        return type;
-    }
-
-    public void setType(String type) {
-        this.type = type;
-    }
-
-    public Client getClient() {
-        return client;
-    }
-
-    public void setClient(Client client) {
-        this.client = client;
-    }
-
-    public String getNote() {
-        return note;
-    }
-
-    public void setNote(String note) {
-        this.note = note;
-    }
-
-    public CostCenter getCostCenter() {
-        return costCenter;
-    }
-
-    public void setCostCenter(CostCenter costCenter) {
-        this.costCenter = costCenter;
-    }
-
-    public Domain getDomain() {
-        return domain;
-    }
-
-    public void setDomain(Domain domain) {
-        this.domain = domain;
-    }
-
-    public SubDomain getSubdomain() {
-        return subdomain;
-    }
-
-    public void setSubdomain(SubDomain subdomain) {
-        this.subdomain = subdomain;
-    }
-
-    public Set<WorkflowSteps> getWorkflowSteps() {
-        return workflowSteps;
-    }
-
-    public void setWorkflowSteps(Set<WorkflowSteps> workflowSteps) {
-        this.workflowSteps = workflowSteps;
-    }
-
-    public Boolean getFileHandover() {
-        return fileHandover;
-    }
-
-    public void setFileHandover(Boolean fileHandover) {
-        this.fileHandover = fileHandover;
-    }
-
-    public boolean isDeleted() {
-        return deleted;
-    }
-
-    public void setDeleted(boolean deleted) {
-        this.deleted = deleted;
-    }
-
-    public LocalDateTime getDeletedDate() {
-        return deletedDate;
-    }
-
-    public void setDeletedDate(LocalDateTime deletedDate) {
-        this.deletedDate = deletedDate;
-    }
-
-    public String getDeletedBy() {
-        return deletedBy;
-    }
-
-    public void setDeletedBy(String deletedBy) {
-        this.deletedBy = deletedBy;
-    }
+    public String getDeletedBy() { return deletedBy; }
+    public void setDeletedBy(String deletedBy) { this.deletedBy = deletedBy; }
 
 }

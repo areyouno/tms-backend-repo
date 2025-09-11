@@ -31,8 +31,8 @@ import com.tms.backend.subDomain.SubDomain;
 import com.tms.backend.subDomain.SubDomainRepository;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
-import com.tms.backend.workflowSteps.WorkflowSteps;
-import com.tms.backend.workflowSteps.WorkflowStepsRepository;
+import com.tms.backend.workflowSteps.WorkflowStep;
+import com.tms.backend.workflowSteps.WorkflowStepRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -48,7 +48,7 @@ public class ProjectService {
     private MachineTranslationRepository mtRepo;
     private BusinessUnitRepository buRepo;
     private CostCenterRepository ccRepo;
-    private WorkflowStepsRepository wfRepo;
+    private WorkflowStepRepository wfRepo;
 
     public ProjectService(
         ProjectRepository projectRepo,
@@ -60,7 +60,7 @@ public class ProjectService {
         MachineTranslationRepository mtRepo,
         BusinessUnitRepository buRepo,
         CostCenterRepository ccRepo,
-        WorkflowStepsRepository wfRepo
+        WorkflowStepRepository wfRepo
     ) {
         this.projectRepo = projectRepo;
         this.businessUnitRepo = businessUnitRepo;
@@ -136,7 +136,7 @@ public class ProjectService {
         // Create new project entity
         Project project = new Project();
         
-        // Map fields from DTO
+        // Set fields from DTO
         project.setName(createDTO.name());
         project.setDueDate(createDTO.dueDate());
         project.setSourceLang(createDTO.sourceLang());
@@ -184,7 +184,7 @@ public class ProjectService {
         }
 
         if (createDTO.workflowSteps() != null && !createDTO.workflowSteps().isEmpty()) {
-            Set<WorkflowSteps> steps = createDTO.workflowSteps().stream()
+            Set<WorkflowStep> steps = createDTO.workflowSteps().stream()
                      .map(id -> wfRepo.findById(id)
                     .orElseThrow(() -> new RuntimeException("WorkflowStep not found: " + id)))
                     .collect(Collectors.toSet());
@@ -228,7 +228,7 @@ public class ProjectService {
                 project.getDomain() != null ? project.getDomain().getId() : null,
                 project.getSubdomain() != null ? project.getSubdomain().getId() : null,
                 project.getWorkflowSteps().stream()
-                .map(WorkflowSteps::getId) // get uid of each workflow; .map(workflowStep ->
+                .map(WorkflowStep::getId) // get uid of each workflow; .map(workflowStep ->
                 .collect(Collectors.toSet()), // put them into Set<String>
                 project.getOwner() != null ? project.getOwner().getUid() : null,
                 project.getCreatedBy(),

@@ -6,11 +6,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 
 @Entity
-public class WorkflowSteps {
+public class WorkflowStep {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
+    private Integer displayOrder;
     
     public Long getId() {
         return id;
@@ -23,5 +24,11 @@ public class WorkflowSteps {
     }
     public void setName(String name) {
         this.name = name;
+    }
+    public Integer getDisplayOrder() {
+        return displayOrder;
+    }
+    public void setDisplayOrder(Integer displayOrder) {
+        this.displayOrder = displayOrder;
     }
 }
