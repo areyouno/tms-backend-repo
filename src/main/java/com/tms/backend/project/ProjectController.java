@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 
 @RestController
-@RequestMapping("/projects")
+@RequestMapping("/api/projects")
 public class ProjectController {
     private final ProjectService projectService;
     
@@ -107,7 +107,6 @@ public class ProjectController {
         return ResponseEntity.ok(deletedProjects);
     }
 
-    // GET /projects/{projectId}/target-languages
     @GetMapping("/{projectId}/targetLanguages")
     public Set<String> getProjectTargetLanguages(@PathVariable Long projectId) {
         return projectService.getTargetLanguages(projectId);

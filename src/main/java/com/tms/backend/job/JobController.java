@@ -18,8 +18,10 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.tms.backend.dto.JobAnalyticsCountDTO;
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.JobEditDTO;
+import com.tms.backend.dto.JobSearchFilterByDate;
 
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,7 +30,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 
 @RestController
-@RequestMapping("/job")
+@RequestMapping("/api/jobs")
 public class JobController {
 
     private final JobService jobService;
@@ -44,7 +46,7 @@ public class JobController {
         return Paths.get(baseUploadDir, String.valueOf(userId));
     }
 
-    @PostMapping("/uploadToLocal")
+    @PostMapping("/upload")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<String> uploadFileToLocal(
         @RequestPart("file") MultipartFile file,
@@ -77,4 +79,14 @@ public class JobController {
         jobService.deleteJob(id);
         return ResponseEntity.ok("Job deleted successfully");
     }
+
+    @GetMapping("/analytics/filter")
+    public JobAnalyticsCountDTO searchJobs(@RequestBody(required = false) JobSearchFilterByDate filter) {
+        if (filter == null) {
+            // no filter -> create empty object
+            filter = new JobSearchFilterByDate(null, null, null, null, null);
+        }
+        return jobService.getJobCountByDate(filter);
+    }
+
 }

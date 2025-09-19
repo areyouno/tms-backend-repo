@@ -75,6 +75,8 @@ public class Job {
     @Column(name = "create_date", updatable = false)
     @CreationTimestamp
     private LocalDateTime createDate;
+    
+    private LocalDateTime completedDate;
 
     public void setProject(Project project) {
         this.project = project;
@@ -151,4 +153,7 @@ public class Job {
 
     public LocalDateTime getCreateDate() { return createDate; }
     public void setCreateDate(LocalDateTime createDate) { this.createDate = createDate; }
+    
+    public LocalDateTime getCompletedDate() { return completedDate; }
+    public void setCompletedDate(LocalDateTime completedDate) { this.completedDate = completedDate; }
 }

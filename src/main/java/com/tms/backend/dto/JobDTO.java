@@ -16,6 +16,7 @@ public record JobDTO(
     Long jobOwnerId,
     String fileName,
     Long fileSize,
+    String filePath,
     String contentType,
     Long projectId,
     List<JobWorkflowStepDTO> workflowSteps,

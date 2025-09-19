@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 
 @RestController
-@RequestMapping("/bu")
+@RequestMapping("/api/bu")
 @Validated
 public class BusinessUnitController {
     @Autowired

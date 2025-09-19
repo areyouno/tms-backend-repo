@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 
 @RestController
-@RequestMapping("/cc")
+@RequestMapping("/api/cc")
 @Validated
 public class CostCenterController {
     @Autowired

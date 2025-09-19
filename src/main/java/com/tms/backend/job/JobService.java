@@ -5,7 +5,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -16,8 +19,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.tms.backend.dto.FileDownloadDTO;
+import com.tms.backend.dto.JobAnalyticsCountDTO;
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.JobEditDTO;
+import com.tms.backend.dto.JobSearchFilterByDate;
 import com.tms.backend.dto.JobWorkflowStepDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.project.Project;
@@ -141,7 +146,7 @@ public class JobService {
             jobWfStep.setProvider(wfStepProvider);
 
             User notifyUser = userRepo.findById(stepDTO.notifyUserId())
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                    .orElseThrow(() -> new ResourceNotFoundException("User to notify not found"));
             jobWfStep.setNotifyUser(notifyUser);
 
             jobWfStep.setDueDate(stepDTO.dueDate());
@@ -167,7 +172,7 @@ public class JobService {
 
         // Set relationships
         User owner = userRepo.findById(jobDTO.jobOwnerId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
         job.setJobOwner(owner);
 
         Project project = projectRepo.findById(jobDTO.projectId())
@@ -175,7 +180,7 @@ public class JobService {
         job.setProject(project);
 
         User provider = userRepo.findById(jobDTO.providerId())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
         job.setProvider(provider);
 
         return job;
@@ -230,6 +235,7 @@ public class JobService {
                 job.getJobOwner() != null ? job.getJobOwner().getId() : null,
                 job.getFileName(),
                 job.getFileSize(),
+                job.getFilePath(),
                 job.getContentType(),
                 job.getProject() != null ? job.getProject().getId() : null,
                 stepDTOs,
@@ -249,6 +255,62 @@ public class JobService {
         step.getNotifyUser() != null ? step.getNotifyUser().getId() : null,
         step.getWorkflowStatus(),
         step.getStepOrder()
-    );
-}
+        );
+    }
+
+    public JobAnalyticsCountDTO getJobCountByDate(JobSearchFilterByDate filter){
+        // fallback if no filter is passed
+        if (filter.fromDate() == null 
+            && filter.toDate() == null 
+            && filter.year() == null 
+            && filter.month() == null 
+            && filter.period() == null) {
+
+        return jobRepo.getDeliveryByMonthCount(
+            LocalDateTime.of(1970, 1, 1, 0, 0),
+            LocalDateTime.of(9999, 12, 31, 23, 59, 59)
+        );
+        }
+
+        LocalDate fromDate = filter.fromDate();
+        LocalDate toDate = filter.toDate();
+
+
+        // derive date range from year/month
+        if (filter.year() != null && filter.month() != null) {
+            YearMonth ym = YearMonth.of(filter.year(), filter.month());
+            fromDate = ym.atDay(1);
+            toDate = ym.atEndOfMonth();
+        } else if (filter.year() != null) {
+            fromDate = LocalDate.of(filter.year(), 1, 1);
+            toDate = LocalDate.of(filter.year(), 12, 31);
+        }
+
+        // derive from semantic period
+        if (filter.period() != null) {
+            LocalDate today = LocalDate.now();
+            switch (filter.period().toUpperCase()) {
+                case "THIS_MONTH" -> {
+                    YearMonth ym = YearMonth.from(today);
+                    fromDate = ym.atDay(1);
+                    toDate = ym.atEndOfMonth();
+                }
+                case "THIS_YEAR" -> {
+                    fromDate = LocalDate.of(today.getYear(), 1, 1);
+                    toDate = LocalDate.of(today.getYear(), 12, 31);
+                }
+                case "THIS_WEEK" -> {
+                    DayOfWeek firstDayOfWeek = DayOfWeek.MONDAY; // or SUNDAY, depending on business rules
+                    fromDate = today.with(firstDayOfWeek);
+                    toDate = fromDate.plusDays(6);
+                }
+            }
+        }
+
+        // Convert LocalDate to LocalDateTime
+        LocalDateTime fromDateTime = fromDate.atStartOfDay();
+        LocalDateTime toDateTime = toDate.atTime(23, 59, 59);
+
+        return jobRepo.getDeliveryByMonthCount(fromDateTime, toDateTime);
+    }
 }

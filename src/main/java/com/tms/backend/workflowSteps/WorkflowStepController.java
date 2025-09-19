@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.tms.backend.dto.WorkflowStepDTO;
 
 @RestController
-@RequestMapping("/workflow-steps")
+@RequestMapping("/api/workflow-steps")
 public class WorkflowStepController {
     private final WorkflowStepService wfService;
 
