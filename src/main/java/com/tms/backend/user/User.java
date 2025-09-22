@@ -51,6 +51,9 @@ public class User {
     private String organizationName;
     private String organizationSize;
 
+    private String username;
+    private boolean isActive;
+
     @ManyToOne
     @JoinColumn(name = "role_id", nullable = true)
     private Role role;
@@ -199,5 +202,21 @@ public class User {
     public void removeVerificationToken(VerificationToken token) {
         verificationTokens.remove(token);
         token.setUser(null);
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public boolean isActive() {
+        return isActive;
+    }
+
+    public void setActive(boolean isActive) {
+        this.isActive = isActive;
     }
 }

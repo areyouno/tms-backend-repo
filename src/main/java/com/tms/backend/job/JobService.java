@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -99,7 +101,7 @@ public class JobService {
 
         // add zero padding to ids
         String zeroPaddedProjId = String.format("%03d", jobDTO.projectId());
-        String zeroPaddedJobId = String.format("%03d", jobDTO.id());
+        String zeroPaddedJobId = String.format("%03d", savedJob.getId());
 
         // build folder name
         String projectFolder = "project-" + zeroPaddedProjId + "_" + LocalDateTime.now();
@@ -121,7 +123,10 @@ public class JobService {
         savedJob.setFilePath(targetPath.toString());
         savedJob = jobRepo.save(savedJob);
 
-        List<JobWorkflowStep> jobSteps = createWorkflowSteps(jobDTO.workflowSteps(), savedJob);
+        List<JobWorkflowStep> jobSteps = new ArrayList<>();
+        if (jobDTO.workflowSteps() != null) {
+            jobSteps = createWorkflowSteps(jobDTO.workflowSteps(), savedJob);
+        }
 
         //save workflow steps
         List<JobWorkflowStep> savedSteps = jobWfRepo.saveAll(jobSteps);
@@ -167,21 +172,29 @@ public class JobService {
         job.setDueDate(jobDTO.dueDate());
         job.setFileName(jobDTO.fileName());
         job.setFileSize(jobDTO.fileSize());
-        job.setProgress(jobDTO.progress().longValue());
+        if (jobDTO.progress() != null) {
+            job.setProgress(jobDTO.progress().longValue());
+        }
         job.setWordCount(jobDTO.wordCount());
 
-        // Set relationships
-        User owner = userRepo.findById(jobDTO.jobOwnerId())
-                .orElseThrow(() -> new ResourceNotFoundException("Owner not found"));
-        job.setJobOwner(owner);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        String username = auth.getName();
+        User currentUser = userRepo.findByEmail(username)
+        .orElseThrow(() -> new ResourceNotFoundException("Current user not found"));
+        job.setJobOwner(currentUser);
 
-        Project project = projectRepo.findById(jobDTO.projectId())
-                .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
-        job.setProject(project);
+        if (jobDTO.projectId() != null) {
+            Long projectId = jobDTO.projectId();
+            Project project = projectRepo.findById(projectId)
+            .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+            job.setProject(project);
+        }
 
-        User provider = userRepo.findById(jobDTO.providerId())
-                .orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
-        job.setProvider(provider);
+        if (jobDTO.providerId() != null) {
+            User provider = userRepo.findById(jobDTO.providerId())
+            .orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
+            job.setProvider(provider);
+        }
 
         return job;
     }

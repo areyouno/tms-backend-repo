@@ -3,7 +3,9 @@ package com.tms.backend.job;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -48,15 +50,21 @@ public class JobController {
 
     @PostMapping("/upload")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<String> uploadFileToLocal(
+    public ResponseEntity<Map<String, Object>> uploadFileToLocal(
         @RequestPart("file") MultipartFile file,
         @RequestPart("job") JobDTO jobDTO) {
             try {
-                jobService.saveFileToLocal(file, jobDTO);
-                return ResponseEntity.ok("File uploaded successfully");
+                JobDTO savedJob = jobService.saveFileToLocal(file, jobDTO);
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "File uploaded successfully");
+                response.put("job", savedJob);
+                
+                return ResponseEntity.ok(response);
             } catch (IOException e) {
+                Map<String, Object> errorResponse = new HashMap<>();
+                errorResponse.put("message", "Error uploading file: " + e.getMessage());
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                        .body("Error uploading file: " + e.getMessage());
+                    .body(errorResponse);
             }
     }
 

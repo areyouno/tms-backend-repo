@@ -7,6 +7,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.tms.backend.dto.CreateUserDTO;
 import com.tms.backend.dto.UpdateUserDTO;
 import com.tms.backend.email.EmailService;
 import com.tms.backend.exception.ResourceNotFoundException;
@@ -104,9 +105,39 @@ public class UserService {
             user.setProfileComplete(request.isProfileComplete());
         }
     }
+
+    public void createUser(CreateUserDTO dto){
+        if (userRepo.existsByEmail(dto.email())){
+            throw new RuntimeException("Email already exists");
+        }
+
+        User user = new User();
+        user.setFirstName(dto.firstName());
+        user.setLastName(dto.lastName());
+        user.setEmail(dto.email());
+        user.setUsername(dto.username());
+        
+        Role role = roleRepo.findById(dto.roleId())
+            .orElseThrow(() -> new EntityNotFoundException("Role not found with name: " + dto.roleId()));
+        user.setRole(role);
+
+        
+        // TODO: Confirm how to handle active and inactive setting
+        if (dto.isActive()){
+            // if isActive
+            String tokenValue = UUID.randomUUID().toString();
+            VerificationToken token = new VerificationToken(user, tokenValue, 168);
+            tokenRepo.save(token);
+
+            // Send verification email
+            String verLink = "http://localhost:8080/verify?token=" + tokenValue;
+            emailService.sendVerificationEmail(user.getEmail(), verLink);
+        }
+        
+    }
     
     public List<User> getAllUsers() {
-        return userRepo.findAll();   // SELECT * FROM users
+        return userRepo.findAll();
     }
 
     public User getUserByUid(String uid) {
@@ -115,7 +146,7 @@ public class UserService {
     }
 
     public List<User> getProviders() {
-        List<String> providerRoles = Arrays.asList("linguist", "vendor", "project_manager");
+        List<String> providerRoles = Arrays.asList("linguist", "vendor");
         return userRepo.findByRoleNameIn(providerRoles);
     }
 

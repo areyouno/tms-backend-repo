@@ -46,6 +46,7 @@ public class AuthService {
         return new LoginDTO(
             user.getEmail(),
             user.getFirstName(),
+            user.getLastName(),
             user.isVerified(),
             user.isProfileComplete(),
             token

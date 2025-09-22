@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 public record LoginDTO(
     String email,
     String firstName,
+    String lastName,
     Boolean isVerified,
     Boolean isProfileComplete,
     String token
