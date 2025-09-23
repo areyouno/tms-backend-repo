@@ -4,8 +4,9 @@ import java.time.LocalDateTime;
 
 import com.tms.backend.job.JobWorkflowStatus;
 
-public record JobEditDTO(
-    Long providerId,
+public record JobWorkflowStepEditDTO(
+    Long id,
+    String providerUid,
     JobWorkflowStatus status,
     LocalDateTime dueDate
 ) {}

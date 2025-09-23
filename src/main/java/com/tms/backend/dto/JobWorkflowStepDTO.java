@@ -8,9 +8,8 @@ public record JobWorkflowStepDTO(
     Long id,
     Long workflowStepId,
     String workflowStepName,
-    Long providerId,
+    String providerUid,
     LocalDateTime dueDate,
-    Long notifyUserId,
-    JobWorkflowStatus status,
-    Integer stepOrder
+    String notifyUserUid,
+    JobWorkflowStatus status
 ) {}

@@ -46,7 +46,7 @@ public class JobWorkflowStep {
     
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private JobWorkflowStatus workflowStatus = JobWorkflowStatus.NEW;
+    private JobWorkflowStatus status = JobWorkflowStatus.NEW;
     
     private Integer stepOrder;
     
@@ -75,8 +75,8 @@ public class JobWorkflowStep {
     public User getNotifyUser() { return notifyUser; }
     public void setNotifyUser(User notifyUser) { this.notifyUser = notifyUser; }
 
-    public JobWorkflowStatus getWorkflowStatus() { return workflowStatus; }
-    public void setWorkflowStatus(JobWorkflowStatus workflowStatus) { this.workflowStatus = workflowStatus; }
+    public JobWorkflowStatus getStatus() { return status; }
+    public void setStatus(JobWorkflowStatus status) { this.status = status; }
 
     public Integer getStepOrder() { return stepOrder; }
     public void setStepOrder(Integer stepOrder) { this.stepOrder = stepOrder; }

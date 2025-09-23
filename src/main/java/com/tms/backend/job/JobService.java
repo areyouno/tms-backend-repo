@@ -23,9 +23,9 @@ import org.springframework.web.multipart.MultipartFile;
 import com.tms.backend.dto.FileDownloadDTO;
 import com.tms.backend.dto.JobAnalyticsCountDTO;
 import com.tms.backend.dto.JobDTO;
-import com.tms.backend.dto.JobEditDTO;
 import com.tms.backend.dto.JobSearchFilterByDate;
 import com.tms.backend.dto.JobWorkflowStepDTO;
+import com.tms.backend.dto.JobWorkflowStepEditDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.project.Project;
 import com.tms.backend.project.ProjectRepository;
@@ -33,6 +33,8 @@ import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
 import com.tms.backend.workflowSteps.WorkflowStep;
 import com.tms.backend.workflowSteps.WorkflowStepRepository;
+
+import jakarta.transaction.Transactional;
 
 @Service
 public class JobService {
@@ -146,16 +148,15 @@ public class JobService {
                     .orElseThrow(() -> new ResourceNotFoundException("WorkflowStep not found"));
             jobWfStep.setWorkflowStep(wfStepReference);
 
-            User wfStepProvider = userRepo.findById(stepDTO.providerId())
+            User wfStepProvider = userRepo.findByUid(stepDTO.providerUid())
                     .orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
             jobWfStep.setProvider(wfStepProvider);
 
-            User notifyUser = userRepo.findById(stepDTO.notifyUserId())
+            User notifyUser = userRepo.findByUid(stepDTO.notifyUserUid())
                     .orElseThrow(() -> new ResourceNotFoundException("User to notify not found"));
             jobWfStep.setNotifyUser(notifyUser);
 
             jobWfStep.setDueDate(stepDTO.dueDate());
-            jobWfStep.setStepOrder(stepDTO.stepOrder());
 
             jobSteps.add(jobWfStep);
         }
@@ -167,7 +168,6 @@ public class JobService {
         Job job = new Job();
         job.setSourceLang(jobDTO.sourceLang());
         job.setTargetLangs(jobDTO.targetLangs());
-        job.setStatus(jobDTO.status());
         job.setContentType(jobDTO.contentType());
         job.setDueDate(jobDTO.dueDate());
         job.setFileName(jobDTO.fileName());
@@ -190,38 +190,43 @@ public class JobService {
             job.setProject(project);
         }
 
-        if (jobDTO.providerId() != null) {
-            User provider = userRepo.findById(jobDTO.providerId())
-            .orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
-            job.setProvider(provider);
-        }
-
         return job;
     }
 
-    public JobEditDTO update(Long id, JobEditDTO updatedData){
-        Job job = jobRepo.findById(id)
-        .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
+    @Transactional
+    public JobWorkflowStepDTO updateWorkflowStep(Long jobId, JobWorkflowStepEditDTO stepUpdate) {
+        Job job = jobRepo.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
 
-        if (updatedData.providerId() != null){
-            User provider = userRepo.findById(updatedData.providerId())
-                    .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-            job.setProvider(provider);
+        JobWorkflowStep wfStep = job.getWorkflowSteps().stream()
+                .filter(ws -> ws.getId().equals(stepUpdate.id()))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Workflow step not found with id: " + stepUpdate.id()));
+
+        if (stepUpdate.providerUid() != null) {
+            User provider = userRepo.findByUid(stepUpdate.providerUid())
+                    .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + stepUpdate.providerUid()));
+            wfStep.setProvider(provider);
         }
 
-        if (updatedData.status() != null) {
-            job.setStatus(updatedData.status());
+        if (stepUpdate.status() != null) {
+            wfStep.setStatus(stepUpdate.status());
         }
 
-        if (updatedData.dueDate() != null){
-            job.setDueDate(updatedData.dueDate());
+        if (stepUpdate.dueDate() != null) {
+            wfStep.setDueDate(stepUpdate.dueDate());
         }
 
-        Job saved = jobRepo.save(job);
-        return new JobEditDTO(
-                saved.getProvider() != null ? saved.getProvider().getId() : null,
-                saved.getStatus(),
-                saved.getDueDate()
+        jobRepo.save(job);
+
+        return new JobWorkflowStepDTO(
+            wfStep.getId(),
+            wfStep.getWorkflowStep().getId(),
+            wfStep.getWorkflowStep().getName(),
+            wfStep.getProvider() != null ? wfStep.getProvider().getUid() : null,
+            wfStep.getDueDate(),
+            wfStep.getNotifyUser().getUid(),
+            wfStep.getStatus()
         );
     }
 
@@ -238,14 +243,20 @@ public class JobService {
         .map(this::convertStepToDTO)  // Convert each entity to DTO
         .toList();
 
+        String ownerUid = null;
+        String ownerName = null;
+        if (job.getJobOwner() != null) {
+            ownerUid = job.getJobOwner().getUid();
+            ownerName = job.getJobOwner().getFirstName() + " " + job.getJobOwner().getLastName();
+        }
+
         return new JobDTO(
                 job.getId(),
-                job.getStatus(),
                 job.getSourceLang(),
                 job.getTargetLangs(),
-                job.getProvider() != null ? job.getProvider().getId() : null,
                 job.getDueDate(),
-                job.getJobOwner() != null ? job.getJobOwner().getId() : null,
+                ownerUid,
+                ownerName,
                 job.getFileName(),
                 job.getFileSize(),
                 job.getFilePath(),
@@ -263,11 +274,10 @@ public class JobService {
         step.getId(),
         step.getWorkflowStep().getId(),
         step.getWorkflowStep().getName(),
-        step.getProvider() != null ? step.getProvider().getId() : null,
+        step.getProvider() != null ? step.getProvider().getUid() : null,
         step.getDueDate(),
-        step.getNotifyUser() != null ? step.getNotifyUser().getId() : null,
-        step.getWorkflowStatus(),
-        step.getStepOrder()
+        step.getNotifyUser() != null ? step.getNotifyUser().getUid() : null,
+        step.getStatus()
         );
     }
 

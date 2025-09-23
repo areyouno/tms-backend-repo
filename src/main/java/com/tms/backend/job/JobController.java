@@ -22,8 +22,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.tms.backend.dto.JobAnalyticsCountDTO;
 import com.tms.backend.dto.JobDTO;
-import com.tms.backend.dto.JobEditDTO;
 import com.tms.backend.dto.JobSearchFilterByDate;
+import com.tms.backend.dto.JobWorkflowStepDTO;
+import com.tms.backend.dto.JobWorkflowStepEditDTO;
 
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,12 +76,12 @@ public class JobController {
         return jobService.getJobs();
     }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<JobEditDTO> update(@PathVariable Long id, @RequestBody JobEditDTO dto) {
-        JobEditDTO updated = jobService.update(id, dto);
-        
-        return ResponseEntity.ok(updated);
+    @PutMapping("/{jobId}/workflow-step/{stepId}")
+    public ResponseEntity<JobWorkflowStepDTO> updateWorkflowSteps(@PathVariable Long jobId, @PathVariable Long stepId, @RequestBody JobWorkflowStepEditDTO stepUpdate) {
+        JobWorkflowStepDTO updatedWf = jobService.updateWorkflowStep(jobId, stepUpdate);
+        return ResponseEntity.ok(updatedWf);
     }
+    
 
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deleteJob(@PathVariable Long id){

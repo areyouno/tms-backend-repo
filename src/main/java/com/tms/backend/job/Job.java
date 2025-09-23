@@ -17,8 +17,6 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -34,24 +32,18 @@ public class Job {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    
     @ManyToOne
     @JoinColumn(name = "project_id")
     private Project project;
+
     private Double confirmPct;
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private JobWorkflowStatus status = JobWorkflowStatus.NEW;
-
     private String sourceLang;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "job_target_languages", 
                     joinColumns = @JoinColumn(name = "job_id"))
     private Set<String> targetLangs;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "provider_id", referencedColumnName = "user_id")
-    private User provider;
 
     private LocalDateTime dueDate;
     
@@ -109,17 +101,11 @@ public class Job {
     public Double getConfirmPct() { return confirmPct; }
     public void setConfirmPct(Double confirmPct) { this.confirmPct = confirmPct; }
 
-    public JobWorkflowStatus getStatus() { return status; }
-    public void setStatus(JobWorkflowStatus status) { this.status = status; }
-
     public String getSourceLang() { return sourceLang; }
     public void setSourceLang(String sourceLang) { this.sourceLang = sourceLang; }
 
     public Set<String> getTargetLangs() { return targetLangs; }
     public void setTargetLangs(Set<String> targetLangs) { this.targetLangs = targetLangs; }
-
-    public User getProvider() { return provider; }
-    public void setProvider(User provider) { this.provider = provider; }
 
     public LocalDateTime getDueDate() { return dueDate; }
     public void setDueDate(LocalDateTime dueDate) { this.dueDate = dueDate; }
@@ -133,18 +119,6 @@ public class Job {
     public List<JobWorkflowStep> getWorkflowSteps() { return workflowSteps; }
     public void setWorkflowSteps(List<JobWorkflowStep> workflowSteps) { this.workflowSteps = workflowSteps; }
     
-    // Helper method to add a workflow step
-    public void addWorkflowStep(JobWorkflowStep workflowStep) {
-        workflowSteps.add(workflowStep);
-        workflowStep.setJob(this);
-    }
-    
-    // Helper method to remove a workflow step
-    public void removeWorkflowStep(JobWorkflowStep workflowStep) {
-        workflowSteps.remove(workflowStep);
-        workflowStep.setJob(null);
-    }
-
     public Long getWordCount() { return wordCount; }
     public void setWordCount(Long wordCount) { this.wordCount = wordCount; }
 
