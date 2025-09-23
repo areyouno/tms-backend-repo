@@ -8,7 +8,6 @@ public record JobDTO(
     Long id,
     String sourceLang,
     Set<String> targetLangs,
-    LocalDateTime dueDate,
     String jobOwnerUid,
     String jobOwnerName,
     String fileName,

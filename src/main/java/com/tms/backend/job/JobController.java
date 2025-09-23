@@ -89,13 +89,13 @@ public class JobController {
         return ResponseEntity.ok("Job deleted successfully");
     }
 
-    @GetMapping("/analytics/filter")
-    public JobAnalyticsCountDTO searchJobs(@RequestBody(required = false) JobSearchFilterByDate filter) {
-        if (filter == null) {
-            // no filter -> create empty object
-            filter = new JobSearchFilterByDate(null, null, null, null, null);
-        }
-        return jobService.getJobCountByDate(filter);
-    }
+    // @GetMapping("/analytics/filter")
+    // public JobAnalyticsCountDTO searchJobs(@RequestBody(required = false) JobSearchFilterByDate filter) {
+    //     if (filter == null) {
+    //         // no filter -> create empty object
+    //         filter = new JobSearchFilterByDate(null, null, null, null, null);
+    //     }
+    //     return jobService.getJobCountByDate(filter);
+    // }
 
 }

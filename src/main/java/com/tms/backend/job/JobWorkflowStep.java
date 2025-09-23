@@ -18,6 +18,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.Table;
 
 @Entity
@@ -48,8 +49,6 @@ public class JobWorkflowStep {
     @Column(name = "status")
     private JobWorkflowStatus status = JobWorkflowStatus.NEW;
     
-    private Integer stepOrder;
-    
     @Column(name = "create_date", updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -77,9 +76,6 @@ public class JobWorkflowStep {
 
     public JobWorkflowStatus getStatus() { return status; }
     public void setStatus(JobWorkflowStatus status) { this.status = status; }
-
-    public Integer getStepOrder() { return stepOrder; }
-    public void setStepOrder(Integer stepOrder) { this.stepOrder = stepOrder; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

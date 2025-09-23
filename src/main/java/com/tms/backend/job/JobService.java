@@ -93,6 +93,7 @@ public class JobService {
         return Paths.get(baseUploadDir, String.valueOf(userId));
     }
 
+    @Transactional
     public JobDTO saveFileToLocal(MultipartFile file, JobDTO jobDTO) throws IOException {
 
         // set job details
@@ -129,6 +130,8 @@ public class JobService {
         if (jobDTO.workflowSteps() != null) {
             jobSteps = createWorkflowSteps(jobDTO.workflowSteps(), savedJob);
         }
+
+        System.out.println(jobSteps);
 
         //save workflow steps
         List<JobWorkflowStep> savedSteps = jobWfRepo.saveAll(jobSteps);
@@ -169,7 +172,6 @@ public class JobService {
         job.setSourceLang(jobDTO.sourceLang());
         job.setTargetLangs(jobDTO.targetLangs());
         job.setContentType(jobDTO.contentType());
-        job.setDueDate(jobDTO.dueDate());
         job.setFileName(jobDTO.fileName());
         job.setFileSize(jobDTO.fileSize());
         if (jobDTO.progress() != null) {
@@ -219,15 +221,7 @@ public class JobService {
 
         jobRepo.save(job);
 
-        return new JobWorkflowStepDTO(
-            wfStep.getId(),
-            wfStep.getWorkflowStep().getId(),
-            wfStep.getWorkflowStep().getName(),
-            wfStep.getProvider() != null ? wfStep.getProvider().getUid() : null,
-            wfStep.getDueDate(),
-            wfStep.getNotifyUser().getUid(),
-            wfStep.getStatus()
-        );
+        return JobWorkflowStepDTO.from(wfStep);
     }
 
     public void deleteJob(Long id) {
@@ -254,7 +248,6 @@ public class JobService {
                 job.getId(),
                 job.getSourceLang(),
                 job.getTargetLangs(),
-                job.getDueDate(),
                 ownerUid,
                 ownerName,
                 job.getFileName(),
@@ -269,71 +262,63 @@ public class JobService {
         );
     }
 
-    private JobWorkflowStepDTO convertStepToDTO(JobWorkflowStep step) {
-    return new JobWorkflowStepDTO(
-        step.getId(),
-        step.getWorkflowStep().getId(),
-        step.getWorkflowStep().getName(),
-        step.getProvider() != null ? step.getProvider().getUid() : null,
-        step.getDueDate(),
-        step.getNotifyUser() != null ? step.getNotifyUser().getUid() : null,
-        step.getStatus()
-        );
+    private JobWorkflowStepDTO convertStepToDTO(JobWorkflowStep wfStep) {
+    return JobWorkflowStepDTO.from(wfStep);
     }
 
-    public JobAnalyticsCountDTO getJobCountByDate(JobSearchFilterByDate filter){
-        // fallback if no filter is passed
-        if (filter.fromDate() == null 
-            && filter.toDate() == null 
-            && filter.year() == null 
-            && filter.month() == null 
-            && filter.period() == null) {
+    // public JobAnalyticsCountDTO getJobCountByDate(JobSearchFilterByDate filter){
+    //     // fallback if no filter is passed
+    //     if (filter.fromDate() == null 
+    //         && filter.toDate() == null 
+    //         && filter.year() == null 
+    //         && filter.month() == null 
+    //         && filter.period() == null) {
 
-        return jobRepo.getDeliveryByMonthCount(
-            LocalDateTime.of(1970, 1, 1, 0, 0),
-            LocalDateTime.of(9999, 12, 31, 23, 59, 59)
-        );
-        }
+    //     return jobRepo.getDeliveryByMonthCount(
+    //         LocalDateTime.of(1970, 1, 1, 0, 0),
+    //         LocalDateTime.of(9999, 12, 31, 23, 59, 59)
+    //     );
+    //     }
 
-        LocalDate fromDate = filter.fromDate();
-        LocalDate toDate = filter.toDate();
+    //     LocalDate fromDate = filter.fromDate();
+    //     LocalDate toDate = filter.toDate();
 
 
-        // derive date range from year/month
-        if (filter.year() != null && filter.month() != null) {
-            YearMonth ym = YearMonth.of(filter.year(), filter.month());
-            fromDate = ym.atDay(1);
-            toDate = ym.atEndOfMonth();
-        } else if (filter.year() != null) {
-            fromDate = LocalDate.of(filter.year(), 1, 1);
-            toDate = LocalDate.of(filter.year(), 12, 31);
-        }
+    //     // derive date range from year/month
+    //     if (filter.year() != null && filter.month() != null) {
+    //         YearMonth ym = YearMonth.of(filter.year(), filter.month());
+    //         fromDate = ym.atDay(1);
+    //         toDate = ym.atEndOfMonth();
+    //     } else if (filter.year() != null) {
+    //         fromDate = LocalDate.of(filter.year(), 1, 1);
+    //         toDate = LocalDate.of(filter.year(), 12, 31);
+    //     }
 
-        // derive from semantic period
-        if (filter.period() != null) {
-            LocalDate today = LocalDate.now();
-            switch (filter.period().toUpperCase()) {
-                case "THIS_MONTH" -> {
-                    YearMonth ym = YearMonth.from(today);
-                    fromDate = ym.atDay(1);
-                    toDate = ym.atEndOfMonth();
-                }
-                case "THIS_YEAR" -> {
-                    fromDate = LocalDate.of(today.getYear(), 1, 1);
-                    toDate = LocalDate.of(today.getYear(), 12, 31);
-                }
-                case "THIS_WEEK" -> {
-                    DayOfWeek firstDayOfWeek = DayOfWeek.MONDAY; // or SUNDAY, depending on business rules
-                    fromDate = today.with(firstDayOfWeek);
-                    toDate = fromDate.plusDays(6);
-                }
-            }
-        }
+    //     // derive from semantic period
+    //     if (filter.period() != null) {
+    //         LocalDate today = LocalDate.now();
+    //         switch (filter.period().toUpperCase()) {
+    //             case "THIS_MONTH" -> {
+    //                 YearMonth ym = YearMonth.from(today);
+    //                 fromDate = ym.atDay(1);
+    //                 toDate = ym.atEndOfMonth();
+    //             }
+    //             case "THIS_YEAR" -> {
+    //                 fromDate = LocalDate.of(today.getYear(), 1, 1);
+    //                 toDate = LocalDate.of(today.getYear(), 12, 31);
+    //             }
+    //             case "THIS_WEEK" -> {
+    //                 DayOfWeek firstDayOfWeek = DayOfWeek.MONDAY; // or SUNDAY, depending on business rules
+    //                 fromDate = today.with(firstDayOfWeek);
+    //                 toDate = fromDate.plusDays(6);
+    //             }
+    //         }
+    //     }
 
-        // Convert LocalDate to LocalDateTime
-        LocalDateTime fromDateTime = fromDate.atStartOfDay();
-        LocalDateTime toDateTime = toDate.atTime(23, 59, 59);
+    //     // Convert LocalDate to LocalDateTime
+    //     LocalDateTime fromDateTime = fromDate.atStartOfDay();
+    //     LocalDateTime toDateTime = toDate.atTime(23, 59, 59);
 
-        return jobRepo.getDeliveryByMonthCount(fromDateTime, toDateTime);
-    }
+    //     return jobRepo.getDeliveryByMonthCount(fromDateTime, toDateTime);
+    // }
 }

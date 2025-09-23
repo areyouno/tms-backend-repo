@@ -24,7 +24,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
-import jakarta.persistence.OrderBy;
 
 @Entity
 @Table(name = "jobs")
@@ -45,8 +44,6 @@ public class Job {
                     joinColumns = @JoinColumn(name = "job_id"))
     private Set<String> targetLangs;
 
-    private LocalDateTime dueDate;
-    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_owner_id", referencedColumnName = "user_id")
     private User jobOwner;
@@ -58,7 +55,6 @@ public class Job {
     private Long fileSize;
 
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    @OrderBy("stepOrder ASC")
     private List<JobWorkflowStep> workflowSteps = new ArrayList<>();
     
     private Long wordCount;
@@ -106,9 +102,6 @@ public class Job {
 
     public Set<String> getTargetLangs() { return targetLangs; }
     public void setTargetLangs(Set<String> targetLangs) { this.targetLangs = targetLangs; }
-
-    public LocalDateTime getDueDate() { return dueDate; }
-    public void setDueDate(LocalDateTime dueDate) { this.dueDate = dueDate; }
 
     public User getJobOwner() { return jobOwner; }
     public void setJobOwner(User jobOwner) { this.jobOwner = jobOwner; }
