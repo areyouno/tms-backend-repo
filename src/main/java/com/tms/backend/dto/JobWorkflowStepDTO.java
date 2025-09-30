@@ -13,17 +13,22 @@ public record JobWorkflowStepDTO(
     LocalDateTime dueDate,
     String notifyUserUid,
     String notifyUserName,
-    JobWorkflowStatus status
+    JobWorkflowStatus status,
+    Integer stepOrder
 ) {
     public static JobWorkflowStepDTO from(JobWorkflowStep wfStep) {
+        User provider = wfStep.getProvider();
+        User notifyUser = wfStep.getNotifyUser();
+        
         return new JobWorkflowStepDTO(
-            wfStep.getWorkflowStep().getId(),
-            wfStep.getProvider().getUid(),
-            extractUserName(wfStep.getProvider()),
+            wfStep.getId(),
+            provider != null ? provider.getUid() : null,
+            extractUserName(provider),
             wfStep.getDueDate(),
-            wfStep.getNotifyUser().getUid(),
-            extractUserName(wfStep.getNotifyUser()),
-            wfStep.getStatus()
+            notifyUser != null ? notifyUser.getUid() : null,
+            extractUserName(notifyUser),
+            wfStep.getStatus(),
+            wfStep.getWorkflowStep().getDisplayOrder()
         );
     }
 
