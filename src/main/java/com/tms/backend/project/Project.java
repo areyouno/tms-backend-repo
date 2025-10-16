@@ -113,6 +113,7 @@ public class Project {
     private boolean deleted = false;
     private LocalDateTime deletedDate;
     private String deletedBy;
+    private LocalDateTime lastViewDate;
 
     public void addJob(Job job) {
         jobs.add(job);
@@ -198,5 +199,8 @@ public class Project {
 
     public String getDeletedBy() { return deletedBy; }
     public void setDeletedBy(String deletedBy) { this.deletedBy = deletedBy; }
+
+    public LocalDateTime getLastViewDate() { return lastViewDate; }
+    public void setLastViewDate(LocalDateTime lastViewDate) { this.lastViewDate = lastViewDate; }
 
 }

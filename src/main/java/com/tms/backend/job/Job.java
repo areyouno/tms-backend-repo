@@ -56,8 +56,11 @@ public class Job {
 
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<JobWorkflowStep> workflowSteps = new ArrayList<>();
-    
+
+    private Long segmentCount;
+    private Long pageCount;
     private Long wordCount;
+    private Long characterCount;
     private Long progress;
 
     @Column(name = "create_date", updatable = false)
@@ -65,14 +68,6 @@ public class Job {
     private LocalDateTime createDate;
     
     private LocalDateTime completedDate;
-
-    public void setProject(Project project) {
-        this.project = project;
-    }
-
-    public Project getProject() {
-        return project;
-    }
 
     public Job() {}
 
@@ -111,9 +106,18 @@ public class Job {
 
     public List<JobWorkflowStep> getWorkflowSteps() { return workflowSteps; }
     public void setWorkflowSteps(List<JobWorkflowStep> workflowSteps) { this.workflowSteps = workflowSteps; }
-    
+
+    public Long getSegmentCount() { return segmentCount; }
+    public void setSegmentCount(Long segmentCount) { this.segmentCount = segmentCount; }
+
+    public Long getPageCount() { return pageCount; }
+    public void setPageCount(Long pageCount) { this.pageCount = pageCount; }
+
     public Long getWordCount() { return wordCount; }
     public void setWordCount(Long wordCount) { this.wordCount = wordCount; }
+
+    public Long getCharacterCount() { return characterCount; }
+    public void setCharacterCount(Long characterCount) { this.characterCount = characterCount; }
 
     public Long getProgress() { return progress; }
     public void setProgress(Long progress) { this.progress = progress; }
@@ -123,4 +127,7 @@ public class Job {
     
     public LocalDateTime getCompletedDate() { return completedDate; }
     public void setCompletedDate(LocalDateTime completedDate) { this.completedDate = completedDate; }
+
+    public void setProject(Project project) { this.project = project; }
+    public Project getProject() { return project; }
 }

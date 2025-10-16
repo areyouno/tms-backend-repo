@@ -5,12 +5,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.YearMonth;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -21,14 +20,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.tms.backend.dto.FileDownloadDTO;
-import com.tms.backend.dto.JobAnalyticsCountDTO;
 import com.tms.backend.dto.JobDTO;
-import com.tms.backend.dto.JobSearchFilterByDate;
 import com.tms.backend.dto.JobWorkflowStepDTO;
 import com.tms.backend.dto.JobWorkflowStepEditDTO;
+import com.tms.backend.dto.ProjectDTO;
+import com.tms.backend.dto.ProjectWithJobDTO;
+import com.tms.backend.dto.TomatoSizingResponse;
 import com.tms.backend.exception.ResourceNotFoundException;
+import com.tms.backend.mapper.ProjectMapper;
 import com.tms.backend.project.Project;
 import com.tms.backend.project.ProjectRepository;
+import com.tms.backend.project.ProjectService;
+import com.tms.backend.tomato.SizingService;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
 import com.tms.backend.workflowSteps.WorkflowStep;
@@ -44,60 +47,33 @@ public class JobService {
     private final UserRepository userRepo;
     private final WorkflowStepRepository wfRepo;
     private final JobWorkflowStepRepository jobWfRepo;
+    private final SizingService sizingService;
 
-    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo){
+    private final ProjectMapper projectMapper;
+
+    @Value("${file.upload-dir}")
+    private String baseUploadDir;
+
+    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, ProjectMapper projectMapper, SizingService sizingService){
         this.jobRepo = jobRepo;
         this.projectRepo = projectRepo;
         this.userRepo = userRepo;
         this.wfRepo = wfRepo;
         this.jobWfRepo = jobWfRepo;
-    }
-
-    // @Transactional(readOnly = true)
-    public List<JobDTO> getJobs() {
-        List<Job> jobs = jobRepo.findAll();
-        return jobs.stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    public JobDTO findById(Long id, Long currentUserId) throws AccessDeniedException {
-        Job job = jobRepo.findById(id)
-        .orElseThrow(() -> new ResourceNotFoundException("Job", "id", id));
-
-        if (!job.getJobOwner().getId().equals(currentUserId)){
-            throw new AccessDeniedException("Not allowed to view this project");
-        }
-
-        return convertToDTO(job);
-    }
-
-    public FileDownloadDTO downloadJobFile(Long jobId, Long currentUserId) throws AccessDeniedException {
-        Job job = jobRepo.findById(jobId)
-        .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
-
-        if(!job.getJobOwner().getId().equals(currentUserId)){
-            throw new AccessDeniedException("Not allowed to download this job file");
-        }
-
-        return new FileDownloadDTO(
-            job.getFileName(), 
-            job.getContentType(),
-            job.getFilePath());
-    }
-
-    @Value("${file.upload-dir}")
-    private String baseUploadDir;
-
-    public Path getUserUploadPath(Long userId) {
-        return Paths.get(baseUploadDir, String.valueOf(userId));
+        this.projectMapper = projectMapper;
+        this.sizingService = sizingService;
     }
 
     @Transactional
-    public JobDTO saveFileToLocal(MultipartFile file, JobDTO jobDTO) throws IOException {
+    public JobDTO createJob(MultipartFile file, JobDTO jobDTO, String uid) throws IOException {
+
+        User currentUser = userRepo.findByUid(uid)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + uid));
+
+        TomatoSizingResponse sizingApiResponse = sizingService.sendFileToTomatoAPI(file);
 
         // set job details
-        Job job = createJobFromDTO(jobDTO);
+        Job job = createJobFromDTO(jobDTO, currentUser, sizingApiResponse);
 
         // save to get the generated id
         Job savedJob = jobRepo.save(job);
@@ -123,21 +99,86 @@ public class JobService {
         // Save file
         Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
 
+        savedJob.setFileName(file.getOriginalFilename());
+        savedJob.setFileSize(file.getSize());
         savedJob.setFilePath(targetPath.toString());
         savedJob = jobRepo.save(savedJob);
+
+        System.out.println("Saved Job ID: " + savedJob.getId());
 
         List<JobWorkflowStep> jobSteps = new ArrayList<>();
         if (jobDTO.workflowSteps() != null) {
             jobSteps = createWorkflowSteps(jobDTO.workflowSteps(), savedJob);
         }
 
-        System.out.println(jobSteps);
-
         //save workflow steps
         List<JobWorkflowStep> savedSteps = jobWfRepo.saveAll(jobSteps);
         savedJob.setWorkflowSteps(savedSteps);
 
          return convertToDTO(savedJob);
+    }
+
+    @Transactional
+    public ProjectWithJobDTO createProjectWithJobs(
+            List<MultipartFile> files,
+            String note,
+            JobDTO jobDTO,
+            String uid) throws IOException {
+
+        // Validate user once
+        User currentUser = userRepo.findByUid(uid)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + uid));
+
+        // 1. Create the project first
+        Project project = createWidgetProject(note, jobDTO, currentUser);
+        Project savedProject = projectRepo.save(project);
+
+        // 2. Update jobDTO with the new project ID
+        JobDTO updatedJobDTO = new JobDTO(
+                null,
+                jobDTO.sourceLang(),
+                jobDTO.targetLangs(),
+                currentUser.getUid(),
+                currentUser.getFirstName() + " " + currentUser.getLastName(),
+                null,
+                null,
+                null,
+                null,
+                savedProject.getId(),
+                null, // no workflowstep
+                jobDTO.segmentCount(),
+                jobDTO.pageCount(),
+                jobDTO.wordCount(),
+                jobDTO.characterCount(),
+                null,
+                LocalDateTime.now()
+        );
+
+        // 3. Create jobs for each file
+        List<JobDTO> createdJobs = new ArrayList<>();
+        for (MultipartFile file : files) {
+            if (!file.isEmpty()) {
+                JobDTO createdJob = createJob(file, updatedJobDTO, uid);
+                createdJobs.add(createdJob);
+            }
+        }
+
+        // 4. Return both project and jobs
+        return new ProjectWithJobDTO(
+                projectMapper.toFullDTO(savedProject),
+                createdJobs);
+    }
+
+    private Project createWidgetProject(String note, JobDTO jobDTO, User user) {
+        Project project = new Project();
+        String projectName = "Widget Project" + " " + "portal page" + " " + user.getEmail();
+        project.setName(projectName);
+        project.setSourceLang(jobDTO.sourceLang());
+        System.out.println(jobDTO.targetLangs());
+        project.setTargetLanguages(jobDTO.targetLangs());
+        project.setCreatedBy(user.getFirstName() + " " + user.getLastName());
+        project.setNote(note);
+        return project;
     }
 
     private List<JobWorkflowStep> createWorkflowSteps(List<JobWorkflowStepDTO> stepDTOs, Job job) {
@@ -167,22 +208,21 @@ public class JobService {
         return jobSteps;
     }
 
-    private Job createJobFromDTO(JobDTO jobDTO) {
+    private Job createJobFromDTO(JobDTO jobDTO, User currentUser, TomatoSizingResponse tomatoSizingStats) {
         Job job = new Job();
         job.setSourceLang(jobDTO.sourceLang());
         job.setTargetLangs(jobDTO.targetLangs());
         job.setContentType(jobDTO.contentType());
-        job.setFileName(jobDTO.fileName());
-        job.setFileSize(jobDTO.fileSize());
+        // job.setFileName(jobDTO.fileName());
+        // job.setFileSize(jobDTO.fileSize());
         if (jobDTO.progress() != null) {
             job.setProgress(jobDTO.progress().longValue());
         }
-        job.setWordCount(jobDTO.wordCount());
+        job.setSegmentCount(tomatoSizingStats.statistics().totalSegments());
+        job.setPageCount(0L);
+        job.setWordCount(tomatoSizingStats.statistics().totalWords());
+        job.setCharacterCount(tomatoSizingStats.statistics().totalCharacters());
 
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        String username = auth.getName();
-        User currentUser = userRepo.findByEmail(username)
-        .orElseThrow(() -> new ResourceNotFoundException("Current user not found"));
         job.setJobOwner(currentUser);
 
         if (jobDTO.projectId() != null) {
@@ -193,6 +233,27 @@ public class JobService {
         }
 
         return job;
+    }
+
+    public List<JobDTO> getJobs() {
+        List<Job> jobs = jobRepo.findAll();
+        return jobs.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public FileDownloadDTO getJobFile(Long jobId, Long currentUserId) throws AccessDeniedException {
+        Job job = jobRepo.findById(jobId)
+        .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
+
+        if(!job.getJobOwner().getId().equals(currentUserId)){
+            throw new AccessDeniedException("Not allowed to download this job file");
+        }
+
+        return new FileDownloadDTO(
+            job.getFileName(), 
+            job.getContentType(),
+            job.getFilePath());
     }
 
     @Transactional
@@ -226,7 +287,7 @@ public class JobService {
 
     public void deleteJob(Long id) {
         if (!jobRepo.existsById(id)){
-            throw new ResourceNotFoundException("Project not found with id: " + id);
+            throw new ResourceNotFoundException("Job not found with id: " + id);
         }   
         
         jobRepo.deleteById(id);    
@@ -256,69 +317,16 @@ public class JobService {
                 job.getContentType(),
                 job.getProject() != null ? job.getProject().getId() : null,
                 stepDTOs,
+                job.getSegmentCount(),
+                job.getPageCount(),
                 job.getWordCount(),
+                job.getCharacterCount(),
                 job.getProgress(),
                 job.getCreateDate()
         );
     }
 
     private JobWorkflowStepDTO convertStepToDTO(JobWorkflowStep wfStep) {
-    return JobWorkflowStepDTO.from(wfStep);
+        return JobWorkflowStepDTO.from(wfStep);
     }
-
-    // public JobAnalyticsCountDTO getJobCountByDate(JobSearchFilterByDate filter){
-    //     // fallback if no filter is passed
-    //     if (filter.fromDate() == null 
-    //         && filter.toDate() == null 
-    //         && filter.year() == null 
-    //         && filter.month() == null 
-    //         && filter.period() == null) {
-
-    //     return jobRepo.getDeliveryByMonthCount(
-    //         LocalDateTime.of(1970, 1, 1, 0, 0),
-    //         LocalDateTime.of(9999, 12, 31, 23, 59, 59)
-    //     );
-    //     }
-
-    //     LocalDate fromDate = filter.fromDate();
-    //     LocalDate toDate = filter.toDate();
-
-
-    //     // derive date range from year/month
-    //     if (filter.year() != null && filter.month() != null) {
-    //         YearMonth ym = YearMonth.of(filter.year(), filter.month());
-    //         fromDate = ym.atDay(1);
-    //         toDate = ym.atEndOfMonth();
-    //     } else if (filter.year() != null) {
-    //         fromDate = LocalDate.of(filter.year(), 1, 1);
-    //         toDate = LocalDate.of(filter.year(), 12, 31);
-    //     }
-
-    //     // derive from semantic period
-    //     if (filter.period() != null) {
-    //         LocalDate today = LocalDate.now();
-    //         switch (filter.period().toUpperCase()) {
-    //             case "THIS_MONTH" -> {
-    //                 YearMonth ym = YearMonth.from(today);
-    //                 fromDate = ym.atDay(1);
-    //                 toDate = ym.atEndOfMonth();
-    //             }
-    //             case "THIS_YEAR" -> {
-    //                 fromDate = LocalDate.of(today.getYear(), 1, 1);
-    //                 toDate = LocalDate.of(today.getYear(), 12, 31);
-    //             }
-    //             case "THIS_WEEK" -> {
-    //                 DayOfWeek firstDayOfWeek = DayOfWeek.MONDAY; // or SUNDAY, depending on business rules
-    //                 fromDate = today.with(firstDayOfWeek);
-    //                 toDate = fromDate.plusDays(6);
-    //             }
-    //         }
-    //     }
-
-    //     // Convert LocalDate to LocalDateTime
-    //     LocalDateTime fromDateTime = fromDate.atStartOfDay();
-    //     LocalDateTime toDateTime = toDate.atTime(23, 59, 59);
-
-    //     return jobRepo.getDeliveryByMonthCount(fromDateTime, toDateTime);
-    // }
 }

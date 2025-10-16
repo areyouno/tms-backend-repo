@@ -16,7 +16,10 @@ public record JobDTO(
     String contentType,
     Long projectId,
     List<JobWorkflowStepDTO> workflowSteps,
+    Long segmentCount,
+    Long pageCount,
     Long wordCount,
+    Long characterCount,
     Long progress,
     LocalDateTime createDate
 ) 

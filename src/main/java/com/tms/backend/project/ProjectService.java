@@ -74,64 +74,6 @@ public class ProjectService {
         this.wfRepo = wfRepo;
     }
 
-    @Transactional(readOnly = true)
-    public List<ProjectSummaryDTO> getAllProjects() {
-        return projectRepo.findAllActive()
-                .stream()
-                .map(this::convertToSummaryDTO)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public List<ProjectDTO> getProjectsByOwner(String uid) {
-        User user = userRepo.findByUid(uid)
-        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        List<Project> projects = projectRepo.findByOwnerId(user.getId());
-        return projects.stream()
-                .map(this::convertToFullDTO)
-                .collect(Collectors.toList());
-    }
-
-    @Transactional(readOnly = true)
-    public ProjectDTO getProjectById(Long id) throws AccessDeniedException {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-
-        User user = userRepo.findByEmail(email)
-        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        Project project = projectRepo.findByIdAndNotDeleted(id)
-                .orElseThrow(() -> new RuntimeException("Project not found with id: " + id));
-
-        if(!project.getOwner().getId().equals(user.getId())){
-            throw new AccessDeniedException("Not allowed to view this project");
-        }
-
-        return convertToFullDTO(project);
-    }
-
-    private ProjectSummaryDTO convertToSummaryDTO(Project project) {
-        String ownerName = null;
-        if (project.getOwner() != null) {
-            String lastName = project.getOwner().getLastName();
-            String firstName = project.getOwner().getFirstName();
-            ownerName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
-            if (ownerName.isEmpty()) {
-                ownerName = null;
-            }
-        }
-        return new ProjectSummaryDTO(
-                project.getId(),
-                project.getName(),
-                project.getCreateDate(),
-                project.getClient() != null ? project.getClient().getName() : null,
-                ownerName,
-                project.getStatus(),
-                project.getDueDate(),
-                project.getTargetLanguages(),
-                project.getProgress());
-    }
-
     public ProjectDTO createProject(ProjectCreateDTO createDTO, String userEmail) throws UsernameNotFoundException {
         // Create new project entity
         Project project = new Project();
@@ -205,6 +147,72 @@ public class ProjectService {
         
         // Convert to response DTO
         return convertToFullDTO(savedProject);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProjectSummaryDTO> getAllProjects() {
+        return projectRepo.findAllActive()
+                .stream()
+                .map(this::convertToSummaryDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProjectDTO> getProjectsByOwner(String uid) {
+        User user = userRepo.findByUid(uid)
+        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        List<Project> projects = projectRepo.findByOwnerId(user.getId());
+        return projects.stream()
+                .map(this::convertToFullDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public ProjectDTO getProjectById(Long id) throws AccessDeniedException {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        User user = userRepo.findByEmail(email)
+        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Project project = projectRepo.findByIdAndNotDeleted(id)
+                .orElseThrow(() -> new RuntimeException("Project not found with id: " + id));
+
+        if(!project.getOwner().getId().equals(user.getId())){
+            throw new AccessDeniedException("Not allowed to view this project");
+        }
+
+        return convertToFullDTO(project);
+    }
+
+    // Get soft deleted projects for user
+    public List<ProjectDTO> getSoftDeletedProjects(String uid) {
+        List<Project> deletedProjects = projectRepo.findSoftDeletedByOwner(uid);
+        return deletedProjects.stream()
+            .map(this::convertToFullDTO)
+            .collect(Collectors.toList());
+    }
+
+    private ProjectSummaryDTO convertToSummaryDTO(Project project) {
+        String ownerName = null;
+        if (project.getOwner() != null) {
+            String lastName = project.getOwner().getLastName();
+            String firstName = project.getOwner().getFirstName();
+            ownerName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
+            if (ownerName.isEmpty()) {
+                ownerName = null;
+            }
+        }
+        return new ProjectSummaryDTO(
+                project.getId(),
+                project.getName(),
+                project.getCreateDate(),
+                project.getClient() != null ? project.getClient().getName() : null,
+                ownerName,
+                project.getStatus(),
+                project.getDueDate(),
+                project.getTargetLanguages(),
+                project.getProgress());
     }
 
     private ProjectDTO convertToFullDTO(Project project) {
@@ -299,14 +307,6 @@ public class ProjectService {
 
         Project saved = projectRepo.save(project);
         return convertToFullDTO(saved);
-    }
-
-    // Get soft deleted projects for user
-    public List<ProjectDTO> getSoftDeletedProjects(String uid) {
-        List<Project> deletedProjects = projectRepo.findSoftDeletedByOwner(uid);
-        return deletedProjects.stream()
-            .map(this::convertToFullDTO)
-            .collect(Collectors.toList());
     }
 
     @Transactional
