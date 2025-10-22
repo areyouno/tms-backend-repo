@@ -1,21 +1,16 @@
 package com.tms.backend.job;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,14 +18,13 @@ import com.tms.backend.dto.FileDownloadDTO;
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.JobWorkflowStepDTO;
 import com.tms.backend.dto.JobWorkflowStepEditDTO;
-import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.dto.TomatoSizingResponse;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.mapper.ProjectMapper;
 import com.tms.backend.project.Project;
 import com.tms.backend.project.ProjectRepository;
-import com.tms.backend.project.ProjectService;
+import com.tms.backend.tomato.FileConversionService;
 import com.tms.backend.tomato.SizingService;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
@@ -48,13 +42,15 @@ public class JobService {
     private final WorkflowStepRepository wfRepo;
     private final JobWorkflowStepRepository jobWfRepo;
     private final SizingService sizingService;
+    private final FileConversionService fileConversionService;
 
     private final ProjectMapper projectMapper;
 
     @Value("${file.upload-dir}")
     private String baseUploadDir;
+    
 
-    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, ProjectMapper projectMapper, SizingService sizingService){
+    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService){
         this.jobRepo = jobRepo;
         this.projectRepo = projectRepo;
         this.userRepo = userRepo;
@@ -62,49 +58,52 @@ public class JobService {
         this.jobWfRepo = jobWfRepo;
         this.projectMapper = projectMapper;
         this.sizingService = sizingService;
+        this.fileConversionService = fileConversionService;
     }
 
     @Transactional
     public JobDTO createJob(MultipartFile file, JobDTO jobDTO, String uid) throws IOException {
+        return createJob(file, jobDTO, uid, null, false);
+    }
+
+    @Transactional
+    public JobDTO createJob(MultipartFile file, JobDTO jobDTO, String uid, String projectFolder, Boolean useSizingApi) throws IOException {
 
         User currentUser = userRepo.findByUid(uid)
             .orElseThrow(() -> new ResourceNotFoundException("User not found: " + uid));
 
-        TomatoSizingResponse sizingApiResponse = sizingService.sendFileToTomatoAPI(file);
+        // if job is created from submitter portal -> access sizing api
+        TomatoSizingResponse sizingApiResponse = null;
+        if (useSizingApi) {
+            sizingApiResponse = sizingService.sendFileToTomatoAPI(file);
+        }
 
-        // set job details
-        Job job = createJobFromDTO(jobDTO, currentUser, sizingApiResponse);
+        // pass file name and size when creating the db data
+        Job job = createJobFromDTO(jobDTO, currentUser, file.getOriginalFilename(), file.getSize(), sizingApiResponse);
 
         // save to get the generated id
         Job savedJob = jobRepo.save(job);
 
         // add zero padding to ids
-        String zeroPaddedProjId = String.format("%03d", jobDTO.projectId());
         String zeroPaddedJobId = String.format("%03d", savedJob.getId());
-
+        
         // build folder name
-        String projectFolder = "project-" + zeroPaddedProjId + "_" + LocalDateTime.now();
-        String jobFolder = "job-" + zeroPaddedJobId + "_" + LocalDateTime.now();
+        String dateTimeFolder = java.time.LocalDateTime.now()
+            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss"));
+        String jobFolder = "job-" + zeroPaddedJobId + "_" + dateTimeFolder;
 
+        // If projectFolder not provided, generate it from project ID
+        if (projectFolder == null) {
+            String zeroPaddedProjId = String.format("%03d", jobDTO.projectId());
+            projectFolder = "project-" + zeroPaddedProjId + "_" + dateTimeFolder;
+        }
 
-        // Create folder structure: base/project/job
-        Path uploadDirectory = Paths.get(baseUploadDir, projectFolder, jobFolder);
+        Path filePath = fileConversionService.uploadAndConvertFile(file, projectFolder, jobFolder);
 
-        // Create user folder if it doesn’t exist
-        Files.createDirectories(uploadDirectory);
-
-        // Resolve file path
-        Path targetPath = uploadDirectory.resolve(file.getOriginalFilename());
-
-        // Save file
-        Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
-
-        savedJob.setFileName(file.getOriginalFilename());
-        savedJob.setFileSize(file.getSize());
-        savedJob.setFilePath(targetPath.toString());
-        savedJob = jobRepo.save(savedJob);
-
-        System.out.println("Saved Job ID: " + savedJob.getId());
+        Path baseDir = Paths.get(baseUploadDir);
+        Path relativePath = baseDir.relativize(filePath);
+        String relativePathString = relativePath.toString().replace("\\", "/");
+        savedJob.setFilePath(relativePathString);
 
         List<JobWorkflowStep> jobSteps = new ArrayList<>();
         if (jobDTO.workflowSteps() != null) {
@@ -118,6 +117,7 @@ public class JobService {
          return convertToDTO(savedJob);
     }
 
+    // for submitter portal
     @Transactional
     public ProjectWithJobDTO createProjectWithJobs(
             List<MultipartFile> files,
@@ -144,7 +144,7 @@ public class JobService {
                 null,
                 null,
                 null,
-                savedProject.getId(),
+                savedProject.getId(), // create a project id for the job
                 null, // no workflowstep
                 jobDTO.segmentCount(),
                 jobDTO.pageCount(),
@@ -154,11 +154,18 @@ public class JobService {
                 LocalDateTime.now()
         );
 
+        String dateTimeFolder = java.time.LocalDateTime.now()
+            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss"));
+
+        //create project folder name
+        String zeroPaddedProjId = String.format("%03d", savedProject.getId());
+        String projectFolder = "project-" + zeroPaddedProjId + "_" + dateTimeFolder;
+
         // 3. Create jobs for each file
         List<JobDTO> createdJobs = new ArrayList<>();
         for (MultipartFile file : files) {
             if (!file.isEmpty()) {
-                JobDTO createdJob = createJob(file, updatedJobDTO, uid);
+                JobDTO createdJob = createJob(file, updatedJobDTO, uid, projectFolder, true);
                 createdJobs.add(createdJob);
             }
         }
@@ -174,11 +181,40 @@ public class JobService {
         String projectName = "Widget Project" + " " + "portal page" + " " + user.getEmail();
         project.setName(projectName);
         project.setSourceLang(jobDTO.sourceLang());
-        System.out.println(jobDTO.targetLangs());
         project.setTargetLanguages(jobDTO.targetLangs());
         project.setCreatedBy(user.getFirstName() + " " + user.getLastName());
         project.setNote(note);
         return project;
+    }
+
+    private Job createJobFromDTO(JobDTO jobDTO, User currentUser, String fileName, Long fileSize, TomatoSizingResponse tomatoSizingStats) {
+        Job job = new Job();
+        job.setSourceLang(jobDTO.sourceLang());
+        job.setTargetLangs(jobDTO.targetLangs());
+        job.setContentType(jobDTO.contentType());
+        job.setFileName(fileName);
+        job.setFileSize(fileSize);
+        if (jobDTO.progress() != null) {
+            job.setProgress(jobDTO.progress().longValue());
+        }
+        // apply stats
+        if (tomatoSizingStats != null) {
+            job.setSegmentCount(tomatoSizingStats.statistics().totalSegments());
+            job.setPageCount(0L);
+            job.setWordCount(tomatoSizingStats.statistics().totalWords());
+            job.setCharacterCount(tomatoSizingStats.statistics().totalCharacters());
+        }
+
+        job.setJobOwner(currentUser);
+
+        if (jobDTO.projectId() != null) {
+            Long projectId = jobDTO.projectId();
+            Project project = projectRepo.findById(projectId)
+            .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
+            job.setProject(project);
+        }
+
+        return job;
     }
 
     private List<JobWorkflowStep> createWorkflowSteps(List<JobWorkflowStepDTO> stepDTOs, Job job) {
@@ -208,35 +244,15 @@ public class JobService {
         return jobSteps;
     }
 
-    private Job createJobFromDTO(JobDTO jobDTO, User currentUser, TomatoSizingResponse tomatoSizingStats) {
-        Job job = new Job();
-        job.setSourceLang(jobDTO.sourceLang());
-        job.setTargetLangs(jobDTO.targetLangs());
-        job.setContentType(jobDTO.contentType());
-        // job.setFileName(jobDTO.fileName());
-        // job.setFileSize(jobDTO.fileSize());
-        if (jobDTO.progress() != null) {
-            job.setProgress(jobDTO.progress().longValue());
-        }
-        job.setSegmentCount(tomatoSizingStats.statistics().totalSegments());
-        job.setPageCount(0L);
-        job.setWordCount(tomatoSizingStats.statistics().totalWords());
-        job.setCharacterCount(tomatoSizingStats.statistics().totalCharacters());
-
-        job.setJobOwner(currentUser);
-
-        if (jobDTO.projectId() != null) {
-            Long projectId = jobDTO.projectId();
-            Project project = projectRepo.findById(projectId)
-            .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
-            job.setProject(project);
-        }
-
-        return job;
-    }
-
     public List<JobDTO> getJobs() {
         List<Job> jobs = jobRepo.findAll();
+        return jobs.stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<JobDTO> getJobsByProjectId(Long id) {
+        List<Job> jobs = jobRepo.findByProjectId(id);
         return jobs.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
