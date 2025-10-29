@@ -82,7 +82,7 @@ public class FileConversionService {
             logger.info("Successfully received converted file from API. Status: {}", response.getStatusCode());
             
             // Save the converted file using the original filename
-            Path savedPath = saveConvertedFile(response.getBody(), file.getOriginalFilename(), projectFolderName, jobFolderName);
+            Path savedPath = saveConvertedFile(response.getBody(), file.getOriginalFilename(), projectFolderName, jobFolderName, file);
             logger.info("Converted file saved to: {}", savedPath.toAbsolutePath());
             
             return savedPath;
@@ -101,7 +101,7 @@ public class FileConversionService {
      * @return Path to the saved file
      * @throws IOException if file operations fail
      */
-    private Path saveConvertedFile(byte[] fileBytes, String fileName, String projectFolderName, String jobFolderName) throws IOException {
+    private Path saveConvertedFile(byte[] fileBytes, String fileName, String projectFolderName, String jobFolderName, MultipartFile uploadedFile) throws IOException {
         // Get user's downloads folder
         Path baseDir = Paths.get(uploadDir); 
         
@@ -117,14 +117,28 @@ public class FileConversionService {
             logger.info("Created output directory: {}", outputDir.toAbsolutePath());
         }
 
+        // Create subdirectories for original and converted files
+        Path originalDir = outputDir.resolve("original");
+        Path convertedDir = outputDir.resolve("converted");
+
+        Files.createDirectories(originalDir);
+        Files.createDirectories(convertedDir);
+
+        // Save the original uploaded file
+        Path originalFilePath = originalDir.resolve(fileName);
+        uploadedFile.transferTo(originalFilePath.toFile());
+        logger.info("Saved original file: {}", originalFilePath.toAbsolutePath());
+
         // Replace the file extension with .xliff
         String xliffFileName = fileName.replaceFirst("\\.[^.]+$", ".xliff");
         
         // Create full output path
-        Path outputPath = outputDir.resolve(xliffFileName);
+        Path outputPath = convertedDir.resolve(xliffFileName);
         
         // Write the file
         Files.write(outputPath, fileBytes);
+
+        logger.info("Saved converted file: {}", outputPath.toAbsolutePath());
         
         return outputPath;
     }

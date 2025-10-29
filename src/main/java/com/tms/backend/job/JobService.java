@@ -228,13 +228,17 @@ public class JobService {
                     .orElseThrow(() -> new ResourceNotFoundException("WorkflowStep not found"));
             jobWfStep.setWorkflowStep(wfStepReference);
 
-            User wfStepProvider = userRepo.findByUid(stepDTO.providerUid())
+            if (stepDTO.providerUid() != null){
+                User wfStepProvider = userRepo.findByUid(stepDTO.providerUid())
                     .orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
-            jobWfStep.setProvider(wfStepProvider);
+                jobWfStep.setProvider(wfStepProvider);
+            }
 
-            User notifyUser = userRepo.findByUid(stepDTO.notifyUserUid())
+            if (stepDTO.notifyUserUid() != null){
+                User notifyUser = userRepo.findByUid(stepDTO.notifyUserUid())
                     .orElseThrow(() -> new ResourceNotFoundException("User to notify not found"));
-            jobWfStep.setNotifyUser(notifyUser);
+                jobWfStep.setNotifyUser(notifyUser);
+            }
 
             jobWfStep.setDueDate(stepDTO.dueDate());
 
