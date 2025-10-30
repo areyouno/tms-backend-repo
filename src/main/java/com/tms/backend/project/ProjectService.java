@@ -23,8 +23,11 @@ import com.tms.backend.domain.Domain;
 import com.tms.backend.domain.DomainRepository;
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
+import com.tms.backend.dto.ProjectSoftDeleteDTO;
 import com.tms.backend.dto.ProjectSummaryDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
+import com.tms.backend.job.Job;
+import com.tms.backend.job.JobRepository;
 import com.tms.backend.machineTranslation.MachineTranslation;
 import com.tms.backend.machineTranslation.MachineTranslationRepository;
 import com.tms.backend.subDomain.SubDomain;
@@ -49,6 +52,7 @@ public class ProjectService {
     private BusinessUnitRepository buRepo;
     private CostCenterRepository ccRepo;
     private WorkflowStepRepository wfRepo;
+    private JobRepository jobRepo;
 
     public ProjectService(
         ProjectRepository projectRepo,
@@ -186,10 +190,10 @@ public class ProjectService {
     }
 
     // Get soft deleted projects for user
-    public List<ProjectDTO> getSoftDeletedProjects(String uid) {
+    public List<ProjectSoftDeleteDTO> getSoftDeletedProjects(String uid) {
         List<Project> deletedProjects = projectRepo.findSoftDeletedByOwner(uid);
         return deletedProjects.stream()
-            .map(this::convertToFullDTO)
+            .map(ProjectSoftDeleteDTO::from)
             .collect(Collectors.toList());
     }
 
@@ -319,15 +323,29 @@ public class ProjectService {
         }
 
         // soft delete
-        project.setDeleted(true);
-        project.setDeletedDate(LocalDateTime.now());
-
-        // set deletedBy
         User currentUser = userRepo.findByUid(uid)
         .orElseThrow(() -> new RuntimeException("User not found"));
-        project.setDeletedBy(currentUser.getFirstName() + " " + currentUser.getLastName());
+        LocalDateTime now = LocalDateTime.now();
+        String deletedByName = currentUser.getFirstName() + " " + currentUser.getLastName();
+
+        project.setDeleted(true);
+        project.setDeletedDate(now);
+
+        // set deletedBy
+        project.setDeletedBy(deletedByName);
 
         projectRepo.save(project);
+
+        // CASCADE: Soft delete all jobs under this project
+        List<Job> jobs = jobRepo.findByProjectId(id);
+        for (Job job : jobs) {
+            if (!job.isDeleted()) { // Only delete if not already deleted
+                job.setDeleted(true);
+                job.setDeletedDate(now);
+                job.setDeletedBy(deletedByName);
+            }
+        }
+        jobRepo.saveAll(jobs);
     }
 
     public void hardDeleteProject(Long id, String uid) {
@@ -361,6 +379,16 @@ public class ProjectService {
         project.setDeletedBy(null);
 
         Project restored = projectRepo.save(project);
+
+        // CASCADE: Restore all deleted jobs under this project
+        List<Job> jobs = jobRepo.findByProjectIdAndDeletedTrue(id);
+        for (Job job : jobs) {
+            job.setDeleted(false);
+            job.setDeletedDate(null);
+            job.setDeletedBy(null);
+        }
+        jobRepo.saveAll(jobs);
+
         return convertToFullDTO(restored);
     }
 

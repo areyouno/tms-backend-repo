@@ -1,6 +1,7 @@
 package com.tms.backend.job;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
@@ -9,13 +10,18 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.tms.backend.dto.FileDownloadDTO;
 import com.tms.backend.dto.JobDTO;
+import com.tms.backend.dto.JobSoftDeleteDTO;
 import com.tms.backend.dto.JobWorkflowStepDTO;
 import com.tms.backend.dto.JobWorkflowStepEditDTO;
 import com.tms.backend.dto.ProjectWithJobDTO;
@@ -48,6 +54,8 @@ public class JobService {
 
     @Value("${file.upload-dir}")
     private String baseUploadDir;
+
+    private static final Logger logger = LoggerFactory.getLogger(JobService.class);
     
 
     public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService){
@@ -98,12 +106,12 @@ public class JobService {
             projectFolder = "project-" + zeroPaddedProjId + "_" + dateTimeFolder;
         }
 
-        Path filePath = fileConversionService.uploadAndConvertFile(file, projectFolder, jobFolder);
+        fileConversionService.uploadAndConvertFile(file, projectFolder, jobFolder, savedJob);
 
-        Path baseDir = Paths.get(baseUploadDir);
-        Path relativePath = baseDir.relativize(filePath);
-        String relativePathString = relativePath.toString().replace("\\", "/");
-        savedJob.setFilePath(relativePathString);
+        // Path baseDir = Paths.get(baseUploadDir);
+        // Path relativePath = baseDir.relativize(filePath);
+        // String relativePathString = relativePath.toString().replace("\\", "/");
+        // savedJob.setFilePath(relativePathString);
 
         List<JobWorkflowStep> jobSteps = new ArrayList<>();
         if (jobDTO.workflowSteps() != null) {
@@ -113,6 +121,9 @@ public class JobService {
         //save workflow steps
         List<JobWorkflowStep> savedSteps = jobWfRepo.saveAll(jobSteps);
         savedJob.setWorkflowSteps(savedSteps);
+
+        // Save the job again with updated file paths
+        savedJob = jobRepo.save(savedJob);
 
          return convertToDTO(savedJob);
     }
@@ -255,6 +266,12 @@ public class JobService {
                 .collect(Collectors.toList());
     }
 
+    // Get job by ID
+    public Job getJobById(Long jobId) {
+        return jobRepo.findById(jobId)
+            .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
+    }
+
     public List<JobDTO> getJobsByProjectId(Long id) {
         List<Job> jobs = jobRepo.findByProjectId(id);
         return jobs.stream()
@@ -262,18 +279,13 @@ public class JobService {
                 .collect(Collectors.toList());
     }
 
-    public FileDownloadDTO getJobFile(Long jobId, Long currentUserId) throws AccessDeniedException {
-        Job job = jobRepo.findById(jobId)
-        .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
-
-        if(!job.getJobOwner().getId().equals(currentUserId)){
-            throw new AccessDeniedException("Not allowed to download this job file");
-        }
-
-        return new FileDownloadDTO(
-            job.getFileName(), 
-            job.getContentType(),
-            job.getFilePath());
+    public List<JobSoftDeleteDTO> getDeletedJobsByUser(String uid) {
+    // Find all deleted jobs owned by this user
+    List<Job> deletedJobs = jobRepo.findByJobOwnerUidAndDeletedTrue(uid);
+    
+    return deletedJobs.stream()
+        .map(JobSoftDeleteDTO::from)
+        .collect(Collectors.toList());
     }
 
     @Transactional
@@ -305,12 +317,111 @@ public class JobService {
         return JobWorkflowStepDTO.from(wfStep);
     }
 
-    public void deleteJob(Long id) {
+    public void deleteJob(Long id) throws IOException {
         if (!jobRepo.existsById(id)){
             throw new ResourceNotFoundException("Job not found with id: " + id);
-        }   
+        }
         
-        jobRepo.deleteById(id);    
+        Job job = getJobById(id);
+        
+        Path baseDir = Paths.get(baseUploadDir);
+    
+        // Delete original file from disk
+        if (job.getOriginalFilePath() != null) {
+            Path originalPath = baseDir.resolve(job.getOriginalFilePath());
+            Files.deleteIfExists(originalPath);
+            logger.info("Deleted original file: {}", originalPath);
+        }
+
+        // Delete converted file from disk
+        if (job.getConvertedFilePath() != null) {
+            Path convertedPath = baseDir.resolve(job.getConvertedFilePath());
+            Files.deleteIfExists(convertedPath);
+            logger.info("Deleted converted file: {}", convertedPath);
+        }
+
+        // Optional: Delete the entire job folder if it's empty
+        if (job.getOriginalFilePath() != null) {
+            Path jobFolder = baseDir.resolve(job.getOriginalFilePath()).getParent().getParent();
+            deleteEmptyDirectories(jobFolder);
+        }
+
+        // Delete the job from database (this will cascade to related entities if
+        // configured)
+        // jobRepo.deleteById(id);
+        jobRepo.delete(job);
+        logger.info("Deleted job with id: {}", id);
+    }
+
+    // Helper method to clean up empty directories
+    private void deleteEmptyDirectories(Path directory) throws IOException {
+        if (Files.exists(directory) && Files.isDirectory(directory)) {
+            // Check if directory is empty
+            try (var stream = Files.list(directory)) {
+                if (stream.findAny().isEmpty()) {
+                    Files.delete(directory);
+                    logger.info("Deleted empty directory: {}", directory);
+
+                    // Recursively delete parent if empty
+                    Path parent = directory.getParent();
+                    if (parent != null && !parent.equals(Paths.get(baseUploadDir))) {
+                        deleteEmptyDirectories(parent);
+                    }
+                }
+            }
+        }
+    }
+
+    @Transactional
+    public void softDeleteJob(Long jobId, String uid) {
+        Job job = jobRepo.findById(jobId)
+            .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
+
+        // Optional: Check if user owns the job or the project
+        if (!job.getJobOwner().getUid().equals(uid) && 
+            !job.getProject().getOwner().getUid().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot delete this job");
+        }
+
+        // Get current user for deletedBy field
+        User currentUser = userRepo.findByUid(uid)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Soft delete the job only
+        job.setDeleted(true);
+        job.setDeletedDate(LocalDateTime.now());
+        job.setDeletedBy(currentUser.getFirstName() + " " + currentUser.getLastName());
+        jobRepo.save(job);
+    }
+
+    @Transactional
+    public JobDTO restoreJob(Long jobId, String uid) {
+        Job job = jobRepo.findById(jobId)
+            .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
+
+        // Optional: Check if user owns the job or the project
+        if (!job.getJobOwner().getUid().equals(uid) && 
+            !job.getProject().getOwner().getUid().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot restore this job");
+        }
+
+        if (!job.isDeleted()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Job is not deleted");
+        }
+
+        // Check if parent project is deleted
+        if (job.getProject().isDeleted()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+                "Cannot restore job because its project is deleted. Restore the project first.");
+        }
+
+        // Restore the job
+        job.setDeleted(false);
+        job.setDeletedDate(null);
+        job.setDeletedBy(null);
+        jobRepo.save(job);
+
+        return convertToDTO(job);
     }
 
     public JobDTO convertToDTO(Job job) {
@@ -333,7 +444,7 @@ public class JobService {
                 ownerName,
                 job.getFileName(),
                 job.getFileSize(),
-                job.getFilePath(),
+                job.getOriginalFilePath(),
                 job.getContentType(),
                 job.getProject() != null ? job.getProject().getId() : null,
                 stepDTOs,
@@ -348,5 +459,103 @@ public class JobService {
 
     private JobWorkflowStepDTO convertStepToDTO(JobWorkflowStep wfStep) {
         return JobWorkflowStepDTO.from(wfStep);
+    }
+
+    // Get original file path
+    public Path getOriginalFilePath(Long jobId) {
+        Job job = getJobById(jobId);
+        
+        if (job.getOriginalFilePath() == null) {
+            throw new ResourceNotFoundException("No original file found for job: " + jobId);
+        }
+        
+        Path baseDir = Paths.get(baseUploadDir);
+        Path filePath = baseDir.resolve(job.getOriginalFilePath());
+        
+        if (!Files.exists(filePath)) {
+            throw new ResourceNotFoundException("Original file not found on disk: " + filePath);
+        }
+        
+        return filePath;
+    }
+    
+    // Get converted file path
+    public Path getConvertedFilePath(Long jobId) {
+        Job job = getJobById(jobId);
+        
+        if (job.getConvertedFilePath() == null) {
+            throw new ResourceNotFoundException("No converted file found for job: " + jobId);
+        }
+        
+        Path baseDir = Paths.get(baseUploadDir);
+        Path filePath = baseDir.resolve(job.getConvertedFilePath());
+        
+        if (!Files.exists(filePath)) {
+            throw new ResourceNotFoundException("Converted file not found on disk: " + filePath);
+        }
+        
+        return filePath;
+    }
+
+    public FileDownloadDTO getOriginalFileForDownload(Long jobId, String uid) {
+        Job job = jobRepo.findById(jobId)
+            .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
+        
+        // Check authorization: user must own the job or the project
+        if (!job.getJobOwner().getUid().equals(uid) && 
+            !job.getProject().getOwner().getUid().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, 
+                "You are not authorized to download this file");
+        }
+        
+        // Check if file path exists
+        if (job.getOriginalFilePath() == null) {
+            throw new ResourceNotFoundException("No original file found for job: " + jobId);
+        }
+        
+        // Verify file exists on disk
+        Path baseDir = Paths.get(baseUploadDir);
+        Path filePath = baseDir.resolve(job.getOriginalFilePath());
+        
+        if (!Files.exists(filePath)) {
+            throw new ResourceNotFoundException("Original file not found on disk: " + filePath);
+        }
+        
+        return new FileDownloadDTO(
+            job.getOriginalFileName() != null ? job.getOriginalFileName() : job.getFileName(),
+            job.getContentType(),
+            job.getOriginalFilePath()
+        );
+    }
+
+    public FileDownloadDTO getConvertedFileForDownload(Long jobId, String uid) {
+        Job job = jobRepo.findById(jobId)
+            .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
+
+        // Check authorization
+        if (!job.getJobOwner().getUid().equals(uid) && 
+            !job.getProject().getOwner().getUid().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, 
+                "You are not authorized to download this file");
+        }
+
+        // Check if converted file exists
+        if (job.getConvertedFilePath() == null) {
+            throw new ResourceNotFoundException("No converted file found for job: " + jobId);
+        }
+
+        // Verify file exists on disk
+        Path baseDir = Paths.get(baseUploadDir);
+        Path filePath = baseDir.resolve(job.getConvertedFilePath());
+
+        if (!Files.exists(filePath)) {
+            throw new ResourceNotFoundException("Converted file not found on disk: " + filePath);
+        }
+
+        return new FileDownloadDTO(
+            job.getConvertedFileName() != null ? job.getConvertedFileName() : job.getFileName(),
+            job.getContentType(),
+            job.getConvertedFilePath()
+        );
     }
 }

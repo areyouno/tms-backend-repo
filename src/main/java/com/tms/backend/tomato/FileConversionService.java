@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDateTime;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +21,8 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
+
+import com.tms.backend.job.Job;
 
 @Service
 public class FileConversionService {
@@ -49,7 +52,7 @@ public class FileConversionService {
      * @return Path to the saved converted file
      * @throws IOException if file operations fail
      */ 
-    public Path uploadAndConvertFile(MultipartFile file, String projectFolderName, String jobFolderName) throws IOException {
+    public Path uploadAndConvertFile(MultipartFile file, String projectFolderName, String jobFolderName, Job job) throws IOException {
         try {
             logger.info("Uploading file {} to conversion API", file.getOriginalFilename());
             
@@ -82,7 +85,7 @@ public class FileConversionService {
             logger.info("Successfully received converted file from API. Status: {}", response.getStatusCode());
             
             // Save the converted file using the original filename
-            Path savedPath = saveConvertedFile(response.getBody(), file.getOriginalFilename(), projectFolderName, jobFolderName, file);
+            Path savedPath = saveConvertedFile(response.getBody(), file.getOriginalFilename(), projectFolderName, jobFolderName, file, job);
             logger.info("Converted file saved to: {}", savedPath.toAbsolutePath());
             
             return savedPath;
@@ -101,7 +104,7 @@ public class FileConversionService {
      * @return Path to the saved file
      * @throws IOException if file operations fail
      */
-    private Path saveConvertedFile(byte[] fileBytes, String fileName, String projectFolderName, String jobFolderName, MultipartFile uploadedFile) throws IOException {
+    private Path saveConvertedFile(byte[] fileBytes, String fileName, String projectFolderName, String jobFolderName, MultipartFile uploadedFile, Job job) throws IOException {
         // Get user's downloads folder
         Path baseDir = Paths.get(uploadDir); 
         
@@ -139,6 +142,22 @@ public class FileConversionService {
         Files.write(outputPath, fileBytes);
 
         logger.info("Saved converted file: {}", outputPath.toAbsolutePath());
+
+        // Calculate relative paths
+        Path relativeOriginalPath = baseDir.relativize(originalFilePath);
+        Path relativeConvertedPath = baseDir.relativize(outputPath);
+    
+        // Update job with file information
+        job.setOriginalFileName(fileName);
+        job.setOriginalFilePath(relativeOriginalPath.toString().replace("\\", "/"));
+        job.setConvertedFileName(xliffFileName);
+        job.setConvertedFilePath(relativeConvertedPath.toString().replace("\\", "/"));
+        job.setFileUploadedAt(LocalDateTime.now());
+        job.setFileSize(uploadedFile.getSize());
+        job.setContentType(uploadedFile.getContentType());
+
+        logger.info("Updated job with file paths - Original: {}, Converted: {}",
+                job.getOriginalFilePath(), job.getConvertedFilePath());
         
         return outputPath;
     }

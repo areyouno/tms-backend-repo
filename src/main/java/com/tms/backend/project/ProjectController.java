@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
+import com.tms.backend.dto.ProjectSoftDeleteDTO;
 import com.tms.backend.job.JobService;
 import com.tms.backend.user.CustomUserDetails;
 
@@ -113,10 +114,10 @@ public class ProjectController {
     }
 
     @GetMapping("/deleted")
-    public ResponseEntity<List<ProjectDTO>> getSoftDeletedProjects(Authentication authentication) {
+    public ResponseEntity<List<ProjectSoftDeleteDTO>> getSoftDeletedProjects(Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         String uid = userDetails.getUid();
-        List<ProjectDTO> deletedProjects = projectService.getSoftDeletedProjects(uid);
+        List<ProjectSoftDeleteDTO> deletedProjects = projectService.getSoftDeletedProjects(uid);
         return ResponseEntity.ok(deletedProjects);
     }
 
