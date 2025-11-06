@@ -1,7 +1,9 @@
 package com.tms.backend.project;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -28,6 +30,8 @@ import com.tms.backend.dto.ProjectSummaryDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.job.Job;
 import com.tms.backend.job.JobRepository;
+import com.tms.backend.job.JobWorkflowStatus;
+import com.tms.backend.job.JobWorkflowStep;
 import com.tms.backend.machineTranslation.MachineTranslation;
 import com.tms.backend.machineTranslation.MachineTranslationRepository;
 import com.tms.backend.subDomain.SubDomain;
@@ -397,5 +401,87 @@ public class ProjectService {
         Project project = projectRepo.findById(projectId)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
         return project.getTargetLanguages();
+    }
+
+    /**
+     * Checks if all jobs in the project have status EMAILED or ACCEPTED
+     * and updates project status to 'assigned' if true
+     */
+    @Transactional
+    public void checkAndUpdateProjectStatus(Long projectId, String workflowStepName) {
+        Project project = projectRepo.findByIdWithJobsAndSteps(projectId)
+                .orElseThrow(() -> new RuntimeException("Project not found"));
+
+        Set<Job> jobs = project.getJobs();
+
+        if (jobs.isEmpty()) {
+            System.out.println("No jobs found for project " + projectId);
+            return;
+        }
+
+        // 1. Assigned rule
+        boolean allJobsAssigned = jobs.stream().allMatch(job -> {
+            Set<JobWorkflowStep> steps = job.getWorkflowSteps();
+
+            JobWorkflowStep step = steps.stream()
+                    .filter(s -> s.getWorkflowStep() != null &&
+                            workflowStepName.equalsIgnoreCase(s.getWorkflowStep().getName()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (step == null)
+                return false;
+
+            return step.getStatus() == JobWorkflowStatus.EMAILED
+                    || step.getStatus() == JobWorkflowStatus.ACCEPTED;
+        });
+
+        // 2. Completed rule
+        boolean allJobsCompleted = jobs.stream().allMatch(job -> {
+            Set<JobWorkflowStep> steps = job.getWorkflowSteps();
+            if (steps.isEmpty())
+                return false;
+
+            // Condition A: Last step completed or delivered
+            Optional<JobWorkflowStep> lastStep = steps.stream()
+                    .filter(s -> s.getWorkflowStep() != null && s.getWorkflowStep().getDisplayOrder() != null)
+                    .max(Comparator.comparingInt(s -> s.getWorkflowStep().getDisplayOrder()));
+
+            boolean lastStepDone = lastStep.isPresent() && (lastStep.get().getStatus() == JobWorkflowStatus.COMPLETED ||
+                    lastStep.get().getStatus() == JobWorkflowStatus.DELIVERED);
+
+            // Condition B: All steps completed or delivered
+            boolean allStepsDone = steps.stream().allMatch(
+                    s -> s.getStatus() == JobWorkflowStatus.COMPLETED ||
+                            s.getStatus() == JobWorkflowStatus.DELIVERED);
+
+            return lastStepDone || allStepsDone;
+        });
+
+        // 3. Cancelled rule
+        boolean allJobsCancelled = jobs.stream().allMatch(job -> {
+            Set<JobWorkflowStep> steps = job.getWorkflowSteps();
+            return !steps.isEmpty() &&
+                    steps.stream().allMatch(s -> s.getStatus() == JobWorkflowStatus.CANCELLED);
+        });
+
+        // Determine new status
+        String newStatus = null;
+        if (allJobsCancelled) {
+            newStatus = "Cancelled";
+        } else if (allJobsCompleted) {
+            newStatus = "Completed";
+        } else if (allJobsAssigned) {
+            newStatus = "Assigned";
+        }
+
+        // Apply change only if status is different
+        if (newStatus != null && !newStatus.equalsIgnoreCase(project.getStatus())) {
+            project.setStatus(newStatus);
+            projectRepo.save(project);
+            System.out.println(" Project " + projectId + " set to " + newStatus.toUpperCase());
+        } else {
+            System.out.println(" Project " + projectId + " no status change");
+        }
     }
 }

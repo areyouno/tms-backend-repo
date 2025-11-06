@@ -7,6 +7,7 @@ import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -14,7 +15,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
@@ -30,6 +30,7 @@ import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.mapper.ProjectMapper;
 import com.tms.backend.project.Project;
 import com.tms.backend.project.ProjectRepository;
+import com.tms.backend.project.ProjectService;
 import com.tms.backend.tomato.FileConversionService;
 import com.tms.backend.tomato.SizingService;
 import com.tms.backend.user.User;
@@ -49,6 +50,8 @@ public class JobService {
     private final JobWorkflowStepRepository jobWfRepo;
     private final SizingService sizingService;
     private final FileConversionService fileConversionService;
+    private final ProjectService projectService;
+
 
     private final ProjectMapper projectMapper;
 
@@ -58,7 +61,7 @@ public class JobService {
     private static final Logger logger = LoggerFactory.getLogger(JobService.class);
     
 
-    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService){
+    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService){
         this.jobRepo = jobRepo;
         this.projectRepo = projectRepo;
         this.userRepo = userRepo;
@@ -67,6 +70,7 @@ public class JobService {
         this.projectMapper = projectMapper;
         this.sizingService = sizingService;
         this.fileConversionService = fileConversionService;
+        this.projectService = projectService;
     }
 
     @Transactional
@@ -120,7 +124,7 @@ public class JobService {
 
         //save workflow steps
         List<JobWorkflowStep> savedSteps = jobWfRepo.saveAll(jobSteps);
-        savedJob.setWorkflowSteps(savedSteps);
+        savedJob.setWorkflowSteps(new HashSet<>(savedSteps));
 
         // Save the job again with updated file paths
         savedJob = jobRepo.save(savedJob);
@@ -313,6 +317,9 @@ public class JobService {
         }
 
         jobRepo.save(job);
+
+        // project status automation
+        projectService.checkAndUpdateProjectStatus(job.getProject().getId(), wfStep.getWorkflowStep().getName());
 
         return JobWorkflowStepDTO.from(wfStep);
     }

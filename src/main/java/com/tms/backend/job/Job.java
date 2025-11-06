@@ -3,8 +3,7 @@ package com.tms.backend.job;
 import jakarta.persistence.Table;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Set;
 
 import org.hibernate.annotations.CreationTimestamp;
@@ -61,7 +60,7 @@ public class Job {
     private LocalDateTime fileUploadedAt;
 
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<JobWorkflowStep> workflowSteps = new ArrayList<>();
+    private Set<JobWorkflowStep> workflowSteps = new HashSet<>();
 
     private Long segmentCount;
     private Long pageCount;
@@ -125,8 +124,8 @@ public class Job {
     public User getJobOwner() { return jobOwner; }
     public void setJobOwner(User jobOwner) { this.jobOwner = jobOwner; }
 
-    public List<JobWorkflowStep> getWorkflowSteps() { return workflowSteps; }
-    public void setWorkflowSteps(List<JobWorkflowStep> workflowSteps) { this.workflowSteps = workflowSteps; }
+    public Set<JobWorkflowStep> getWorkflowSteps() { return workflowSteps; }
+    public void setWorkflowSteps(Set<JobWorkflowStep> workflowSteps) { this.workflowSteps = workflowSteps; }
 
     public Long getSegmentCount() { return segmentCount; }
     public void setSegmentCount(Long segmentCount) { this.segmentCount = segmentCount; }

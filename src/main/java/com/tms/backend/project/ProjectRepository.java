@@ -28,6 +28,15 @@ public interface ProjectRepository extends JpaRepository<Project, Long>{
     @Query("SELECT p FROM Project p WHERE p.owner.email = :email AND p.deleted = false")
     List<Project> findByOwnerEmail(@Param("email") String email);
 
+    @Query("""
+    SELECT DISTINCT p 
+    FROM Project p 
+    LEFT JOIN FETCH p.jobs j 
+    LEFT JOIN FETCH j.workflowSteps 
+    WHERE p.id = :id
+            """)
+    Optional<Project> findByIdWithJobsAndSteps(@Param("id") Long id);
+
     @Query("SELECT p FROM Project p WHERE p.deleted = true")
     List<Project> findDeleted();
 

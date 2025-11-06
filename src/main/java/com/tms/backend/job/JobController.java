@@ -100,13 +100,13 @@ public class JobController {
         return jobService.getJobs();
     }
 
-    @PutMapping("/{jobId}/workflow-step/{stepId}")
-    public ResponseEntity<JobWorkflowStepDTO> updateWorkflowSteps(@PathVariable Long jobId, @PathVariable Long stepId, @RequestBody JobWorkflowStepEditDTO stepUpdate) {
+    @PutMapping("/{jobId}/workflow-step")
+    public ResponseEntity<JobWorkflowStepDTO> updateWorkflowSteps(@PathVariable Long jobId, @RequestBody JobWorkflowStepEditDTO stepUpdate) {
         JobWorkflowStepDTO updatedWf = jobService.updateWorkflowStep(jobId, stepUpdate);
         return ResponseEntity.ok(updatedWf);
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id}/hard")
     public ResponseEntity<String> deleteJob(@PathVariable Long id){
         try {
             jobService.deleteJob(id);

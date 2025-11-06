@@ -2,9 +2,7 @@ package com.tms.backend.project;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -106,7 +104,7 @@ public class Project {
     Boolean fileHandover;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Job> jobs = new ArrayList<>();
+    private Set<Job> jobs = new HashSet<>();
 
     BigDecimal progress;
 
@@ -125,8 +123,8 @@ public class Project {
         job.setProject(null); // marks it as orphaned
     }
 
-    public List<Job> getJobs() { return jobs; }
-    public void setJobs(List<Job> jobs) { this.jobs = jobs; }
+    public Set<Job> getJobs() { return jobs; }
+    public void setJobs(Set<Job> jobs) { this.jobs = jobs; }
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
