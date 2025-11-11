@@ -33,6 +33,11 @@ public class LanguageController {
         return ResponseEntity.ok(languageService.getActiveLanguages());
     }
 
+    @GetMapping("/inactive")
+    public ResponseEntity<List<Language>> getInactiveLanguages() {
+        return ResponseEntity.ok(languageService.getInactiveLanguages());
+    }
+
     @PutMapping("/activate")
     public ResponseEntity<List<Language>> activateLanguages(@RequestBody List<String> rfcCodes) {
         List<Language> updated = languageService.setActiveStatusForMultiple(rfcCodes, true);

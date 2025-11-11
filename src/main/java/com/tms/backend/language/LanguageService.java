@@ -25,6 +25,11 @@ public class LanguageService {
         return languageRepository.findByIsActiveTrue();
     }
 
+    // Get all inactive languages
+    public List<Language> getInactiveLanguages() {
+        return languageRepository.findByIsActiveFalse();
+    }
+
     // Get all languages (active or inactive)
     public List<Language> getAllLanguages() {
         return languageRepository.findAll();
