@@ -2,6 +2,7 @@ package com.tms.backend.project;
 
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -34,6 +35,8 @@ import com.tms.backend.job.JobWorkflowStatus;
 import com.tms.backend.job.JobWorkflowStep;
 import com.tms.backend.machineTranslation.MachineTranslation;
 import com.tms.backend.machineTranslation.MachineTranslationRepository;
+import com.tms.backend.setting.AutomationSetting;
+import com.tms.backend.setting.AutomationSettingService;
 import com.tms.backend.subDomain.SubDomain;
 import com.tms.backend.subDomain.SubDomainRepository;
 import com.tms.backend.user.User;
@@ -57,6 +60,8 @@ public class ProjectService {
     private CostCenterRepository ccRepo;
     private WorkflowStepRepository wfRepo;
     private JobRepository jobRepo;
+    private final AutomationSettingService automationSettingService;
+
 
     public ProjectService(
         ProjectRepository projectRepo,
@@ -68,7 +73,8 @@ public class ProjectService {
         MachineTranslationRepository mtRepo,
         BusinessUnitRepository buRepo,
         CostCenterRepository ccRepo,
-        WorkflowStepRepository wfRepo
+        WorkflowStepRepository wfRepo,
+        AutomationSettingService automationSettingService
     ) {
         this.projectRepo = projectRepo;
         this.businessUnitRepo = businessUnitRepo;
@@ -80,6 +86,7 @@ public class ProjectService {
         this.buRepo = buRepo;
         this.ccRepo = ccRepo;
         this.wfRepo = wfRepo;
+        this.automationSettingService = automationSettingService;
     }
 
     public ProjectDTO createProject(ProjectCreateDTO createDTO, String userEmail) throws UsernameNotFoundException {
@@ -145,6 +152,15 @@ public class ProjectService {
                     .orElseThrow(() -> new UsernameNotFoundException("User not found: " + userEmail));
 
         project.setOwner(currentUser);
+
+        // fetch default status automation setting
+        // AutomationSetting userDefaultSetting = automationSettingService.getUserAutomationSetting(currentUser.getId());
+        AutomationSetting userSetting = automationSettingService.getOrCreateUserAutomationSetting(currentUser);
+
+        // Copy the enabled rules into the project
+        StatusAutomationSetting projectSetting = new StatusAutomationSetting();
+        projectSetting.setEnabledRules(userSetting.getStatusAutomationSetting().getEnabledRules());
+        project.setStatusAutomationSetting(projectSetting);
 
         project.setCreatedBy(currentUser.getFirstName() + " " + currentUser.getLastName());
         project.setCreateDate(LocalDateTime.now());
@@ -228,6 +244,15 @@ public class ProjectService {
             return null;
         }
 
+        Set<String> automationRules = new HashSet<>();
+        if (project.getStatusAutomationSetting() != null) {
+            automationRules = project.getStatusAutomationSetting()
+                .getEnabledRules()
+                    .stream()
+                    .map(Enum::name)
+                    .collect(Collectors.toSet());
+        }
+
         return new ProjectDTO(
                 project.getId(),
                 project.getName(),
@@ -254,7 +279,8 @@ public class ProjectService {
                 project.getFileHandover(),
                 project.isDeleted(),
                 project.getDeletedBy(),
-                project.getDeletedDate()
+                project.getDeletedDate(),
+                automationRules
                 );
     }
 
@@ -315,6 +341,23 @@ public class ProjectService {
 
         Project saved = projectRepo.save(project);
         return convertToFullDTO(saved);
+    }
+
+    @Transactional
+    public void updateProjectAutomationRules(Long projectId, Set<String> ruleNames) {
+        Project project = projectRepo.findById(projectId)
+            .orElseThrow(() -> new RuntimeException("Project not found"));
+
+        Set<ProjectAutomationRule> newRules = ruleNames.stream()
+            .map(ProjectAutomationRule::valueOf)
+            .collect(Collectors.toSet());
+
+        if (project.getStatusAutomationSetting() == null) {
+            project.setStatusAutomationSetting(new StatusAutomationSetting());
+        }
+
+        project.getStatusAutomationSetting().setEnabledRules(newRules);
+        projectRepo.save(project);
     }
 
     @Transactional
@@ -408,7 +451,7 @@ public class ProjectService {
      * and updates project status to 'assigned' if true
      */
     @Transactional
-    public void checkAndUpdateProjectStatus(Long projectId, String workflowStepName) {
+    public void checkAndUpdateProjectStatus(Long projectId, String workflowStepName, String currentUserUid) {
         Project project = projectRepo.findByIdWithJobsAndSteps(projectId)
                 .orElseThrow(() -> new RuntimeException("Project not found"));
 
@@ -419,59 +462,104 @@ public class ProjectService {
             return;
         }
 
-        // 1. Assigned rule
-        boolean allJobsAssigned = jobs.stream().allMatch(job -> {
-            Set<JobWorkflowStep> steps = job.getWorkflowSteps();
+        // Get current user's automation settings using uid
+        AutomationSetting automationSetting = automationSettingService.getUserAutomationSettingByUid(currentUserUid);
+        Set<ProjectAutomationRule> enabledRules = automationSetting.getStatusAutomationSetting().getEnabledRules();
 
-            JobWorkflowStep step = steps.stream()
-                    .filter(s -> s.getWorkflowStep() != null &&
-                            workflowStepName.equalsIgnoreCase(s.getWorkflowStep().getName()))
-                    .findFirst()
-                    .orElse(null);
+        // 1. Check Assigned rules (only if enabled)
+        boolean allJobsAssigned = false;
+        if (enabledRules.contains(ProjectAutomationRule.ASSIGNED_1)) {
+            allJobsAssigned = jobs.stream().allMatch(job -> {
+                Set<JobWorkflowStep> steps = job.getWorkflowSteps();
+                JobWorkflowStep step = steps.stream()
+                        .filter(s -> s.getWorkflowStep() != null &&
+                                workflowStepName.equalsIgnoreCase(s.getWorkflowStep().getName()))
+                        .findFirst()
+                        .orElse(null);
 
-            if (step == null)
-                return false;
+                if (step == null)
+                    return false;
 
-            return step.getStatus() == JobWorkflowStatus.EMAILED
-                    || step.getStatus() == JobWorkflowStatus.ACCEPTED;
-        });
+                return step.getStatus() == JobWorkflowStatus.EMAILED;
+            });
+        }
 
-        // 2. Completed rule
-        boolean allJobsCompleted = jobs.stream().allMatch(job -> {
-            Set<JobWorkflowStep> steps = job.getWorkflowSteps();
-            if (steps.isEmpty())
-                return false;
+        boolean allJobsAccepted = false;
+        if (enabledRules.contains(ProjectAutomationRule.ASSIGNED_2)) {
+            allJobsAccepted = jobs.stream().allMatch(job -> {
+                Set<JobWorkflowStep> steps = job.getWorkflowSteps();
+                JobWorkflowStep step = steps.stream()
+                        .filter(s -> s.getWorkflowStep() != null &&
+                                workflowStepName.equalsIgnoreCase(s.getWorkflowStep().getName()))
+                        .findFirst()
+                        .orElse(null);
 
-            // Condition A: Last step completed or delivered
-            Optional<JobWorkflowStep> lastStep = steps.stream()
-                    .filter(s -> s.getWorkflowStep() != null && s.getWorkflowStep().getDisplayOrder() != null)
-                    .max(Comparator.comparingInt(s -> s.getWorkflowStep().getDisplayOrder()));
+                if (step == null)
+                    return false;
 
-            boolean lastStepDone = lastStep.isPresent() && (lastStep.get().getStatus() == JobWorkflowStatus.COMPLETED ||
-                    lastStep.get().getStatus() == JobWorkflowStatus.DELIVERED);
+                return step.getStatus() == JobWorkflowStatus.ACCEPTED;
+            });
+        }
 
-            // Condition B: All steps completed or delivered
-            boolean allStepsDone = steps.stream().allMatch(
-                    s -> s.getStatus() == JobWorkflowStatus.COMPLETED ||
-                            s.getStatus() == JobWorkflowStatus.DELIVERED);
+        // 2. Check Completed rules (only if enabled)
+        boolean completedRule1 = false;
+        if (enabledRules.contains(ProjectAutomationRule.COMPLETED_1)) {
+            completedRule1 = jobs.stream().allMatch(job -> {
+                Set<JobWorkflowStep> steps = job.getWorkflowSteps();
+                if (steps.isEmpty())
+                    return false;
 
-            return lastStepDone || allStepsDone;
-        });
+                // Last step completed or delivered
+                Optional<JobWorkflowStep> lastStep = steps.stream()
+                        .filter(s -> s.getWorkflowStep() != null && s.getWorkflowStep().getDisplayOrder() != null)
+                        .max(Comparator.comparingInt(s -> s.getWorkflowStep().getDisplayOrder()));
 
-        // 3. Cancelled rule
-        boolean allJobsCancelled = jobs.stream().allMatch(job -> {
-            Set<JobWorkflowStep> steps = job.getWorkflowSteps();
-            return !steps.isEmpty() &&
-                    steps.stream().allMatch(s -> s.getStatus() == JobWorkflowStatus.CANCELLED);
-        });
+                return lastStep.isPresent() && (lastStep.get().getStatus() == JobWorkflowStatus.COMPLETED ||
+                        lastStep.get().getStatus() == JobWorkflowStatus.DELIVERED);
+            });
+        }
 
-        // Determine new status
+        boolean completedRule2 = false;
+        if (enabledRules.contains(ProjectAutomationRule.COMPLETED_2)) {
+            completedRule2 = jobs.stream().allMatch(job -> {
+                Set<JobWorkflowStep> steps = job.getWorkflowSteps();
+                if (steps.isEmpty())
+                    return false;
+
+                // All steps completed
+                return steps.stream().allMatch(s -> s.getStatus() == JobWorkflowStatus.COMPLETED);
+            });
+        }
+
+        boolean completedRule3 = false;
+        if (enabledRules.contains(ProjectAutomationRule.COMPLETED_3)) {
+            completedRule3 = jobs.stream().allMatch(job -> {
+                Set<JobWorkflowStep> steps = job.getWorkflowSteps();
+                if (steps.isEmpty())
+                    return false;
+
+                // All steps delivered
+                return steps.stream().allMatch(s -> s.getStatus() == JobWorkflowStatus.DELIVERED);
+            });
+        }
+
+        // 3. Check Cancelled rule (only if enabled)
+        boolean allJobsCancelled = false;
+        if (enabledRules.contains(ProjectAutomationRule.CANCELLED)) {
+            allJobsCancelled = jobs.stream().allMatch(job -> {
+                Set<JobWorkflowStep> steps = job.getWorkflowSteps();
+                return !steps.isEmpty() &&
+                        steps.stream().allMatch(s -> s.getStatus() == JobWorkflowStatus.CANCELLED);
+            });
+        }
+
+        // Determine new status based on enabled rules
         String newStatus = null;
         if (allJobsCancelled) {
             newStatus = "Cancelled";
-        } else if (allJobsCompleted) {
+        } else if (completedRule1 || completedRule2 || completedRule3) {
             newStatus = "Completed";
-        } else if (allJobsAssigned) {
+        } else if (allJobsAssigned || allJobsAccepted) {
             newStatus = "Assigned";
         }
 
@@ -479,9 +567,9 @@ public class ProjectService {
         if (newStatus != null && !newStatus.equalsIgnoreCase(project.getStatus())) {
             project.setStatus(newStatus);
             projectRepo.save(project);
-            System.out.println(" Project " + projectId + " set to " + newStatus.toUpperCase());
+            System.out.println("Project " + projectId + " set to " + newStatus.toUpperCase());
         } else {
-            System.out.println(" Project " + projectId + " no status change");
+            System.out.println("Project " + projectId + " no status change");
         }
     }
 }

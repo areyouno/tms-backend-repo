@@ -27,5 +27,6 @@ public record ProjectDTO (
     Boolean fileHandover,
     boolean deleted,
     String deletedBy,
-    LocalDateTime deletedDate
+    LocalDateTime deletedDate,
+    Set<String> automationRules
 ) {}

@@ -100,9 +100,28 @@ public class JobController {
         return jobService.getJobs();
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<JobDTO> getJobById(@PathVariable Long id) {
+        try {
+            JobDTO job = jobService.getJobDTOById(id);
+            return ResponseEntity.ok(job);
+        } catch (ResourceNotFoundException e) {
+            logger.error("Job not found with id: {}", id);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+
     @PutMapping("/{jobId}/workflow-step")
-    public ResponseEntity<JobWorkflowStepDTO> updateWorkflowSteps(@PathVariable Long jobId, @RequestBody JobWorkflowStepEditDTO stepUpdate) {
-        JobWorkflowStepDTO updatedWf = jobService.updateWorkflowStep(jobId, stepUpdate);
+    public ResponseEntity<JobWorkflowStepDTO> updateWorkflowSteps(
+        @PathVariable Long jobId, 
+        @RequestBody JobWorkflowStepEditDTO stepUpdate,
+        Authentication authentication) 
+    {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        String uid = userDetails.getUid();
+        
+        JobWorkflowStepDTO updatedWf = jobService.updateWorkflowStep(jobId, stepUpdate, uid);
         return ResponseEntity.ok(updatedWf);
     }
 

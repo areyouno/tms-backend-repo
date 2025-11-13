@@ -270,6 +270,12 @@ public class JobService {
                 .collect(Collectors.toList());
     }
 
+    public JobDTO getJobDTOById(Long id) {
+        Job job = jobRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
+        return convertToDTO(job);
+    }
+
     // Get job by ID
     public Job getJobById(Long jobId) {
         return jobRepo.findById(jobId)
@@ -293,7 +299,7 @@ public class JobService {
     }
 
     @Transactional
-    public JobWorkflowStepDTO updateWorkflowStep(Long jobId, JobWorkflowStepEditDTO stepUpdate) {
+    public JobWorkflowStepDTO updateWorkflowStep(Long jobId, JobWorkflowStepEditDTO stepUpdate, String currentUserUid) {
         Job job = jobRepo.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
 
@@ -319,7 +325,7 @@ public class JobService {
         jobRepo.save(job);
 
         // project status automation
-        projectService.checkAndUpdateProjectStatus(job.getProject().getId(), wfStep.getWorkflowStep().getName());
+        projectService.checkAndUpdateProjectStatus(job.getProject().getId(), wfStep.getWorkflowStep().getName(), currentUserUid);
 
         return JobWorkflowStepDTO.from(wfStep);
     }

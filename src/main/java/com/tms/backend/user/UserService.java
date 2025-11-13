@@ -1,6 +1,7 @@
 package com.tms.backend.user;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -173,5 +174,9 @@ public class UserService {
         // Mark token as used
         vToken.setUsed(true);
         tokenRepo.save(vToken);
+    }
+
+    public Optional<User> findByUid(String uid) {
+        return userRepo.findByUid(uid);
     }
 }

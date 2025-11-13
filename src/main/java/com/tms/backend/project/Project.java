@@ -20,6 +20,7 @@ import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -29,6 +30,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Size;
 
@@ -112,6 +114,9 @@ public class Project {
     private LocalDateTime deletedDate;
     private String deletedBy;
     private LocalDateTime lastViewDate;
+
+    @Embedded
+    private StatusAutomationSetting statusAutomationSetting = new StatusAutomationSetting();
 
     public void addJob(Job job) {
         jobs.add(job);
@@ -201,4 +206,6 @@ public class Project {
     public LocalDateTime getLastViewDate() { return lastViewDate; }
     public void setLastViewDate(LocalDateTime lastViewDate) { this.lastViewDate = lastViewDate; }
 
+    public StatusAutomationSetting getStatusAutomationSetting() { return statusAutomationSetting; }
+    public void setStatusAutomationSetting(StatusAutomationSetting statusAutomationSetting) { this.statusAutomationSetting = statusAutomationSetting; }
 }

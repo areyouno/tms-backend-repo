@@ -26,6 +26,7 @@ import com.tms.backend.user.CustomUserDetails;
 import jakarta.validation.Valid;
 
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 
@@ -87,6 +88,15 @@ public class ProjectController {
         return ResponseEntity.ok(updatedProject);
     }
     
+    @PutMapping("/{projectId}/automation-rules")
+    public ResponseEntity<String> updateAutomationRules(
+            @PathVariable Long projectId,
+            @RequestBody Set<String> ruleNames) {
+
+        projectService.updateProjectAutomationRules(projectId, ruleNames);
+        return ResponseEntity.ok("Automation rules updated successfully");
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteProject(@PathVariable Long id, Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();

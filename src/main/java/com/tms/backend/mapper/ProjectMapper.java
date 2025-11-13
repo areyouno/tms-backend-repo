@@ -1,5 +1,7 @@
 package com.tms.backend.mapper;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
@@ -11,6 +13,14 @@ import com.tms.backend.workflowSteps.WorkflowStep;
 @Component
 public class ProjectMapper {
     public ProjectDTO toFullDTO(Project project) {
+        Set<String> automationRules = new HashSet<>();
+        if (project.getStatusAutomationSetting() != null) {
+            automationRules = project.getStatusAutomationSetting()
+                    .getEnabledRules()
+                    .stream()
+                    .map(Enum::name)
+                    .collect(Collectors.toSet());
+        }
         return new ProjectDTO(
             project.getId(),
             project.getName(),
@@ -37,6 +47,7 @@ public class ProjectMapper {
             project.getFileHandover(),
             project.isDeleted(),
             project.getDeletedBy(),
-            project.getDeletedDate());
+            project.getDeletedDate(),
+            automationRules);
     }
 }
