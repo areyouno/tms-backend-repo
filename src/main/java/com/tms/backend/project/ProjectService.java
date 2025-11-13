@@ -153,14 +153,24 @@ public class ProjectService {
 
         project.setOwner(currentUser);
 
-        // fetch default status automation setting
-        // AutomationSetting userDefaultSetting = automationSettingService.getUserAutomationSetting(currentUser.getId());
-        AutomationSetting userSetting = automationSettingService.getOrCreateUserAutomationSetting(currentUser);
+        // start project status automation settings
+        Set<ProjectAutomationRule> automationRules;
+        if (createDTO.automationRules() != null && !createDTO.automationRules().isEmpty()) {
+            // Use rules provided by frontend (user selected/modified them)
+            automationRules = createDTO.automationRules().stream()
+                    .map(ProjectAutomationRule::valueOf)
+                    .collect(Collectors.toSet());
+        } else {
+            // Fallback: use user's default automation settings
+            AutomationSetting userSetting = automationSettingService.getOrCreateUserAutomationSetting(currentUser);
+            automationRules = userSetting.getStatusAutomationSetting().getEnabledRules();
+        }
 
-        // Copy the enabled rules into the project
+        // Apply automation rules to project
         StatusAutomationSetting projectSetting = new StatusAutomationSetting();
-        projectSetting.setEnabledRules(userSetting.getStatusAutomationSetting().getEnabledRules());
+        projectSetting.setEnabledRules(automationRules);
         project.setStatusAutomationSetting(projectSetting);
+        // end project status automation settings
 
         project.setCreatedBy(currentUser.getFirstName() + " " + currentUser.getLastName());
         project.setCreateDate(LocalDateTime.now());

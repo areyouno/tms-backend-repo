@@ -42,5 +42,6 @@ public record ProjectCreateDTO(
     Long domainId,
     Long subdomainId,
     Set<@Positive Long> workflowSteps,
-    String owner
+    String owner,
+    Set<String> automationRules
 ) {}
