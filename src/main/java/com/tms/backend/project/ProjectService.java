@@ -349,6 +349,13 @@ public class ProjectService {
             project.setOwner(newOwner);
         }
 
+        if (updatedData.automationRules() != null) {
+            Set<ProjectAutomationRule> newRules = updatedData.automationRules().stream()
+                .map(ProjectAutomationRule::valueOf)
+                .collect(Collectors.toSet());
+            project.getStatusAutomationSetting().setEnabledRules(newRules);
+        }
+
         Project saved = projectRepo.save(project);
         return convertToFullDTO(saved);
     }
