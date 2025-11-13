@@ -102,6 +102,7 @@ public class JobController {
 
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
+    @Transactional(readOnly = true)
     public ResponseEntity<JobDTO> getJobById(@PathVariable Long id) {
         try {
             JobDTO job = jobService.getJobDTOById(id);
