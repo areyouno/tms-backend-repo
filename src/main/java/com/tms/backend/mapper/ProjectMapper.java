@@ -14,7 +14,9 @@ import com.tms.backend.workflowSteps.WorkflowStep;
 public class ProjectMapper {
     public ProjectDTO toFullDTO(Project project) {
         Set<String> automationRules = new HashSet<>();
-        if (project.getStatusAutomationSetting() != null) {
+        // Check if project has automation settings
+        if (project.getStatusAutomationSetting() != null && 
+            project.getStatusAutomationSetting().getEnabledRules() != null) {
             automationRules = project.getStatusAutomationSetting()
                     .getEnabledRules()
                     .stream()

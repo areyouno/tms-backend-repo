@@ -1,25 +1,18 @@
-package com.tms.backend.project;
+package com.tms.backend.setting;
 
 import java.util.EnumSet;
 import java.util.Set;
-
-import jakarta.persistence.CollectionTable;
-import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
-import jakarta.persistence.Embeddable;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
+import com.tms.backend.project.ProjectAutomationRule;
+import jakarta.persistence.*;
 
 @Embeddable
-public class StatusAutomationSetting {
+public class UserAutomationRules {
     
     @ElementCollection(fetch = FetchType.EAGER, targetClass = ProjectAutomationRule.class)
     @Enumerated(EnumType.STRING)
     @CollectionTable(
-        name = "project_status_automation_rules",  
-        joinColumns = @JoinColumn(name = "project_id")
+        name = "user_automation_rules",
+        joinColumns = @JoinColumn(name = "automation_setting_id")
     )
     @Column(name = "rule_name")
     private Set<ProjectAutomationRule> enabledRules = EnumSet.noneOf(ProjectAutomationRule.class);

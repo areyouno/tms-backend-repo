@@ -7,7 +7,6 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 import com.tms.backend.project.ProjectAutomationRule;
-import com.tms.backend.project.StatusAutomationSetting;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
 
@@ -46,9 +45,9 @@ public class AutomationSettingService {
                     AutomationSetting setting = new AutomationSetting();
                     setting.setUser(user); 
 
-                    StatusAutomationSetting statusAutomationSetting = new StatusAutomationSetting();
-                    statusAutomationSetting.setEnabledRules(DEFAULT_RULES);
-                    setting.setStatusAutomationSetting(statusAutomationSetting);
+                    UserAutomationRules userRules = new UserAutomationRules();
+                    userRules.setEnabledRules(DEFAULT_RULES);
+                    setting.setUserAutomationRules(userRules);
 
                     return repo.save(setting);
                 });
@@ -62,14 +61,20 @@ public class AutomationSettingService {
                 User user = userRepo.findByUid(uid)
                     .orElseThrow(() -> new RuntimeException("User not found"));
                 s.setUser(user);
-                return s;
+
+                UserAutomationRules userRules = new UserAutomationRules();
+                userRules.setEnabledRules(EnumSet.noneOf(ProjectAutomationRule.class)); 
+                s.setUserAutomationRules(userRules);
+                
+                // Save to get the ID
+                return repo.save(s);
             });
 
         Set<ProjectAutomationRule> newRules = ruleNames.stream()
             .map(ProjectAutomationRule::valueOf)
             .collect(Collectors.toSet());
 
-        setting.getStatusAutomationSetting().setEnabledRules(newRules);
+        setting.getUserAutomationRules().setEnabledRules(newRules);
         return repo.save(setting);
     }
 

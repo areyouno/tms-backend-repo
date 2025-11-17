@@ -36,7 +36,7 @@ public class AutomationSettingController {
 
         AutomationSetting setting = service.getOrCreateUserAutomationSetting(user);
 
-        Set<String> ruleNames = setting.getStatusAutomationSetting()
+        Set<String> ruleNames = setting.getUserAutomationRules()
                 .getEnabledRules()
                 .stream()
                 .map(ProjectAutomationRule::name)
@@ -52,7 +52,7 @@ public class AutomationSettingController {
     
         AutomationSetting setting = service.updateUserAutomationRules(uid, ruleNames);
 
-        Set<String> updatedRules = setting.getStatusAutomationSetting()
+        Set<String> updatedRules = setting.getUserAutomationRules()
                 .getEnabledRules()
                 .stream()
                 .map(ProjectAutomationRule::name)

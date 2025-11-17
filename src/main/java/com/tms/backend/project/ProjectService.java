@@ -36,6 +36,7 @@ import com.tms.backend.job.JobWorkflowStep;
 import com.tms.backend.machineTranslation.MachineTranslation;
 import com.tms.backend.machineTranslation.MachineTranslationRepository;
 import com.tms.backend.setting.AutomationSetting;
+import com.tms.backend.setting.AutomationSettingRepository;
 import com.tms.backend.setting.AutomationSettingService;
 import com.tms.backend.subDomain.SubDomain;
 import com.tms.backend.subDomain.SubDomainRepository;
@@ -154,22 +155,23 @@ public class ProjectService {
         project.setOwner(currentUser);
 
         // start project status automation settings
-        Set<ProjectAutomationRule> automationRules;
-        if (createDTO.automationRules() != null && !createDTO.automationRules().isEmpty()) {
-            // Use rules provided by frontend (user selected/modified them)
-            automationRules = createDTO.automationRules().stream()
-                    .map(ProjectAutomationRule::valueOf)
-                    .collect(Collectors.toSet());
-        } else {
-            // Fallback: use user's default automation settings
-            AutomationSetting userSetting = automationSettingService.getOrCreateUserAutomationSetting(currentUser);
-            automationRules = userSetting.getStatusAutomationSetting().getEnabledRules();
-        }
+       Set<ProjectAutomationRule> automationRules;
 
-        // Apply automation rules to project
-        StatusAutomationSetting projectSetting = new StatusAutomationSetting();
-        projectSetting.setEnabledRules(automationRules);
-        project.setStatusAutomationSetting(projectSetting);
+       if (createDTO.automationRules() != null && !createDTO.automationRules().isEmpty()) {
+           // Use rules provided by frontend (user selected/modified them)
+           automationRules = createDTO.automationRules().stream()
+                   .map(ProjectAutomationRule::valueOf)
+                   .collect(Collectors.toSet());
+       } else {
+           // Fallback: use user's default automation settings
+           AutomationSetting userSetting = automationSettingService.getOrCreateUserAutomationSetting(currentUser);
+           automationRules = userSetting.getUserAutomationRules().getEnabledRules();
+       }
+
+       // Apply automation rules to project's embedded StatusAutomationSetting
+       StatusAutomationSetting projectStatusSetting = new StatusAutomationSetting();
+       projectStatusSetting.setEnabledRules(automationRules);
+       project.setStatusAutomationSetting(projectStatusSetting);
         // end project status automation settings
 
         project.setCreatedBy(currentUser.getFirstName() + " " + currentUser.getLastName());
@@ -350,31 +352,14 @@ public class ProjectService {
         }
 
         if (updatedData.automationRules() != null) {
-            Set<ProjectAutomationRule> newRules = updatedData.automationRules().stream()
+            Set<ProjectAutomationRule> enabledRules = updatedData.automationRules().stream()
                 .map(ProjectAutomationRule::valueOf)
                 .collect(Collectors.toSet());
-            project.getStatusAutomationSetting().setEnabledRules(newRules);
+            project.getStatusAutomationSetting().setEnabledRules(enabledRules);
         }
 
         Project saved = projectRepo.save(project);
         return convertToFullDTO(saved);
-    }
-
-    @Transactional
-    public void updateProjectAutomationRules(Long projectId, Set<String> ruleNames) {
-        Project project = projectRepo.findById(projectId)
-            .orElseThrow(() -> new RuntimeException("Project not found"));
-
-        Set<ProjectAutomationRule> newRules = ruleNames.stream()
-            .map(ProjectAutomationRule::valueOf)
-            .collect(Collectors.toSet());
-
-        if (project.getStatusAutomationSetting() == null) {
-            project.setStatusAutomationSetting(new StatusAutomationSetting());
-        }
-
-        project.getStatusAutomationSetting().setEnabledRules(newRules);
-        projectRepo.save(project);
     }
 
     @Transactional
@@ -481,7 +466,7 @@ public class ProjectService {
 
         // Get current user's automation settings using uid
         AutomationSetting automationSetting = automationSettingService.getUserAutomationSettingByUid(currentUserUid);
-        Set<ProjectAutomationRule> enabledRules = automationSetting.getStatusAutomationSetting().getEnabledRules();
+        Set<ProjectAutomationRule> enabledRules = automationSetting.getUserAutomationRules().getEnabledRules();
 
         // 1. Check Assigned rules (only if enabled)
         boolean allJobsAssigned = false;

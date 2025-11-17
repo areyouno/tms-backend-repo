@@ -1,6 +1,5 @@
 package com.tms.backend.setting;
 
-import com.tms.backend.project.StatusAutomationSetting;
 import com.tms.backend.user.User;
 
 import jakarta.persistence.Embedded;
@@ -27,13 +26,13 @@ public class AutomationSetting {
     private User user;
 
     @Embedded
-    private StatusAutomationSetting statusAutomationSetting = new StatusAutomationSetting();
+    private UserAutomationRules userAutomationRules = new UserAutomationRules();
 
     public Long getId() { return id; }
 
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
 
-    public StatusAutomationSetting getStatusAutomationSetting() { return statusAutomationSetting;}
-    public void setStatusAutomationSetting(StatusAutomationSetting statusAutomationSetting) { this.statusAutomationSetting = statusAutomationSetting; }
+    public UserAutomationRules getUserAutomationRules() { return userAutomationRules; }
+    public void setUserAutomationRules(UserAutomationRules userAutomationRules) { this.userAutomationRules = userAutomationRules; }
 }
