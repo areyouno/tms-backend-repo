@@ -9,5 +9,7 @@ public record LoginDTO(
     String lastName,
     Boolean isVerified,
     Boolean isProfileComplete,
+    Long roleId,
+    String roleName,
     String token
 ) {}

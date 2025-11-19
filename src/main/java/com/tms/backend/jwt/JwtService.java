@@ -69,12 +69,17 @@ public class JwtService {
         return extractAllClaims(token).getExpiration();
     }
 
+    public String extractRole(String token) {
+        return extractClaim(token, claims -> claims.get("role", String.class));
+    }
+
     public String generateToken(User user) {
         System.out.println("Generating JWT for user - Email: " + user.getEmail() + ", UID: '" + user.getUid() + "'");
 
         Map<String, Object> claims = new HashMap<>();
         claims.put("uid", user.getUid());
         claims.put("email", user.getEmail());
+        claims.put("role", user.getRole().getName());
         // claims.put("isVerified", user.isVerified());
         // claims.put("isProfileComplete", user.isProfileComplete());
 

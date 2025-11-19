@@ -55,10 +55,15 @@ public class WorkflowStepService {
     }
 
     @Transactional
-    public void deleteWorkflowStep(Long id) {
-        if (!wfRepo.existsById(id)) {
-            throw new RuntimeException("Workflow step not found: " + id);
-        }
+    public String deleteWorkflowStep(Long id) {
+        WorkflowStep step = wfRepo.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Workflow step with ID " + id + " not found"));
+
+        // 2. Get the name before deletion
+        String stepName = step.getName();
         wfRepo.deleteById(id);
+        return stepName;
     }
 }

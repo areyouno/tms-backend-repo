@@ -49,6 +49,8 @@ public class AuthService {
             user.getLastName(),
             user.isVerified(),
             user.isProfileComplete(),
+            user.getRole().getId(),
+            user.getRole().getName(),
             token
         );
     }
