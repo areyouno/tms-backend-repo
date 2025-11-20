@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.tms.backend.dto.WorkflowStepCreateDTO;
+import com.tms.backend.exception.ResourceNotFoundException;
 
 import jakarta.transaction.Transactional;
 
@@ -52,6 +53,19 @@ public class WorkflowStepService {
         workflowStep.setIsLQA(createDTO.isLQA() != null ? createDTO.isLQA() : false);
 
         return wfRepo.save(workflowStep);
+    }
+
+    public WorkflowStep updateWorkflowStep(Long id, WorkflowStepCreateDTO updateDTO) {
+        WorkflowStep existingStep = wfRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Workflow step not found with id: " + id));
+
+        // Update fields
+        existingStep.setName(updateDTO.name());
+        existingStep.setDisplayOrder(updateDTO.displayOrder());
+        existingStep.setAbbreviation(updateDTO.abbreviation());
+        existingStep.setIsLQA(updateDTO.isLQA());
+
+        return wfRepo.save(existingStep);
     }
 
     @Transactional

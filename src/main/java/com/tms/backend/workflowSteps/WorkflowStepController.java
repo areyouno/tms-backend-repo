@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -50,7 +51,6 @@ public class WorkflowStepController {
     @PreAuthorize(AccessRolesConstants.ADMIN_OR_PM)  // Only admin, pm can delete workflow steps 
     public ResponseEntity<String> deleteWorkflowStep(@PathVariable Long id, Authentication authentication) {
         String deletedWfStep = wfService.deleteWorkflowStep(id);
-        System.out.println("***User authorities: " + authentication.getAuthorities());
         String successMessage = "Workflow step '" + deletedWfStep + "' (ID: " + id + ") deleted successfully.";
 
         return ResponseEntity.ok(successMessage);
@@ -64,5 +64,14 @@ public class WorkflowStepController {
             step.getAbbreviation(),
             step.getIsLQA()
         );
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize(AccessRolesConstants.ADMIN_OR_PM) // Only admin, pm can update workflow steps
+    public ResponseEntity<WorkflowStepDTO> updateWorkflowStep(
+            @PathVariable Long id,
+            @Valid @RequestBody WorkflowStepCreateDTO updateDTO) {
+        WorkflowStep updated = wfService.updateWorkflowStep(id, updateDTO);
+        return ResponseEntity.ok(convertToDTO(updated));
     }
 }
