@@ -38,6 +38,7 @@ import com.tms.backend.user.UserRepository;
 import com.tms.backend.workflowSteps.WorkflowStep;
 import com.tms.backend.workflowSteps.WorkflowStepRepository;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 
 @Service
@@ -202,6 +203,95 @@ public class JobService {
         return project;
     }
 
+    /**
+     * Upload a translated XLIFF file and save it to the translated directory.
+     * Updates the job's translatedFilePath in the database.
+     * 
+     * @param file  The translated XLIFF file
+     * @param jobId The job ID
+     * @return Path to the saved translated file
+     * @throws IOException             if file operations fail
+     * @throws EntityNotFoundException if job not found
+     */
+    public Path uploadTranslatedFile(MultipartFile file, Long jobId) throws IOException {
+        logger.info("Processing translated file upload for job ID: {}", jobId);
+
+        // Fetch the job
+        Job job = jobRepo.findById(jobId)
+                .orElseThrow(() -> new EntityNotFoundException("Job not found with ID: " + jobId));
+
+        // Validate that job has a project
+        if (job.getProject() == null) {
+            throw new IllegalStateException("Job must be associated with a project");
+        }
+
+        // Get project and job folder names
+        String projectFolderName = String.valueOf(job.getProject().getId());
+        String jobFolderName = String.valueOf(job.getId());
+
+        // Save the translated file
+        Path savedPath = saveTranslatedFile(file, projectFolderName, jobFolderName, job);
+
+        // Save the updated job to database
+        jobRepo.save(job);
+
+        logger.info("Translated file saved and job updated successfully");
+        return savedPath;
+    }
+
+    /**
+     * Save the translated XLIFF file to the local filesystem.
+     * 
+     * @param file              The translated XLIFF file
+     * @param projectFolderName The project folder name
+     * @param jobFolderName     The job folder name
+     * @param job               The job entity to update
+     * @return Path to the saved file
+     * @throws IOException if file operations fail
+     */
+    private Path saveTranslatedFile(MultipartFile file, String projectFolderName,
+            String jobFolderName, Job job) throws IOException {
+        // Get base directory
+        Path baseDir = Paths.get(baseUploadDir);
+
+        String convertedPath = job.getConvertedFilePath();
+        Path convertedFullPath = Paths.get(convertedPath);
+        // Get parent directory (removing "converted/filename.xliff")
+        Path jobDirectory = convertedFullPath.getParent().getParent();
+    
+        // Create translated directory path
+        Path outputDir = baseDir.resolve(jobDirectory).resolve("translated");
+
+        // Create directory if it doesn't exist
+        if (!Files.exists(outputDir)) {
+            Files.createDirectories(outputDir);
+            logger.info("Created translated directory: {}", outputDir.toAbsolutePath());
+        }
+
+        // Get filename
+        String fileName = file.getOriginalFilename();
+        if (fileName == null) {
+            fileName = "translated_" + System.currentTimeMillis() + ".xliff";
+        }
+
+        // Create full output path
+        Path outputPath = outputDir.resolve(fileName);
+
+        // Write the file
+        file.transferTo(outputPath.toFile());
+        logger.info("Saved translated file: {}", outputPath.toAbsolutePath());
+
+        // Calculate relative path
+        Path relativePath = baseDir.relativize(outputPath);
+
+        // Update job with translated file path
+        job.setTranslatedFilePath(relativePath.toString().replace("\\", "/"));
+
+        logger.info("Updated job with translated file path: {}", job.getTranslatedFilePath());
+
+        return outputPath;
+    }
+
     private Job createJobFromDTO(JobDTO jobDTO, User currentUser, String fileName, Long fileSize, TomatoSizingResponse tomatoSizingStats) {
         Job job = new Job();
         job.setSourceLang(jobDTO.sourceLang());
@@ -287,6 +377,11 @@ public class JobService {
         return jobs.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    // return job entity
+    List<Job> getJobEntitiesByProjectId(Long projectId) {
+        return jobRepo.findByProjectId(projectId);
     }
 
     public List<JobSoftDeleteDTO> getDeletedJobsByUser(String uid) {

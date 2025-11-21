@@ -57,6 +57,7 @@ public class Job {
     private String convertedFileName;
     private String originalFilePath;
     private String convertedFilePath;
+    private String translatedFilePath;
     private LocalDateTime fileUploadedAt;
 
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
@@ -108,6 +109,9 @@ public class Job {
     
     public String getConvertedFilePath() { return convertedFilePath; }
     public void setConvertedFilePath(String convertedFilePath) { this.convertedFilePath = convertedFilePath; }
+
+    public String getTranslatedFilePath() { return translatedFilePath; }
+    public void setTranslatedFilePath(String translatedFilePath) { this.translatedFilePath = translatedFilePath; }
     
     public LocalDateTime getFileUploadedAt() { return fileUploadedAt; }
     public void setFileUploadedAt(LocalDateTime fileUploadedAt) { this.fileUploadedAt = fileUploadedAt; }
