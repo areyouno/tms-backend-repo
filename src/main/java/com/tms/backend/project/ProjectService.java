@@ -75,6 +75,7 @@ public class ProjectService {
         BusinessUnitRepository buRepo,
         CostCenterRepository ccRepo,
         WorkflowStepRepository wfRepo,
+        JobRepository jobRepo,
         AutomationSettingService automationSettingService
     ) {
         this.projectRepo = projectRepo;
@@ -87,6 +88,7 @@ public class ProjectService {
         this.buRepo = buRepo;
         this.ccRepo = ccRepo;
         this.wfRepo = wfRepo;
+        this.jobRepo = jobRepo;
         this.automationSettingService = automationSettingService;
     }
 
