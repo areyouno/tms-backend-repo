@@ -54,12 +54,10 @@ public class AutomationSettingService {
     }
 
     @Transactional
-    public AutomationSetting updateUserAutomationRules(String uid, Set<String> ruleNames) {
-        AutomationSetting setting = repo.findByUserUid(uid)
+    public AutomationSetting updateUserAutomationRules(User user, Set<String> ruleNames) {
+        AutomationSetting setting = repo.findByUserUid(user.getUid())
             .orElseGet(() -> {
                 AutomationSetting s = new AutomationSetting();
-                User user = userRepo.findByUid(uid)
-                    .orElseThrow(() -> new RuntimeException("User not found"));
                 s.setUser(user);
 
                 UserAutomationRules userRules = new UserAutomationRules();

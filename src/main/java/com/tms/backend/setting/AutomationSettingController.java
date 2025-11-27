@@ -52,12 +52,18 @@ public class AutomationSettingController {
         return ResponseEntity.ok(ruleNames);
     }
 
-    @PutMapping("/user/{uid}")
+    @PutMapping("/user")
     public ResponseEntity<Set<String>> updateUserAutomationSetting(
-        @PathVariable String uid,
+        @AuthenticationPrincipal CustomUserDetails userDetails,
         @RequestBody Set<String> ruleNames) {
     
-        AutomationSetting setting = service.updateUserAutomationRules(uid, ruleNames);
+        if (userDetails == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        String uid = userDetails.getUid(); // Extract uid from CustomUserDetails
+        User user = userService.findByUid(uid)
+                .orElseThrow(() -> new RuntimeException("User not found with uid: " + uid));
+        AutomationSetting setting = service.updateUserAutomationRules(user, ruleNames);
 
         Set<String> updatedRules = setting.getUserAutomationRules()
                 .getEnabledRules()
