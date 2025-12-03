@@ -1,12 +1,16 @@
 package com.tms.backend.projectTemplate;
 
+import java.util.HashSet;
 import java.util.List;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.tms.backend.dto.ProjectTemplateCreateDTO;
 import com.tms.backend.dto.ProjectTemplateDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
+import com.tms.backend.project.StatusAutomationSetting;
 
 @Service
 public class ProjectTemplateService {
@@ -16,34 +20,73 @@ public class ProjectTemplateService {
         this.templateRepository = templateRepository;
     }
 
-    public List<ProjectTemplateDTO> getAllTemplates() {
-        return templateRepository.findAll().stream()
+    @Transactional
+    public ProjectTemplateDTO createTemplate(ProjectTemplateCreateDTO dto, Long userId) {
+        ProjectTemplate template = new ProjectTemplate();
+        template.setUserId(userId); // Set the creator as current user
+        applyCreateDTO(template, dto);
+        return convertToDTO(templateRepository.save(template));
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProjectTemplateDTO> getAllTemplates(Long currentUserId, boolean isAdmin) {
+        List<ProjectTemplate> templates;
+        
+        if (isAdmin) {
+            // Admin can see all templates
+            templates = templateRepository.findAll();
+        } else {
+            // Regular users can only see their own templates
+            templates = templateRepository.findByUserId(currentUserId);
+        }
+        
+        return templates.stream()
                 .map(this::convertToDTO)
                 .toList();
     }
 
-    public ProjectTemplateDTO getTemplate(Long id) {
-        return templateRepository.findById(id)
-                .map(this::convertToDTO)
-                .orElseThrow(() -> new ResourceNotFoundException("Template not found: " + id));
-    }
-
-    public ProjectTemplateDTO createTemplate(ProjectTemplateCreateDTO dto) {
-        ProjectTemplate template = new ProjectTemplate();
-        applyCreateDTO(template, dto);
-        return convertToDTO(templateRepository.save(template));
-    }
-
-    public ProjectTemplateDTO updateTemplate(Long id, ProjectTemplateCreateDTO dto) {
+    @Transactional(readOnly = true)
+    public ProjectTemplateDTO getTemplateById(Long id, Long currentUserId, boolean isAdmin) {
         ProjectTemplate template = templateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Template not found: " + id));
+        
+        // Check authorization: only owner or admin can view
+        if (!isAdmin && !template.getUserId().equals(currentUserId)) {
+            throw new AccessDeniedException("You don't have permission to access this template");
+        }
+        
+        return convertToDTO(template);
+    }
 
+    @Transactional
+    public ProjectTemplateDTO updateTemplate(Long id, ProjectTemplateCreateDTO dto, Long currentUserId, boolean isAdmin) {
+        ProjectTemplate template = templateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Template not found: " + id));
+        
+        // Check authorization: only owner or admin can update
+        if (!isAdmin && !template.getUserId().equals(currentUserId)) {
+            throw new AccessDeniedException("You don't have permission to update this template");
+        }
+        
         applyCreateDTO(template, dto);
+        // Don't allow changing the userId
+        template.setUserId(template.getUserId());
+        
         return convertToDTO(templateRepository.save(template));
     }
 
-    public void deleteTemplate(Long id) {
+    @Transactional
+    public String deleteTemplate(Long id, Long currentUserId, boolean isAdmin) {
+        ProjectTemplate template = templateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Template not found: " + id));
+        
+        // Check authorization: only owner or admin can delete
+        if (!isAdmin && !template.getUserId().equals(currentUserId)) {
+            throw new AccessDeniedException("You don't have permission to delete this template");
+        }
+        
         templateRepository.deleteById(id);
+        return "Template deleted successfully with id: " + id;
     }
 
     private void applyCreateDTO(ProjectTemplate template, ProjectTemplateCreateDTO dto) {
@@ -58,12 +101,18 @@ public class ProjectTemplateService {
         template.setDomainId(dto.domainId());
         template.setSubdomainId(dto.subdomainId());
         template.setWorkflowSteps(dto.workflowSteps());
+
+        StatusAutomationSetting setting = new StatusAutomationSetting();
+        setting.setEnabledRules(dto.enabledRules() != null ? dto.enabledRules() : new HashSet<>());
+
+        template.setStatusAutomationSetting(setting);
     }
 
     private ProjectTemplateDTO convertToDTO(ProjectTemplate template) {
         return new ProjectTemplateDTO(
                 template.getId(),
                 template.getName(),
+                template.getUserId(),
                 template.getSourceLang(),
                 template.getTargetLang(),
                 template.getMachineTranslationId(),
@@ -73,7 +122,10 @@ public class ProjectTemplateService {
                 template.getCostCenterId(),
                 template.getDomainId(),
                 template.getSubdomainId(),
-                template.getWorkflowSteps()
+                template.getWorkflowSteps(),
+                template.getStatusAutomationSetting() != null
+                    ? template.getStatusAutomationSetting().getEnabledRules()
+                    : null
         );
     }
 }

@@ -6,6 +6,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +34,10 @@ public class JwtService {
                 .getBody();
 
         return claims.getSubject();
+    }
+
+    public Long extractId(String token) {
+        return extractClaim(token, claims -> claims.get("id", Long.class));
     }
 
     public String extractUid(String token) {
@@ -77,6 +82,7 @@ public class JwtService {
         System.out.println("Generating JWT for user - Email: " + user.getEmail() + ", UID: '" + user.getUid() + "'");
 
         Map<String, Object> claims = new HashMap<>();
+        claims.put("id", user.getId());
         claims.put("uid", user.getUid());
         claims.put("email", user.getEmail());
         claims.put("role", user.getRole().getName());

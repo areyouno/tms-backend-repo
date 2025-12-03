@@ -2,10 +2,14 @@ package com.tms.backend.projectTemplate;
 
 import java.util.Set;
 
+import com.tms.backend.project.StatusAutomationSetting;
+
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -21,10 +25,12 @@ public class ProjectTemplate {
     private Long id;
 
     private String name; 
+    
+    private Long userId;
 
     private String sourceLang;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "project_template_target_langs", joinColumns = @JoinColumn(name = "template_id"))
     @Column(name = "target_lang")
     private Set<String> targetLang;
@@ -43,16 +49,22 @@ public class ProjectTemplate {
 
     private Long subdomainId;
 
-    @ElementCollection
+    @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "project_template_workflow_steps", joinColumns = @JoinColumn(name = "template_id"))
     @Column(name = "workflow_step_id")
     private Set<Long> workflowSteps;
+
+    @Embedded
+    private StatusAutomationSetting statusAutomationSetting = new StatusAutomationSetting();
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public Long getUserId() { return userId; }
+    public void setUserId(Long userId) { this.userId = userId; }
 
     public String getSourceLang() { return sourceLang; }
     public void setSourceLang(String sourceLang) { this.sourceLang = sourceLang; }
@@ -83,4 +95,7 @@ public class ProjectTemplate {
 
     public Set<Long> getWorkflowSteps() { return workflowSteps; }
     public void setWorkflowSteps(Set<Long> workflowSteps) { this.workflowSteps = workflowSteps; }
+
+    public StatusAutomationSetting getStatusAutomationSetting() { return statusAutomationSetting; }
+    public void setStatusAutomationSetting(StatusAutomationSetting statusAutomationSetting) { this.statusAutomationSetting = statusAutomationSetting; }
 }
