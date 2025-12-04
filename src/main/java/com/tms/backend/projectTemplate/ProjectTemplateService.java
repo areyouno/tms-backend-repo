@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.tms.backend.dto.ProjectTemplateCreateDTO;
 import com.tms.backend.dto.ProjectTemplateDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
-import com.tms.backend.project.StatusAutomationSetting;
 
 @Service
 public class ProjectTemplateService {
@@ -102,7 +101,7 @@ public class ProjectTemplateService {
         template.setSubdomainId(dto.subdomainId());
         template.setWorkflowSteps(dto.workflowSteps());
 
-        StatusAutomationSetting setting = new StatusAutomationSetting();
+        TemplateStatusAutomationSetting setting = new TemplateStatusAutomationSetting();
         setting.setEnabledRules(dto.enabledRules() != null ? dto.enabledRules() : new HashSet<>());
 
         template.setStatusAutomationSetting(setting);

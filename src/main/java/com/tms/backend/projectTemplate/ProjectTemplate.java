@@ -2,8 +2,6 @@ package com.tms.backend.projectTemplate;
 
 import java.util.Set;
 
-import com.tms.backend.project.StatusAutomationSetting;
-
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -55,7 +53,7 @@ public class ProjectTemplate {
     private Set<Long> workflowSteps;
 
     @Embedded
-    private StatusAutomationSetting statusAutomationSetting = new StatusAutomationSetting();
+    private TemplateStatusAutomationSetting statusAutomationSetting = new TemplateStatusAutomationSetting();
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -96,6 +94,6 @@ public class ProjectTemplate {
     public Set<Long> getWorkflowSteps() { return workflowSteps; }
     public void setWorkflowSteps(Set<Long> workflowSteps) { this.workflowSteps = workflowSteps; }
 
-    public StatusAutomationSetting getStatusAutomationSetting() { return statusAutomationSetting; }
-    public void setStatusAutomationSetting(StatusAutomationSetting statusAutomationSetting) { this.statusAutomationSetting = statusAutomationSetting; }
+    public TemplateStatusAutomationSetting getStatusAutomationSetting() { return statusAutomationSetting; }
+    public void setStatusAutomationSetting(TemplateStatusAutomationSetting statusAutomationSetting) { this.statusAutomationSetting = statusAutomationSetting; }
 }
