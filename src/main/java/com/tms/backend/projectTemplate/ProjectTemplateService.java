@@ -90,6 +90,9 @@ public class ProjectTemplateService {
 
     private void applyCreateDTO(ProjectTemplate template, ProjectTemplateCreateDTO dto) {
         template.setName(dto.name());
+        template.setProjectName(dto.projectName());
+        template.setUserId(dto.userId());
+        template.setOwnerId(dto.ownerId());
         template.setSourceLang(dto.sourceLang());
         template.setTargetLang(dto.targetLang());
         template.setMachineTranslationId(dto.machineTranslationId());
@@ -99,19 +102,24 @@ public class ProjectTemplateService {
         template.setCostCenterId(dto.costCenterId());
         template.setDomainId(dto.domainId());
         template.setSubdomainId(dto.subdomainId());
+        template.setVendorId(dto.vendorId());
         template.setWorkflowSteps(dto.workflowSteps());
 
         TemplateStatusAutomationSetting setting = new TemplateStatusAutomationSetting();
         setting.setEnabledRules(dto.enabledRules() != null ? dto.enabledRules() : new HashSet<>());
 
         template.setStatusAutomationSetting(setting);
+
+        template.setNote(dto.note());
     }
 
     private ProjectTemplateDTO convertToDTO(ProjectTemplate template) {
         return new ProjectTemplateDTO(
                 template.getId(),
                 template.getName(),
+                template.getProjectName(),
                 template.getUserId(),
+                template.getOwnerId(),
                 template.getSourceLang(),
                 template.getTargetLang(),
                 template.getMachineTranslationId(),
@@ -121,10 +129,12 @@ public class ProjectTemplateService {
                 template.getCostCenterId(),
                 template.getDomainId(),
                 template.getSubdomainId(),
+                template.getVendorId(),
                 template.getWorkflowSteps(),
                 template.getStatusAutomationSetting() != null
                     ? template.getStatusAutomationSetting().getEnabledRules()
-                    : null
+                    : null,
+                template.getNote()
         );
     }
 }

@@ -7,7 +7,9 @@ import com.tms.backend.project.ProjectAutomationRule;
 public record ProjectTemplateDTO(
     Long id,
     String name,
+    String projectName,
     Long userId,
+    Long ownerId,
     String sourceLang,
     Set<String> targetLang,
     Long machineTranslationId,
@@ -17,6 +19,8 @@ public record ProjectTemplateDTO(
     Long costCenterId,
     Long domainId,
     Long subdomainId,
+    Long vendorId,
     Set<Long> workflowSteps,
-    Set<ProjectAutomationRule> enabledRules
+    Set<ProjectAutomationRule> enabledRules,
+    String note
 ) {}

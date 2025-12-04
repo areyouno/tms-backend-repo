@@ -22,9 +22,13 @@ public class ProjectTemplate {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name; 
+    private String name;
+
+    private String projectName;
     
     private Long userId;
+
+    private Long ownerId;
 
     private String sourceLang;
 
@@ -47,6 +51,8 @@ public class ProjectTemplate {
 
     private Long subdomainId;
 
+    private Long vendorId;
+
     @ElementCollection(fetch = FetchType.EAGER)
     @CollectionTable(name = "project_template_workflow_steps", joinColumns = @JoinColumn(name = "template_id"))
     @Column(name = "workflow_step_id")
@@ -55,14 +61,22 @@ public class ProjectTemplate {
     @Embedded
     private TemplateStatusAutomationSetting statusAutomationSetting = new TemplateStatusAutomationSetting();
 
+    private String note;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
+    public String getProjectName() { return projectName; }
+    public void setProjectName(String projectName) { this.projectName = projectName; }
+
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
+
+    public Long getOwnerId() {  return ownerId; }
+    public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
 
     public String getSourceLang() { return sourceLang; }
     public void setSourceLang(String sourceLang) { this.sourceLang = sourceLang; }
@@ -91,9 +105,15 @@ public class ProjectTemplate {
     public Long getSubdomainId() { return subdomainId; }
     public void setSubdomainId(Long subdomainId) { this.subdomainId = subdomainId; }
 
+    public Long getVendorId() { return vendorId; }
+    public void setVendorId(Long vendorId) { this.vendorId = vendorId; }
+
     public Set<Long> getWorkflowSteps() { return workflowSteps; }
     public void setWorkflowSteps(Set<Long> workflowSteps) { this.workflowSteps = workflowSteps; }
 
     public TemplateStatusAutomationSetting getStatusAutomationSetting() { return statusAutomationSetting; }
     public void setStatusAutomationSetting(TemplateStatusAutomationSetting statusAutomationSetting) { this.statusAutomationSetting = statusAutomationSetting; }
+
+    public String getNote() { return note; }
+    public void setNote(String note) { this.note = note; }
 }

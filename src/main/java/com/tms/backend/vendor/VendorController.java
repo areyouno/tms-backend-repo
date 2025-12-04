@@ -1,4 +1,4 @@
-package com.tms.backend.subDomain;
+package com.tms.backend.vendor;
 
 import java.util.List;
 
@@ -13,25 +13,26 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/subdomains")
+@RequestMapping("/api/vendors")
 @Validated
-public class SubDomainController {
+public class VendorController {
     @Autowired
-    private SubDomainService subDomainService;
+    private VendorService vendorService;
 
     @PostMapping
-    public ResponseEntity<SubDomain> createSubDomain(@RequestBody SubDomain subdomain) {
-        SubDomain createdSubDomain = subDomainService.createSubDomain(subdomain);
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdSubDomain);
+    public ResponseEntity<Vendor> createVendor(@RequestBody Vendor vendor) {
+        Vendor createdVendor = vendorService.createVendor(vendor);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdVendor);
     }
     
     @GetMapping
-    public List<SubDomain> getActiveClients() {
-        return subDomainService.getActiveSubDomains();
+    public List<Vendor> getActiveVendors() {
+        return vendorService.getActiveVendors();
     }
 
     @GetMapping("/ordered")
-    public List<SubDomain> getActiveOrdered() {
-        return subDomainService.getActiveSDOrdered();
+    public List<Vendor> getActiveOrdered() {
+        return vendorService.getActiveVenOrdered();
     }
+
 }
