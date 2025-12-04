@@ -47,6 +47,15 @@ public class WorkflowStepController {
         return ResponseEntity.status(HttpStatus.CREATED).body(convertToDTO(created));
     }
 
+    @PutMapping("/{id}")
+    @PreAuthorize(AccessRolesConstants.ADMIN_OR_PM) // Only admin, pm can update workflow steps
+    public ResponseEntity<WorkflowStepDTO> updateWorkflowStep(
+            @PathVariable Long id,
+            @Valid @RequestBody WorkflowStepCreateDTO updateDTO) {
+        WorkflowStep updated = wfService.updateWorkflowStep(id, updateDTO);
+        return ResponseEntity.ok(convertToDTO(updated));
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize(AccessRolesConstants.ADMIN_OR_PM)  // Only admin, pm can delete workflow steps 
     public ResponseEntity<String> deleteWorkflowStep(@PathVariable Long id, Authentication authentication) {
@@ -64,14 +73,5 @@ public class WorkflowStepController {
             step.getAbbreviation(),
             step.getIsLQA()
         );
-    }
-
-    @PutMapping("/{id}")
-    @PreAuthorize(AccessRolesConstants.ADMIN_OR_PM) // Only admin, pm can update workflow steps
-    public ResponseEntity<WorkflowStepDTO> updateWorkflowStep(
-            @PathVariable Long id,
-            @Valid @RequestBody WorkflowStepCreateDTO updateDTO) {
-        WorkflowStep updated = wfService.updateWorkflowStep(id, updateDTO);
-        return ResponseEntity.ok(convertToDTO(updated));
     }
 }

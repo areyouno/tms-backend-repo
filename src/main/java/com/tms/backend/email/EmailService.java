@@ -5,6 +5,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
+import com.tms.backend.job.JobWorkflowStatus;
+
 import jakarta.mail.internet.MimeMessage;
 
 
@@ -73,4 +75,36 @@ public class EmailService {
             e.printStackTrace();
         }
     }
+
+    public void sendJobStatusChangeEmail(String toEmail, String projectName, String stepName, JobWorkflowStatus previousStatus, JobWorkflowStatus newStatus) {
+        String subject = "Job Status Update - " + appName;
+        String htmlContent = buildJobStatusChangeEmailHTML(projectName, stepName, previousStatus, newStatus);
+        sendEmail(toEmail, subject, htmlContent);
+    }
+
+    private String buildJobStatusChangeEmailHTML(String projectName, String stepName, 
+                                             JobWorkflowStatus previousStatus, JobWorkflowStatus newStatus) {
+    return "<!DOCTYPE html>\n"
+        + "<html>\n"
+        + "  <head>\n"
+        + "    <meta charset=\"UTF-8\">\n"
+        + "    <title>Job Status Update</title>\n"
+        + "  </head>\n"
+        + "  <body style=\"margin: 0; padding: 0; background-color: #f9f9f9; font-family: sans-serif;\">\n"
+        + "    <div style=\"width: 100%; text-align: center; padding: 40px 0;\">\n"
+        + "      <div style=\"display: inline-block; max-width: 600px; padding: 30px; border-radius: 8px;\">\n"
+        + "        <h2 style=\"text-align: center; color: #333333;\">Job Status Update</h2>\n"
+        + "        <p style=\"text-align: left; color: #555555; font-size: 16px; line-height: 1.6;\">\n"
+        + "          Hello,<br><br>\n"
+        + "          The status of your job has been updated.<br><br>\n"
+        + "          <strong>Project:</strong> " + projectName + "<br>\n"
+        + "          <strong>For Workflow Step:</strong> " + stepName + "<br><br>\n"
+        + "          <strong>Status Change:</strong> from <span style=\"color: #ec7e35;\">" + previousStatus 
+        + "</span> to <span style=\"color: #ec7e35;\">" + newStatus + "</span>\n"
+        + "        </p>\n"
+        + "      </div>\n"
+        + "    </div>\n"
+        + "  </body>\n"
+        + "</html>";
+}
 }

@@ -465,19 +465,6 @@ public class JobController {
         return downloadMultipleJobsAsZip(request.getJobIds());
     }
 
-    // @PostMapping("/download/converted")
-    // public ResponseEntity<StreamingResponseBody> downloadConvertedFiles(@RequestBody DownloadJobsRequest request) {
-    //     if (request.getJobIds() == null || request.getJobIds().isEmpty()) {
-    //         return ResponseEntity.badRequest().build();
-    //     }
-
-    //     if (request.getJobIds().size() == 1) {
-    //         return downloadSingleFile(request.getJobIds().get(0));
-    //     }
-
-    //     return downloadMultipleFilesAsZip(request.getJobIds());
-    // }
-
     private ResponseEntity<StreamingResponseBody> downloadSingleFile(Long jobId) {
         try {
             Job job = jobService.getJobById(jobId);

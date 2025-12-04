@@ -26,6 +26,7 @@ import com.tms.backend.dto.JobWorkflowStepDTO;
 import com.tms.backend.dto.JobWorkflowStepEditDTO;
 import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.dto.TomatoSizingResponse;
+import com.tms.backend.email.EmailService;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.mapper.ProjectMapper;
 import com.tms.backend.project.Project;
@@ -52,7 +53,7 @@ public class JobService {
     private final SizingService sizingService;
     private final FileConversionService fileConversionService;
     private final ProjectService projectService;
-
+    private final EmailService emailService;
 
     private final ProjectMapper projectMapper;
 
@@ -62,7 +63,7 @@ public class JobService {
     private static final Logger logger = LoggerFactory.getLogger(JobService.class);
     
 
-    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService){
+    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService, EmailService emailService){
         this.jobRepo = jobRepo;
         this.projectRepo = projectRepo;
         this.userRepo = userRepo;
@@ -72,6 +73,7 @@ public class JobService {
         this.sizingService = sizingService;
         this.fileConversionService = fileConversionService;
         this.projectService = projectService;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -403,6 +405,10 @@ public class JobService {
                 .findFirst()
                 .orElseThrow(() -> new ResourceNotFoundException("Workflow step not found with id: " + stepUpdate.id()));
 
+        // Capture previous status before updating
+        JobWorkflowStatus previousStatus = null;
+        boolean statusChanged = false;
+
         if (stepUpdate.providerUid() != null) {
             User provider = userRepo.findByUid(stepUpdate.providerUid())
                     .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + stepUpdate.providerUid()));
@@ -410,7 +416,12 @@ public class JobService {
         }
 
         if (stepUpdate.status() != null) {
-            wfStep.setStatus(stepUpdate.status());
+            previousStatus = wfStep.getStatus();
+            logger.info("previous stat {} new stat {} ", previousStatus, stepUpdate.status());
+            if (!stepUpdate.status().equals(previousStatus)) {
+                statusChanged = true;
+                wfStep.setStatus(stepUpdate.status());
+            }
         }
 
         if (stepUpdate.dueDate() != null) {
@@ -418,6 +429,17 @@ public class JobService {
         }
 
         jobRepo.save(job);
+
+        // Send email notification if status changed
+        if (statusChanged && job.getJobOwner() != null && job.getJobOwner().getEmail() != null) {
+            logger.info("job owner id {}", job.getJobOwner().getEmail());
+            emailService.sendJobStatusChangeEmail(
+                    job.getJobOwner().getEmail(),
+                    job.getProject().getName(),
+                    wfStep.getWorkflowStep().getName(),
+                    previousStatus,
+                    stepUpdate.status());
+        }
 
         // project status automation
         projectService.checkAndUpdateProjectStatus(job.getProject().getId(), wfStep.getWorkflowStep().getName(), currentUserUid);
