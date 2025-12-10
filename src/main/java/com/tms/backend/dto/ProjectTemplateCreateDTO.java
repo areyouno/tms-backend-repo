@@ -21,5 +21,6 @@ public record ProjectTemplateCreateDTO(
     Long vendorId,
     Set<Long> workflowSteps,
     Set<ProjectAutomationRule> enabledRules,
-    String note
+    String note,
+    Long createdBy
 ) {}

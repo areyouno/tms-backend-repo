@@ -7,24 +7,66 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.tms.backend.businessUnit.BusinessUnit;
+import com.tms.backend.businessUnit.BusinessUnitRepository;
+import com.tms.backend.client.Client;
+import com.tms.backend.client.ClientRepository;
+import com.tms.backend.costCenter.CostCenter;
+import com.tms.backend.costCenter.CostCenterRepository;
+import com.tms.backend.domain.Domain;
+import com.tms.backend.domain.DomainRepository;
 import com.tms.backend.dto.ProjectTemplateCreateDTO;
 import com.tms.backend.dto.ProjectTemplateDTO;
+import com.tms.backend.dto.ReferenceDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
+import com.tms.backend.subDomain.SubDomain;
+import com.tms.backend.subDomain.SubDomainRepository;
+import com.tms.backend.user.User;
+import com.tms.backend.user.UserRepository;
+import com.tms.backend.vendor.Vendor;
+import com.tms.backend.vendor.VendorRepository;
 
 @Service
 public class ProjectTemplateService {
     private final ProjectTemplateRepository templateRepository;
+    private final UserRepository userRepository;
+    private final BusinessUnitRepository businessUnitRepository;
+    private final ClientRepository clientRepository;
+    private final CostCenterRepository costCenterRepository;
+    private final DomainRepository domainRepository;
+    private final SubDomainRepository subDomainRepository;
+    private final VendorRepository vendorRepository;
 
-    public ProjectTemplateService(ProjectTemplateRepository templateRepository) {
+    public ProjectTemplateService(ProjectTemplateRepository templateRepository,
+            UserRepository userRepository,
+            BusinessUnitRepository businessUnitRepository, 
+            ClientRepository clientRepository,
+            CostCenterRepository costCenterRepository,
+            DomainRepository domainRepository,
+            SubDomainRepository subDomainRepository,
+            VendorRepository vendorRepository) {
         this.templateRepository = templateRepository;
+        this.userRepository = userRepository;
+        this.businessUnitRepository = businessUnitRepository;
+        this.clientRepository = clientRepository;
+        this.costCenterRepository = costCenterRepository;
+        this.domainRepository = domainRepository;
+        this.subDomainRepository = subDomainRepository;
+        this.vendorRepository = vendorRepository;
     }
 
     @Transactional
     public ProjectTemplateDTO createTemplate(ProjectTemplateCreateDTO dto, Long userId) {
         ProjectTemplate template = new ProjectTemplate();
-        template.setUserId(userId); // Set the creator as current user
+
+        User creator = userRepository.findById(userId)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+        template.setCreatedBy(creator);
+
+        template.setCreatedBy(creator);
         applyCreateDTO(template, dto);
-        return convertToDTO(templateRepository.save(template));
+        ProjectTemplate saved = templateRepository.save(template);
+        return convertToDTO(saved);
     }
 
     @Transactional(readOnly = true)
@@ -92,17 +134,55 @@ public class ProjectTemplateService {
         template.setName(dto.name());
         template.setProjectName(dto.projectName());
         template.setUserId(dto.userId());
-        template.setOwnerId(dto.ownerId());
+
+        if (dto.ownerId() != null) {
+            User owner = userRepository.findById(dto.ownerId())
+                    .orElseThrow(() -> new RuntimeException("Owner not found"));
+            template.setOwner(owner);
+        }
+
         template.setSourceLang(dto.sourceLang());
         template.setTargetLang(dto.targetLang());
         template.setMachineTranslationId(dto.machineTranslationId());
-        template.setBusinessUnitId(dto.businessUnitId());
+
+        if (dto.businessUnitId() != null) {
+            BusinessUnit bu = businessUnitRepository.findById(dto.businessUnitId())
+                    .orElseThrow(() -> new RuntimeException("Business unit not found"));
+            template.setBusinessUnit(bu);
+        }
+
         template.setType(dto.type());
-        template.setClientId(dto.clientId());
-        template.setCostCenterId(dto.costCenterId());
-        template.setDomainId(dto.domainId());
-        template.setSubdomainId(dto.subdomainId());
-        template.setVendorId(dto.vendorId());
+        
+        if (dto.clientId() != null) {
+            Client client = clientRepository.findById(dto.clientId())
+                    .orElseThrow(() -> new RuntimeException("Client not found"));
+            template.setClient(client);
+        }
+
+        if (dto.costCenterId() != null) {
+            CostCenter cc = costCenterRepository.findById(dto.costCenterId())
+                    .orElseThrow(() -> new RuntimeException("Cost center not found"));
+            template.setCostCenter(cc);
+        }
+
+        if (dto.domainId() != null) {
+            Domain domain = domainRepository.findById(dto.domainId())
+                    .orElseThrow(() -> new RuntimeException("Domain not found"));
+            template.setDomain(domain);
+        }
+
+        if (dto.subdomainId() != null) {
+            SubDomain sub = subDomainRepository.findById(dto.subdomainId())
+                    .orElseThrow(() -> new RuntimeException("Subdomain not found"));
+            template.setSubdomain(sub);
+        }
+
+        if (dto.vendorId() != null) {
+            Vendor vendor = vendorRepository.findById(dto.vendorId())
+                    .orElseThrow(() -> new RuntimeException("Vendor not found"));
+            template.setVendor(vendor);
+        }
+        
         template.setWorkflowSteps(dto.workflowSteps());
 
         TemplateStatusAutomationSetting setting = new TemplateStatusAutomationSetting();
@@ -119,22 +199,23 @@ public class ProjectTemplateService {
                 template.getName(),
                 template.getProjectName(),
                 template.getUserId(),
-                template.getOwnerId(),
+                template.getOwner() != null ? new ReferenceDTO(template.getOwner().getId(), template.getOwner().getFirstName() + " " + template.getOwner().getLastName()) : null,
                 template.getSourceLang(),
                 template.getTargetLang(),
                 template.getMachineTranslationId(),
-                template.getBusinessUnitId(),
+                template.getBusinessUnit() != null ? new ReferenceDTO(template.getBusinessUnit().getId(), template.getBusinessUnit().getName()) : null,
                 template.getType(),
-                template.getClientId(),
-                template.getCostCenterId(),
-                template.getDomainId(),
-                template.getSubdomainId(),
-                template.getVendorId(),
+                template.getClient() != null ? new ReferenceDTO(template.getClient().getId(), template.getClient().getName()) : null,
+                template.getCostCenter() != null ? new ReferenceDTO(template.getCostCenter().getId(), template.getCostCenter().getName()) : null,
+                template.getDomain() != null ? new ReferenceDTO(template.getDomain().getId(), template.getDomain().getName()) : null,
+                template.getSubdomain() != null ? new ReferenceDTO(template.getSubdomain().getId(), template.getSubdomain().getName()) : null,
+                template.getVendor() != null ? new ReferenceDTO(template.getVendor().getId(), template.getVendor().getName()) : null,
                 template.getWorkflowSteps(),
                 template.getStatusAutomationSetting() != null
-                    ? template.getStatusAutomationSetting().getEnabledRules()
-                    : null,
-                template.getNote()
+                        ? template.getStatusAutomationSetting().getEnabledRules()
+                        : null,
+                template.getNote(),
+                template.getCreatedBy() != null ? new ReferenceDTO(template.getCreatedBy().getId(), template.getCreatedBy().getFirstName() + " " + template.getCreatedBy().getLastName()) : null
         );
     }
 }

@@ -2,6 +2,14 @@ package com.tms.backend.projectTemplate;
 
 import java.util.Set;
 
+import com.tms.backend.businessUnit.BusinessUnit;
+import com.tms.backend.client.Client;
+import com.tms.backend.costCenter.CostCenter;
+import com.tms.backend.domain.Domain;
+import com.tms.backend.subDomain.SubDomain;
+import com.tms.backend.user.User;
+import com.tms.backend.vendor.Vendor;
+
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -12,6 +20,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 @Entity
@@ -22,46 +31,77 @@ public class ProjectTemplate {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "name")
     private String name;
 
+    @Column(name = "project_name")
     private String projectName;
-    
+
+    @Column(name = "user_id")
     private Long userId;
 
-    private Long ownerId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id")
+    private User owner;
 
+    @Column(name = "source_lang")
     private String sourceLang;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "project_template_target_langs", joinColumns = @JoinColumn(name = "template_id"))
+    @CollectionTable(
+        name = "project_template_target_langs",
+        joinColumns = @JoinColumn(name = "template_id")
+    )
     @Column(name = "target_lang")
     private Set<String> targetLang;
 
+    @Column(name = "machine_translation_id")
     private Long machineTranslationId;
 
-    private Long businessUnitId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "business_unit_id")
+    private BusinessUnit businessUnit;
 
+    @Column(name = "type")
     private String type;
 
-    private Long clientId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "client_id")
+    private Client client;
 
-    private Long costCenterId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cost_center_id")
+    private CostCenter costCenter;
 
-    private Long domainId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "domain_id")
+    private Domain domain;
 
-    private Long subdomainId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subdomain_id")
+    private SubDomain subdomain;
 
-    private Long vendorId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "vendor_id")
+    private Vendor vendor;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "project_template_workflow_steps", joinColumns = @JoinColumn(name = "template_id"))
+    @CollectionTable(
+        name = "project_template_workflow_steps",
+        joinColumns = @JoinColumn(name = "template_id")
+    )
     @Column(name = "workflow_step_id")
     private Set<Long> workflowSteps;
 
     @Embedded
     private TemplateStatusAutomationSetting statusAutomationSetting = new TemplateStatusAutomationSetting();
 
+    @Column(name = "note")
     private String note;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by")
+    private User createdBy;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -75,8 +115,8 @@ public class ProjectTemplate {
     public Long getUserId() { return userId; }
     public void setUserId(Long userId) { this.userId = userId; }
 
-    public Long getOwnerId() {  return ownerId; }
-    public void setOwnerId(Long ownerId) { this.ownerId = ownerId; }
+    public User getOwner() {  return owner; }
+    public void setOwner(User owner) { this.owner = owner; }
 
     public String getSourceLang() { return sourceLang; }
     public void setSourceLang(String sourceLang) { this.sourceLang = sourceLang; }
@@ -87,26 +127,26 @@ public class ProjectTemplate {
     public Long getMachineTranslationId() { return machineTranslationId; }
     public void setMachineTranslationId(Long machineTranslationId) { this.machineTranslationId = machineTranslationId; }
 
-    public Long getBusinessUnitId() { return businessUnitId; }
-    public void setBusinessUnitId(Long businessUnitId) { this.businessUnitId = businessUnitId; }
+    public BusinessUnit getBusinessUnit() { return businessUnit; }
+    public void setBusinessUnit(BusinessUnit businessUnitId) { this.businessUnit = businessUnitId; }
 
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }
 
-    public Long getClientId() { return clientId; }
-    public void setClientId(Long clientId) { this.clientId = clientId; }
+    public Client getClient() { return client; }
+    public void setClient(Client client) { this.client = client; }
 
-    public Long getCostCenterId() { return costCenterId; }
-    public void setCostCenterId(Long costCenterId) { this.costCenterId = costCenterId; }
+    public CostCenter getCostCenter() { return costCenter; }
+    public void setCostCenter(CostCenter costCenter) { this.costCenter = costCenter; }
 
-    public Long getDomainId() { return domainId; }
-    public void setDomainId(Long domainId) { this.domainId = domainId; }
+    public Domain getDomain() { return domain; }
+    public void setDomain(Domain domain) { this.domain = domain; }
 
-    public Long getSubdomainId() { return subdomainId; }
-    public void setSubdomainId(Long subdomainId) { this.subdomainId = subdomainId; }
+    public SubDomain getSubdomain() { return subdomain; }
+    public void setSubdomain(SubDomain subdomain) { this.subdomain = subdomain; }
 
-    public Long getVendorId() { return vendorId; }
-    public void setVendorId(Long vendorId) { this.vendorId = vendorId; }
+    public Vendor getVendor() { return vendor; }
+    public void setVendor(Vendor vendor) { this.vendor = vendor; }
 
     public Set<Long> getWorkflowSteps() { return workflowSteps; }
     public void setWorkflowSteps(Set<Long> workflowSteps) { this.workflowSteps = workflowSteps; }
@@ -116,4 +156,7 @@ public class ProjectTemplate {
 
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
+
+    public User getCreatedBy() { return createdBy; }
+    public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
 }
