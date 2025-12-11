@@ -1,5 +1,6 @@
 package com.tms.backend.projectTemplate;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 
@@ -191,6 +192,8 @@ public class ProjectTemplateService {
         template.setStatusAutomationSetting(setting);
 
         template.setNote(dto.note());
+
+        template.setCreatedDate(LocalDateTime.now());
     }
 
     private ProjectTemplateDTO convertToDTO(ProjectTemplate template) {
@@ -215,7 +218,8 @@ public class ProjectTemplateService {
                         ? template.getStatusAutomationSetting().getEnabledRules()
                         : null,
                 template.getNote(),
-                template.getCreatedBy() != null ? new ReferenceDTO(template.getCreatedBy().getId(), template.getCreatedBy().getFirstName() + " " + template.getCreatedBy().getLastName()) : null
+                template.getCreatedBy() != null ? new ReferenceDTO(template.getCreatedBy().getId(), template.getCreatedBy().getFirstName() + " " + template.getCreatedBy().getLastName()) : null,
+                template.getCreatedDate()
         );
     }
 }

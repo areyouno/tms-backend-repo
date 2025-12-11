@@ -1,7 +1,9 @@
 package com.tms.backend.dto;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.tms.backend.project.ProjectAutomationRule;
 
 public record ProjectTemplateDTO(
@@ -23,5 +25,7 @@ public record ProjectTemplateDTO(
     Set<Long> workflowSteps,
     Set<ProjectAutomationRule> enabledRules,
     String note,
-    ReferenceDTO createdBy
+    ReferenceDTO createdBy,
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    LocalDateTime createdDate
 ) {}

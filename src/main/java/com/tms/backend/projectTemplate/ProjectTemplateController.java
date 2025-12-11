@@ -29,7 +29,7 @@ public class ProjectTemplateController {
         this.templateService = templateService;
     }
 
-    @GetMapping
+    @GetMapping("/all")
     public ResponseEntity<List<ProjectTemplateDTO>> getAllTemplates(
             Authentication authentication) {
         Long currentUserId = getCurrentUserId(authentication);

@@ -1,5 +1,6 @@
 package com.tms.backend.projectTemplate;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 import com.tms.backend.businessUnit.BusinessUnit;
@@ -103,6 +104,9 @@ public class ProjectTemplate {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
+    @Column(name = "created_date")
+    private LocalDateTime createdDate;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -159,4 +163,7 @@ public class ProjectTemplate {
 
     public User getCreatedBy() { return createdBy; }
     public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
+
+    public LocalDateTime getCreatedDate() { return createdDate; }
+    public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
 }
