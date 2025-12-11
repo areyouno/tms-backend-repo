@@ -19,7 +19,7 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String fromEmail;
 
-    @Value("${app.name:Your App}")
+    @Value("${app.name:TransTree}")
     private String appName;
 
      public EmailService(JavaMailSender mailSender) {
@@ -77,7 +77,7 @@ public class EmailService {
     }
 
     public void sendJobStatusChangeEmail(String toEmail, String projectName, String stepName, JobWorkflowStatus previousStatus, JobWorkflowStatus newStatus) {
-        String subject = "Job Status Update - " + appName;
+        String subject = appName + " - Job Status Changed";
         String htmlContent = buildJobStatusChangeEmailHTML(projectName, stepName, previousStatus, newStatus);
         sendEmail(toEmail, subject, htmlContent);
     }
