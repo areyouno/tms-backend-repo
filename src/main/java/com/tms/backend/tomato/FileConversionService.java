@@ -54,14 +54,36 @@ public class FileConversionService {
      */ 
     public Path uploadAndConvertFile(MultipartFile file, String projectFolderName, String jobFolderName, Job job) throws IOException {
         try {
-            logger.info("Uploading file {} to conversion API", file.getOriginalFilename());
+            String originalName = file.getOriginalFilename();
+            logger.info("Uploading file {} to conversion API", originalName);
             
+            // Determine file extension
+            String ext = "";
+            if (originalName != null && originalName.contains(".")) {
+                ext = originalName.substring(originalName.lastIndexOf(".") + 1).toLowerCase();
+            }
+
+            // Select correct API endpoint
+            String endpoint;
+            switch (ext) {
+                case "xml":
+                    endpoint = baseUrl + "/api/DocumentConversion/dita-to-xliff";
+                    break;
+
+                case "sdlxliff":
+                    endpoint = baseUrl + "/api/DocumentConversion/sdlxliff-to-xliff"; // <-- replace with real endpoint
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Unsupported file type: " + ext);
+            }
+
             // Build multipart request body
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             body.add("file", new ByteArrayResource(file.getBytes()) {
                 @Override
                 public String getFilename() {
-                    return file.getOriginalFilename();
+                    return originalName;
                 }
             });
             
@@ -73,7 +95,7 @@ public class FileConversionService {
             
             // Make API request - expecting binary response
             ResponseEntity<byte[]> response = restTemplate.postForEntity(
-                baseUrl + "/api/DocumentConversion/dita-to-xliff",
+                endpoint,
                 requestEntity,
                 byte[].class
             );
@@ -85,7 +107,15 @@ public class FileConversionService {
             logger.info("Successfully received converted file from API. Status: {}", response.getStatusCode());
             
             // Save the converted file using the original filename
-            Path savedPath = saveConvertedFile(response.getBody(), file.getOriginalFilename(), projectFolderName, jobFolderName, file, job);
+            Path savedPath = saveConvertedFile(
+                response.getBody(),
+                originalName,
+                projectFolderName,
+                jobFolderName, 
+                file,
+                job
+            );
+
             logger.info("Converted file saved to: {}", savedPath.toAbsolutePath());
             
             return savedPath;
