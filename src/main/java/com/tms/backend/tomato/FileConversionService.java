@@ -71,7 +71,7 @@ public class FileConversionService {
                     break;
 
                 case "sdlxliff":
-                    endpoint = baseUrl + "/api/DocumentConversion/sdlxliff-to-xliff"; // <-- replace with real endpoint
+                    endpoint = baseUrl + "/api/DocumentConversion/sdlxliff-to-xliff";
                     break;
 
                 default:
