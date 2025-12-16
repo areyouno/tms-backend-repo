@@ -13,6 +13,8 @@ public record JobDTO(
     String fileName,
     Long fileSize,
     String filePath,
+    String filePathConverted,
+    String filePathTarget,
     String contentType,
     Long projectId,
     List<JobWorkflowStepDTO> workflowSteps,

@@ -13,21 +13,26 @@ import java.util.zip.ZipOutputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -42,17 +47,10 @@ import com.tms.backend.dto.JobWorkflowStepEditDTO;
 import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.dto.TranslatedFileUploadRequest;
 import com.tms.backend.exception.ResourceNotFoundException;
+import com.tms.backend.tomato.FileConversionService;
 import com.tms.backend.user.CustomUserDetails;
 
 import jakarta.persistence.EntityNotFoundException;
-
-import org.springframework.transaction.annotation.Transactional;
-
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 
 
 @RestController
@@ -60,12 +58,18 @@ import org.springframework.http.MediaType;
 public class JobController {
 
     private final JobService jobService;
+    private final FileConversionService fileService;
 
     private static final Logger logger = LoggerFactory.getLogger(JobController.class);
 
+    @Value("${file.upload-dir}")
+    private String baseUploadDir;
 
-    public JobController(JobService jobService){
+    public JobController(
+        JobService jobService,
+        FileConversionService fileService){
         this.jobService = jobService;
+        this.fileService = fileService;
     }
     
     @PostMapping("/upload")
@@ -538,5 +542,34 @@ public class JobController {
         }
         // Remove or replace special characters that aren't allowed in file paths
         return name.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+    }
+
+    @PostMapping("/{jobId}/download-target")
+    public ResponseEntity<Resource> convertToTarget(@PathVariable Long jobId) throws IOException {
+
+        Job job = jobService.getJobById(jobId);
+
+        Path convertedPath = fileService.convertXliffBackToOriginalFormat(
+                job,
+                job.getProject().getId().toString(),
+                job.getId().toString()
+        );
+
+        // persist translated file path in db
+        jobService.updateTranslatedFilePath(jobId, job.getTranslatedFilePath());
+
+        Resource resource = new UrlResource(convertedPath.toUri());
+
+        return ResponseEntity.ok()
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + convertedPath.getFileName() + "\""
+                )
+                .header(
+                "X-File-Path",
+                job.getTranslatedFilePath()
+                )
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource);
     }
 }

@@ -100,18 +100,21 @@ public class JobService {
         Job savedJob = jobRepo.save(job);
 
         // add zero padding to ids
-        String zeroPaddedJobId = String.format("%03d", savedJob.getId());
+        // String zeroPaddedJobId = String.format("%03d", savedJob.getId());
         
         // build folder name
-        String dateTimeFolder = java.time.LocalDateTime.now()
-            .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss"));
-        String jobFolder = "job-" + zeroPaddedJobId + "_" + dateTimeFolder;
+        // String dateTimeFolder = java.time.LocalDateTime.now()
+            // .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss"));
+        // String jobFolder = "job-" + zeroPaddedJobId + "_" + dateTimeFolder;
 
         // If projectFolder not provided, generate it from project ID
-        if (projectFolder == null) {
-            String zeroPaddedProjId = String.format("%03d", jobDTO.projectId());
-            projectFolder = "project-" + zeroPaddedProjId + "_" + dateTimeFolder;
-        }
+        // if (projectFolder == null) {
+        //     String zeroPaddedProjId = String.format("%03d", jobDTO.projectId());
+        //     projectFolder = "project-" + zeroPaddedProjId + "_" + dateTimeFolder;
+        // }
+
+        projectFolder = String.valueOf(jobDTO.projectId());
+        String jobFolder = String.valueOf(savedJob.getId());
 
         fileConversionService.uploadAndConvertFile(file, projectFolder, jobFolder, savedJob);
 
@@ -162,6 +165,8 @@ public class JobService {
                 null,
                 null,
                 null,
+                null,
+                null, //content type
                 savedProject.getId(), // create a project id for the job
                 null, // no workflowstep
                 jobDTO.segmentCount(),
@@ -447,6 +452,19 @@ public class JobService {
         return JobWorkflowStepDTO.from(wfStep);
     }
 
+    @Transactional
+    public Job updateTranslatedFilePath(
+            Long jobId,
+            String translatedFilePath) {
+        Job job = jobRepo.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Job not found with id: " + jobId));
+
+        job.setTranslatedFilePath(translatedFilePath);
+
+        return jobRepo.save(job);
+    }
+
     public void deleteJob(Long id) throws IOException {
         if (!jobRepo.existsById(id)){
             throw new ResourceNotFoundException("Job not found with id: " + id);
@@ -575,6 +593,8 @@ public class JobService {
                 job.getFileName(),
                 job.getFileSize(),
                 job.getOriginalFilePath(),
+                job.getConvertedFilePath(),
+                job.getTranslatedFilePath(),
                 job.getContentType(),
                 job.getProject() != null ? job.getProject().getId() : null,
                 stepDTOs,

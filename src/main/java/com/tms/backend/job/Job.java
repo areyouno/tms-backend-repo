@@ -1,7 +1,5 @@
 package com.tms.backend.job;
 
-import jakarta.persistence.Table;
-
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -16,6 +14,8 @@ import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -23,6 +23,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "jobs")
@@ -78,6 +79,16 @@ public class Job {
     private boolean deleted = false;
     private LocalDateTime deletedDate;
     private String deletedBy;
+
+    public enum OriginalFileFormat {
+        XML,
+        SDLXLIFF,
+        UNKNOWN
+    }
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "original_file_format", length = 20)
+    private OriginalFileFormat originalFileFormat;
 
     public Job() {}
 
@@ -163,4 +174,7 @@ public class Job {
 
     public String getDeletedBy() { return deletedBy; }
     public void setDeletedBy(String deletedBy) { this.deletedBy = deletedBy; }
+
+    public OriginalFileFormat getOriginalFileFormat() { return originalFileFormat; }
+    public void setOriginalFileFormat(OriginalFileFormat originalFileFormat) { this.originalFileFormat = originalFileFormat; }
 }

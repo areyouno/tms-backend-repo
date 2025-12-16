@@ -1,6 +1,8 @@
 package com.tms.backend.tomato;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,6 +25,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.tms.backend.job.Job;
+import com.tms.backend.job.Job.OriginalFileFormat;
 
 @Service
 public class FileConversionService {
@@ -48,34 +51,31 @@ public class FileConversionService {
      * Upload a MultipartFile to the conversion API and save the converted file locally.
      * Uses the original filename for the output file.
      * 
-     * @param file The MultipartFile to convert
-     * @return Path to the saved converted file
+     * @param file The MultipartFile to convert (xml to xliff OR sdlxliff to xliff)
+     * @return Path to the saved converted file 
      * @throws IOException if file operations fail
-     */ 
+     */
     public Path uploadAndConvertFile(MultipartFile file, String projectFolderName, String jobFolderName, Job job) throws IOException {
         try {
             String originalName = file.getOriginalFilename();
             logger.info("Uploading file {} to conversion API", originalName);
             
             // Determine file extension
-            String ext = "";
-            if (originalName != null && originalName.contains(".")) {
-                ext = originalName.substring(originalName.lastIndexOf(".") + 1).toLowerCase();
-            }
+            FileType fileType = detectFileType(file);
 
             // Select correct API endpoint
             String endpoint;
-            switch (ext) {
-                case "xml":
-                    endpoint = baseUrl + "/api/DocumentConversion/dita-to-xliff";
-                    break;
-
-                case "sdlxliff":
+            switch (fileType) {
+                case SDLXLIFF:
                     endpoint = baseUrl + "/api/DocumentConversion/sdlxliff-to-xliff";
                     break;
 
+                case XML:
+                    endpoint = baseUrl + "/api/DocumentConversion/dita-to-xliff";
+                    break;
+
                 default:
-                    throw new IllegalArgumentException("Unsupported file type: " + ext);
+                    throw new IllegalArgumentException("Unsupported file type: " + fileType);
             }
 
             // Build multipart request body
@@ -113,7 +113,8 @@ public class FileConversionService {
                 projectFolderName,
                 jobFolderName, 
                 file,
-                job
+                job,
+                fileType
             );
 
             logger.info("Converted file saved to: {}", savedPath.toAbsolutePath());
@@ -134,7 +135,15 @@ public class FileConversionService {
      * @return Path to the saved file
      * @throws IOException if file operations fail
      */
-    private Path saveConvertedFile(byte[] fileBytes, String fileName, String projectFolderName, String jobFolderName, MultipartFile uploadedFile, Job job) throws IOException {
+    private Path saveConvertedFile(
+        byte[] fileBytes,
+        String fileName,
+        String projectFolderName,
+        String jobFolderName,
+        MultipartFile uploadedFile,
+        Job job,
+        FileType detectedFileType
+        ) throws IOException {
         // Get user's downloads folder
         Path baseDir = Paths.get(uploadDir); 
         
@@ -186,9 +195,136 @@ public class FileConversionService {
         job.setFileSize(uploadedFile.getSize());
         job.setContentType(uploadedFile.getContentType());
 
-        logger.info("Updated job with file paths - Original: {}, Converted: {}",
-                job.getOriginalFilePath(), job.getConvertedFilePath());
+        switch (detectedFileType) {
+            case SDLXLIFF -> job.setOriginalFileFormat(OriginalFileFormat.SDLXLIFF);
+            case XML -> job.setOriginalFileFormat(OriginalFileFormat.XML);
+            default -> job.setOriginalFileFormat(OriginalFileFormat.UNKNOWN);
+        }
+
+        logger.info("Updated job. Original format: {}, Original file path: {}, Converted file path: {}",
+            job.getOriginalFileFormat(),
+            job.getOriginalFilePath(),
+            job.getConvertedFilePath()
+        );
         
         return outputPath;
     }
+
+    public Path convertXliffBackToOriginalFormat(
+        Job job,
+        String projectFolderName,
+        String jobFolderName
+        ) throws IOException {
+
+        if (job.getOriginalFileFormat() == null) {
+            throw new IllegalStateException("Original file format is not set for job " + job.getId());
+        }
+
+        // ---- Locate the converted xliff file ----
+        Path baseDir = Paths.get(uploadDir);
+        Path xliffPath = baseDir.resolve(job.getConvertedFilePath());
+
+        if (!Files.exists(xliffPath)) {
+            throw new FileNotFoundException("XLIFF file not found: " + xliffPath);
+        }
+
+        // ---- Choose API endpoint & output extension ----
+        String endpoint;
+        String targetExtension;
+
+        switch (job.getOriginalFileFormat()) {
+            case SDLXLIFF -> {
+                endpoint = baseUrl + "/api/DocumentConversion/xliff-to-sdlxliff";
+                targetExtension = ".sdlxliff";
+            }
+            case XML -> {
+                endpoint = baseUrl + "/api/DocumentConversion/export-dita";
+                targetExtension = ".xml";
+            }
+            default -> throw new IllegalArgumentException(
+                    "Unsupported original file format: " + job.getOriginalFileFormat());
+        }
+
+        // ---- Build multipart request ----
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", new ByteArrayResource(Files.readAllBytes(xliffPath)) {
+            @Override
+            public String getFilename() {
+                return xliffPath.getFileName().toString();
+            }
+        });
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+        // ---- Call conversion API ----
+        ResponseEntity<byte[]> response = restTemplate.postForEntity(
+                endpoint,
+                requestEntity,
+                byte[].class);
+
+        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+            throw new RuntimeException("Reverse conversion failed. Status: " + response.getStatusCode());
+        }
+
+        // ---- Save target file ----
+        Path targetDir = baseDir
+                .resolve("projects")
+                .resolve(projectFolderName)
+                .resolve("jobs")
+                .resolve(jobFolderName)
+                .resolve("target");
+
+        Files.createDirectories(targetDir);
+
+        String targetFileName = job.getOriginalFileName().replaceFirst("\\.[^.]+$", targetExtension);
+
+        Path targetFilePath = targetDir.resolve(targetFileName);
+        Files.write(targetFilePath, response.getBody());
+
+        // ---- Update job ----
+        Path relativeTargetPath = baseDir.relativize(targetFilePath);
+        job.setTranslatedFilePath(relativeTargetPath.toString().replace("\\", "/"));
+
+        logger.info(
+            "Reverse conversion completed. Original format: {}, Target path: {}",
+            job.getOriginalFileFormat(),
+            job.getTranslatedFilePath());
+
+        return targetFilePath;
+    }
+
+
+    private enum FileType {
+        XML,
+        SDLXLIFF,
+        UNKNOWN
+    }
+
+    private FileType detectFileType(MultipartFile file) throws IOException {
+
+        String name = file.getOriginalFilename();
+        String lowerName = name != null ? name.toLowerCase() : "";
+
+        String content = new String(file.getBytes(), StandardCharsets.UTF_8);
+
+        boolean hasSdlNamespace = content.contains("http://sdl.com/FileTypes/SdlXliff");
+
+        boolean looksXml = content.trim().startsWith("<");
+
+        // SDLXLIFF detection
+        if (lowerName.endsWith(".sdlxliff") || hasSdlNamespace) {
+            return FileType.SDLXLIFF;
+        }
+
+        // XML detection
+        if (lowerName.endsWith(".xml") || looksXml) {
+            return FileType.XML;
+        }
+
+        return FileType.UNKNOWN;
+    }
+
 }
