@@ -99,29 +99,10 @@ public class JobService {
         // save to get the generated id
         Job savedJob = jobRepo.save(job);
 
-        // add zero padding to ids
-        // String zeroPaddedJobId = String.format("%03d", savedJob.getId());
-        
-        // build folder name
-        // String dateTimeFolder = java.time.LocalDateTime.now()
-            // .format(DateTimeFormatter.ofPattern("yyyy-MM-dd_HH.mm.ss"));
-        // String jobFolder = "job-" + zeroPaddedJobId + "_" + dateTimeFolder;
-
-        // If projectFolder not provided, generate it from project ID
-        // if (projectFolder == null) {
-        //     String zeroPaddedProjId = String.format("%03d", jobDTO.projectId());
-        //     projectFolder = "project-" + zeroPaddedProjId + "_" + dateTimeFolder;
-        // }
-
         projectFolder = String.valueOf(jobDTO.projectId());
         String jobFolder = String.valueOf(savedJob.getId());
 
         fileConversionService.uploadAndConvertFile(file, projectFolder, jobFolder, savedJob);
-
-        // Path baseDir = Paths.get(baseUploadDir);
-        // Path relativePath = baseDir.relativize(filePath);
-        // String relativePathString = relativePath.toString().replace("\\", "/");
-        // savedJob.setFilePath(relativePathString);
 
         List<JobWorkflowStep> jobSteps = new ArrayList<>();
         if (jobDTO.workflowSteps() != null) {
@@ -135,7 +116,7 @@ public class JobService {
         // Save the job again with updated file paths
         savedJob = jobRepo.save(savedJob);
 
-         return convertToDTO(savedJob);
+        return convertToDTO(savedJob);
     }
 
     // for submitter portal
@@ -161,6 +142,7 @@ public class JobService {
                 jobDTO.targetLangs(),
                 currentUser.getUid(),
                 currentUser.getFirstName() + " " + currentUser.getLastName(),
+                null,
                 null,
                 null,
                 null,
@@ -256,8 +238,12 @@ public class JobService {
      * @return Path to the saved file
      * @throws IOException if file operations fail
      */
-    private Path saveTranslatedFile(MultipartFile file, String projectFolderName,
-            String jobFolderName, Job job) throws IOException {
+    private Path saveTranslatedFile(
+        MultipartFile file,
+        String projectFolderName,
+        String jobFolderName, 
+        Job job) 
+        throws IOException {
         // Get base directory
         Path baseDir = Paths.get(baseUploadDir);
 
@@ -452,19 +438,6 @@ public class JobService {
         return JobWorkflowStepDTO.from(wfStep);
     }
 
-    @Transactional
-    public Job updateTranslatedFilePath(
-            Long jobId,
-            String translatedFilePath) {
-        Job job = jobRepo.findById(jobId)
-                .orElseThrow(() -> new ResourceNotFoundException(
-                        "Job not found with id: " + jobId));
-
-        job.setTranslatedFilePath(translatedFilePath);
-
-        return jobRepo.save(job);
-    }
-
     public void deleteJob(Long id) throws IOException {
         if (!jobRepo.existsById(id)){
             throw new ResourceNotFoundException("Job not found with id: " + id);
@@ -595,6 +568,7 @@ public class JobService {
                 job.getOriginalFilePath(),
                 job.getConvertedFilePath(),
                 job.getTranslatedFilePath(),
+                job.getTargetFilePath(),
                 job.getContentType(),
                 job.getProject() != null ? job.getProject().getId() : null,
                 stepDTOs,

@@ -59,7 +59,8 @@ public class Job {
     private String originalFilePath;
     private String convertedFilePath;
     private String translatedFilePath;
-    private LocalDateTime fileUploadedAt;
+    private String targetFilePath;
+    private LocalDateTime fileUploadDate;
 
     @OneToMany(mappedBy = "job", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<JobWorkflowStep> workflowSteps = new HashSet<>();
@@ -123,9 +124,12 @@ public class Job {
 
     public String getTranslatedFilePath() { return translatedFilePath; }
     public void setTranslatedFilePath(String translatedFilePath) { this.translatedFilePath = translatedFilePath; }
+
+    public String getTargetFilePath() { return targetFilePath; }
+    public void setTargetFilePath(String targetFilePath) { this.targetFilePath = targetFilePath; }
     
-    public LocalDateTime getFileUploadedAt() { return fileUploadedAt; }
-    public void setFileUploadedAt(LocalDateTime fileUploadedAt) { this.fileUploadedAt = fileUploadedAt; }
+    public LocalDateTime getFileUploadDate() { return fileUploadDate; }
+    public void setFileUploadDate(LocalDateTime fileUploadDate) { this.fileUploadDate = fileUploadDate; }
 
     public Double getConfirmPct() { return confirmPct; }
     public void setConfirmPct(Double confirmPct) { this.confirmPct = confirmPct; }

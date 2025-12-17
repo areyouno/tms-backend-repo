@@ -191,7 +191,7 @@ public class FileConversionService {
         job.setOriginalFilePath(relativeOriginalPath.toString().replace("\\", "/"));
         job.setConvertedFileName(xliffFileName);
         job.setConvertedFilePath(relativeConvertedPath.toString().replace("\\", "/"));
-        job.setFileUploadedAt(LocalDateTime.now());
+        job.setFileUploadDate(LocalDateTime.now());
         job.setFileSize(uploadedFile.getSize());
         job.setContentType(uploadedFile.getContentType());
 
@@ -220,15 +220,15 @@ public class FileConversionService {
             throw new IllegalStateException("Original file format is not set for job " + job.getId());
         }
 
-        // ---- Locate the converted xliff file ----
+        // Locate the translated xliff file
         Path baseDir = Paths.get(uploadDir);
-        Path xliffPath = baseDir.resolve(job.getConvertedFilePath());
+        Path xliffPath = baseDir.resolve(job.getTranslatedFilePath());
 
         if (!Files.exists(xliffPath)) {
             throw new FileNotFoundException("XLIFF file not found: " + xliffPath);
         }
 
-        // ---- Choose API endpoint & output extension ----
+        // Choose API endpoint & output extension
         String endpoint;
         String targetExtension;
 
@@ -245,7 +245,7 @@ public class FileConversionService {
                     "Unsupported original file format: " + job.getOriginalFileFormat());
         }
 
-        // ---- Build multipart request ----
+        // Build multipart request
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", new ByteArrayResource(Files.readAllBytes(xliffPath)) {
             @Override
@@ -259,7 +259,7 @@ public class FileConversionService {
 
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-        // ---- Call conversion API ----
+        // Call conversion API 
         ResponseEntity<byte[]> response = restTemplate.postForEntity(
                 endpoint,
                 requestEntity,
@@ -269,7 +269,7 @@ public class FileConversionService {
             throw new RuntimeException("Reverse conversion failed. Status: " + response.getStatusCode());
         }
 
-        // ---- Save target file ----
+        // Save target file 
         Path targetDir = baseDir
                 .resolve("projects")
                 .resolve(projectFolderName)
@@ -284,16 +284,16 @@ public class FileConversionService {
         Path targetFilePath = targetDir.resolve(targetFileName);
         Files.write(targetFilePath, response.getBody());
 
-        // ---- Update job ----
+        // Update target file path
         Path relativeTargetPath = baseDir.relativize(targetFilePath);
-        job.setTranslatedFilePath(relativeTargetPath.toString().replace("\\", "/"));
+        job.setTargetFilePath(relativeTargetPath.toString().replace("\\", "/"));
 
         logger.info(
             "Reverse conversion completed. Original format: {}, Target path: {}",
             job.getOriginalFileFormat(),
-            job.getTranslatedFilePath());
+            job.getTargetFilePath());
 
-        return targetFilePath;
+        return relativeTargetPath;
     }
 
 

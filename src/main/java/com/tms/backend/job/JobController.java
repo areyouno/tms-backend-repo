@@ -3,6 +3,7 @@ package com.tms.backend.job;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -549,21 +550,20 @@ public class JobController {
 
         Job job = jobService.getJobById(jobId);
 
-        Path convertedPath = fileService.convertXliffBackToOriginalFormat(
+        Path relativeTargetPath = fileService.convertXliffBackToOriginalFormat(
                 job,
                 job.getProject().getId().toString(),
                 job.getId().toString()
         );
 
-        // persist translated file path in db
-        jobService.updateTranslatedFilePath(jobId, job.getTranslatedFilePath());
+        Path absolutePath = Paths.get(baseUploadDir).resolve(relativeTargetPath);
 
-        Resource resource = new UrlResource(convertedPath.toUri());
+        Resource resource = new UrlResource(absolutePath.toUri());
 
         return ResponseEntity.ok()
                 .header(
                         HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + convertedPath.getFileName() + "\""
+                        "attachment; filename=\"" + absolutePath.getFileName() + "\""
                 )
                 .header(
                 "X-File-Path",
