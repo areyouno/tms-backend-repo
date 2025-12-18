@@ -278,6 +278,7 @@ public class JobService {
         Path relativePath = baseDir.relativize(outputPath);
 
         // Update job with translated file path
+        job.setTranslatedFileName(fileName);
         job.setTranslatedFilePath(relativePath.toString().replace("\\", "/"));
 
         logger.info("Updated job with translated file path: {}", job.getTranslatedFilePath());
@@ -384,6 +385,24 @@ public class JobService {
     return deletedJobs.stream()
         .map(JobSoftDeleteDTO::from)
         .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Path generateTargetFile(Long jobId) throws IOException {
+        Job job = jobRepo.findById(jobId)
+            .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
+
+        Path relativeTargetPath =
+            fileConversionService.convertXliffBackToOriginalFormat(
+                job,
+                job.getProject().getId().toString(),
+                job.getId().toString()
+            );
+
+        // save 
+        jobRepo.save(job);
+
+        return relativeTargetPath;
     }
 
     @Transactional
@@ -616,6 +635,24 @@ public class JobService {
         
         if (!Files.exists(filePath)) {
             throw new ResourceNotFoundException("Converted file not found on disk: " + filePath);
+        }
+        
+        return filePath;
+    }
+
+    // Get translated file path
+    public Path getTranslatedFilePath(Long jobId) {
+        Job job = getJobById(jobId);
+        
+        if (job.getTranslatedFilePath() == null) {
+            throw new ResourceNotFoundException("No translated file found for job: " + jobId);
+        }
+        
+        Path baseDir = Paths.get(baseUploadDir);
+        Path filePath = baseDir.resolve(job.getTranslatedFilePath());
+        
+        if (!Files.exists(filePath)) {
+            throw new ResourceNotFoundException("Translated file not found on disk: " + filePath);
         }
         
         return filePath;

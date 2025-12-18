@@ -56,6 +56,7 @@ public class Job {
     //filedownload
     private String originalFileName;
     private String convertedFileName;
+    private String translatedFileName;
     private String originalFilePath;
     private String convertedFilePath;
     private String translatedFilePath;
@@ -115,6 +116,9 @@ public class Job {
     
     public String getConvertedFileName() { return convertedFileName; }
     public void setConvertedFileName(String convertedFileName) { this.convertedFileName = convertedFileName; }
+
+    public String getTranslatedFileName() { return translatedFileName; }
+    public void setTranslatedFileName(String translatedFileName) { this.translatedFileName = translatedFileName; }
     
     public String getOriginalFilePath() { return originalFilePath; }
     public void setOriginalFilePath(String originalFilePath) { this.originalFilePath = originalFilePath; }

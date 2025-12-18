@@ -118,49 +118,6 @@ public class JobController {
         return jobService.getJobs();
     }
 
-    @PostMapping("/upload-translated")
-    public ResponseEntity<?> uploadTranslatedFile(@ModelAttribute TranslatedFileUploadRequest request) {
-        try {
-            logger.info("Uploading translated file for job ID: {}", request.getJobId());
-
-            // Validate jobId
-            if (request.getJobId() == null) {
-                return ResponseEntity.badRequest().body("Job ID is required");
-            }
-
-            // Validate file
-            if (request.getFile() == null || request.getFile().isEmpty()) {
-                return ResponseEntity.badRequest().body("File is empty");
-            }
-
-            // Validate XLIFF extension
-            String filename = request.getFile().getOriginalFilename();
-            if (filename == null || !filename.toLowerCase().endsWith(".xliff")) {
-                return ResponseEntity.badRequest().body("File must be an XLIFF file");
-            }
-
-            Path savedPath = jobService.uploadTranslatedFile(request.getFile(), request.getJobId());
-
-            return ResponseEntity.ok()
-                    .body(Map.of(
-                            "message", "Translated file uploaded successfully",
-                            "filePath", savedPath.toString()));
-
-        } catch (EntityNotFoundException e) {
-            logger.error("Job not found: {}", request.getJobId());
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Job not found with ID: " + request.getJobId());
-        } catch (IOException e) {
-            logger.error("Failed to upload translated file: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to upload file: " + e.getMessage());
-        } catch (Exception e) {
-            logger.error("Unexpected error: {}", e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("An unexpected error occurred");
-        }
-    }
-
     @GetMapping("/{id}")
     @PreAuthorize("isAuthenticated()")
     @Transactional(readOnly = true)
@@ -187,38 +144,8 @@ public class JobController {
         return ResponseEntity.ok(updatedWf);
     }
 
-    @DeleteMapping("/{id}/hard")
-    public ResponseEntity<String> deleteJob(@PathVariable Long id){
-        try {
-            jobService.deleteJob(id);
-            return ResponseEntity.ok("Job deleted successfully");
-        } catch (IOException e) {
-            // Log and return an appropriate error response
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error deleting job files: " + e.getMessage());
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(e.getMessage());
-        }
-    }
-
-    /**
-     * Soft delete a single job
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> softDeleteJob(
-            @PathVariable Long id,
-            Authentication authentication) {
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        String uid = userDetails.getUid();
-        
-        jobService.softDeleteJob(id, uid);
-        return ResponseEntity.noContent().build();
-    }
-
-    /**
-     * Restore a soft deleted job
-     */
+    
+    // Restore a soft deleted job
     @PatchMapping("/{id}/restore")
     public ResponseEntity<JobDTO> restoreJob(
             @PathVariable Long id,
@@ -230,9 +157,8 @@ public class JobController {
         return ResponseEntity.ok(restored);
     }
 
-    /**
-     * Get deleted jobs (for recycle bin)
-     */
+    
+    // Get deleted jobs (for recycle bin)
     @GetMapping("/deleted")
     public ResponseEntity<List<JobSoftDeleteDTO>> getSoftDeletedJobs(Authentication authentication) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
@@ -309,7 +235,53 @@ public class JobController {
         }
     }
 
-    // Download by PROJECT IDs
+    // Download translated file
+    @GetMapping("/{jobId}/download/translated")
+    public ResponseEntity<Resource> downloadTranslatedFile(@PathVariable Long jobId) {
+        try {
+            Job job = jobService.getJobById(jobId);
+            Path filePath = jobService.getTranslatedFilePath(jobId);
+            
+            Resource resource = new UrlResource(filePath.toUri());
+            
+            if (!resource.exists() || !resource.isReadable()) {
+                logger.error("Converted file not readable: {}", filePath);
+                return ResponseEntity.notFound().build();
+            }
+            
+            return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/xml"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, 
+                        "attachment; filename=\"" + job.getTranslatedFileName() + "\"")
+                .body(resource);
+                
+        } catch (ResourceNotFoundException e) {
+            logger.error("File not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error downloading converted file for job: " + jobId, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    @PostMapping("/{jobId}/download/target")
+    public ResponseEntity<Resource> downloadTargetFile(@PathVariable Long jobId) throws IOException {
+
+        // delegate to service
+        Path relativeTargetPath = jobService.generateTargetFile(jobId);
+
+        Path absolutePath = Paths.get(baseUploadDir).resolve(relativeTargetPath);
+        Resource resource = new UrlResource(absolutePath.toUri());
+
+        return ResponseEntity.ok()
+                .header(
+                        HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + absolutePath.getFileName() + "\"")
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .body(resource);
+    }
+
+    // Download by project IDs
     @PostMapping("/download/converted/projects")
     public ResponseEntity<StreamingResponseBody> downloadByProjects(@RequestBody DownloadProjectsRequest request) {
         if (request.getProjectIds() == null || request.getProjectIds().isEmpty()) {
@@ -456,7 +428,7 @@ public class JobController {
                 .body(stream);
     }
 
-    // Download by JOB IDs
+    // Download by job IDs
     @PostMapping("/download/converted/jobs")
     public ResponseEntity<StreamingResponseBody> downloadByJobs(@RequestBody DownloadJobsRequest request) {
         if (request.getJobIds() == null || request.getJobIds().isEmpty()) {
@@ -545,31 +517,75 @@ public class JobController {
         return name.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
     }
 
-    @PostMapping("/{jobId}/download-target")
-    public ResponseEntity<Resource> convertToTarget(@PathVariable Long jobId) throws IOException {
+    // Uploads or updates the translated file
+    @PostMapping("/upload-translated")
+    public ResponseEntity<?> uploadTranslatedFile(@ModelAttribute TranslatedFileUploadRequest request) {
+        try {
+            logger.info("Uploading translated file for job ID: {}", request.getJobId());
 
-        Job job = jobService.getJobById(jobId);
+            // Validate jobId
+            if (request.getJobId() == null) {
+                return ResponseEntity.badRequest().body("Job ID is required");
+            }
 
-        Path relativeTargetPath = fileService.convertXliffBackToOriginalFormat(
-                job,
-                job.getProject().getId().toString(),
-                job.getId().toString()
-        );
+            // Validate file
+            if (request.getFile() == null || request.getFile().isEmpty()) {
+                return ResponseEntity.badRequest().body("File is empty");
+            }
 
-        Path absolutePath = Paths.get(baseUploadDir).resolve(relativeTargetPath);
+            // Validate XLIFF extension
+            String filename = request.getFile().getOriginalFilename();
+            if (filename == null || !filename.toLowerCase().endsWith(".xliff")) {
+                return ResponseEntity.badRequest().body("File must be an XLIFF file");
+            }
 
-        Resource resource = new UrlResource(absolutePath.toUri());
+            Path savedPath = jobService.uploadTranslatedFile(request.getFile(), request.getJobId());
 
-        return ResponseEntity.ok()
-                .header(
-                        HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + absolutePath.getFileName() + "\""
-                )
-                .header(
-                "X-File-Path",
-                job.getTranslatedFilePath()
-                )
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(resource);
+            return ResponseEntity.ok()
+                    .body(Map.of(
+                            "message", "Translated file uploaded successfully",
+                            "filePath", savedPath.toString()));
+
+        } catch (EntityNotFoundException e) {
+            logger.error("Job not found: {}", request.getJobId());
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Job not found with ID: " + request.getJobId());
+        } catch (IOException e) {
+            logger.error("Failed to upload translated file: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to upload file: " + e.getMessage());
+        } catch (Exception e) {
+            logger.error("Unexpected error: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("An unexpected error occurred");
+        }
+    }
+
+    @DeleteMapping("/{id}/hard")
+    public ResponseEntity<String> deleteJob(@PathVariable Long id){
+        try {
+            jobService.deleteJob(id);
+            return ResponseEntity.ok("Job deleted successfully");
+        } catch (IOException e) {
+            // Log and return an appropriate error response
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error deleting job files: " + e.getMessage());
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
+        }
+    }
+
+    
+    // Soft delete a single job
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> softDeleteJob(
+            @PathVariable Long id,
+            Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        String uid = userDetails.getUid();
+        
+        jobService.softDeleteJob(id, uid);
+        return ResponseEntity.noContent().build();
     }
 }
