@@ -9,8 +9,6 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,6 +26,7 @@ import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectSoftDeleteDTO;
 import com.tms.backend.dto.ProjectSummaryDTO;
+import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.job.Job;
 import com.tms.backend.job.JobRepository;
@@ -36,7 +35,6 @@ import com.tms.backend.job.JobWorkflowStep;
 import com.tms.backend.machineTranslation.MachineTranslation;
 import com.tms.backend.machineTranslation.MachineTranslationRepository;
 import com.tms.backend.setting.AutomationSetting;
-import com.tms.backend.setting.AutomationSettingRepository;
 import com.tms.backend.setting.AutomationSettingService;
 import com.tms.backend.subDomain.SubDomain;
 import com.tms.backend.subDomain.SubDomainRepository;
@@ -206,21 +204,29 @@ public class ProjectService {
                 .collect(Collectors.toList());
     }
 
+    // @Transactional(readOnly = true)
+    // public ProjectDTO getProjectById(Long id) throws AccessDeniedException {
+    //     String email = SecurityContextHolder.getContext().getAuthentication().getName();
+
+    //     User user = userRepo.findByEmail(email)
+    //     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+    //     Project project = projectRepo.findByIdAndNotDeleted(id)
+    //             .orElseThrow(() -> new RuntimeException("Project not found with id: " + id));
+
+    //     if(!project.getOwner().getId().equals(user.getId())){
+    //         throw new AccessDeniedException("Not allowed to view this project");
+    //     }
+
+    //     return convertToFullDTO(project);
+    // }
+
     @Transactional(readOnly = true)
-    public ProjectDTO getProjectById(Long id) throws AccessDeniedException {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+    public ProjectDTO getProjectById(Long projectId) {
+        Project project = projectRepo.findById(projectId)
+            .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + projectId));
 
-        User user = userRepo.findByEmail(email)
-        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        Project project = projectRepo.findByIdAndNotDeleted(id)
-                .orElseThrow(() -> new RuntimeException("Project not found with id: " + id));
-
-        if(!project.getOwner().getId().equals(user.getId())){
-            throw new AccessDeniedException("Not allowed to view this project");
-        }
-
-        return convertToFullDTO(project);
+        return ProjectDTO.fromEntity(project);
     }
 
     // Get soft deleted projects for user
@@ -294,7 +300,11 @@ public class ProjectService {
                 project.isDeleted(),
                 project.getDeletedBy(),
                 project.getDeletedDate(),
-                automationRules
+                automationRules,
+                project.getTmAssignments()
+                        .stream()
+                        .map(ProjectTmAssignmentDTO::fromEntity)
+                        .collect(Collectors.toSet())
                 );
     }
 

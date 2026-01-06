@@ -2,7 +2,9 @@ package com.tms.backend.project;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -12,6 +14,7 @@ import com.tms.backend.costCenter.CostCenter;
 import com.tms.backend.domain.Domain;
 import com.tms.backend.job.Job;
 import com.tms.backend.machineTranslation.MachineTranslation;
+import com.tms.backend.projectTmAssignment.ProjectTmAssignment;
 import com.tms.backend.subDomain.SubDomain;
 import com.tms.backend.user.User;
 import com.tms.backend.workflowSteps.WorkflowStep;
@@ -117,6 +120,13 @@ public class Project {
     @Embedded
     private StatusAutomationSetting statusAutomationSetting = new StatusAutomationSetting();
 
+    @OneToMany(
+        mappedBy = "project",
+        cascade = CascadeType.ALL,
+        orphanRemoval = true
+    )
+    private List<ProjectTmAssignment> tmAssignments = new ArrayList<>();
+
     public void addJob(Job job) {
         jobs.add(job);
         job.setProject(this);
@@ -207,4 +217,7 @@ public class Project {
 
     public StatusAutomationSetting getStatusAutomationSetting() { return statusAutomationSetting; }
     public void setStatusAutomationSetting(StatusAutomationSetting statusAutomationSetting) { this.statusAutomationSetting = statusAutomationSetting; }
+
+    public List<ProjectTmAssignment> getTmAssignments() { return tmAssignments; }
+    public void setTmAssignments(List<ProjectTmAssignment> tmAssignments) { this.tmAssignments = tmAssignments; }
 }

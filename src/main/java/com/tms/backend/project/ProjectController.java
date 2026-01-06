@@ -1,11 +1,11 @@
 package com.tms.backend.project;
 
+import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.Set;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -20,13 +22,12 @@ import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectSoftDeleteDTO;
+import com.tms.backend.dto.ProjectTmAssignmentRequest;
 import com.tms.backend.job.JobService;
+import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
 import com.tms.backend.user.CustomUserDetails;
 
 import jakarta.validation.Valid;
-
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 
 @RestController
@@ -34,10 +35,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 public class ProjectController {
     private final ProjectService projectService;
     private final JobService jobService;
+    private final ProjectTmAssignmentService tmAssignmentService;
     
-    public ProjectController(ProjectService projectService, JobService jobService) {
+    public ProjectController(
+        ProjectService projectService,
+        JobService jobService,
+        ProjectTmAssignmentService tmAssignmentService) {
         this.projectService = projectService;
         this.jobService = jobService;
+        this.tmAssignmentService = tmAssignmentService;
     }
 
     @PostMapping("/create")
@@ -51,6 +57,14 @@ public class ProjectController {
         return ResponseEntity.status(HttpStatus.CREATED).body(createdProject);
     }
 
+    @PostMapping("/{projectId}/assign-TMs")
+    public ResponseEntity<Void> assignTM(
+        @PathVariable Long projectId,
+        @RequestBody ProjectTmAssignmentRequest request) {
+            tmAssignmentService.assignTMs(projectId, request);
+            return ResponseEntity.ok().build();
+    }
+
     @GetMapping
     public List<ProjectDTO> getAllProjects(Authentication authentication){
         // Extract user details from JWT
@@ -60,11 +74,16 @@ public class ProjectController {
         return projectService.getProjectsByOwner(uid);
     }
 
+    // @GetMapping("/{id}")
+    // public ProjectDTO getProject(@PathVariable Long id, Authentication authentication) throws AccessDeniedException {
+    //     ProjectDTO project = projectService.getProjectById(id);
+
+    //     return project;
+    // }
+
     @GetMapping("/{id}")
     public ProjectDTO getProject(@PathVariable Long id, Authentication authentication) throws AccessDeniedException {
-        ProjectDTO project = projectService.getProjectById(id);
-
-        return project;
+        return projectService.getProjectById(id);
     }
 
     @GetMapping("/{projectId}/jobs")

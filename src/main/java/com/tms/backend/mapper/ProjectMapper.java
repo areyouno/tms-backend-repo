@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 import com.tms.backend.dto.ProjectDTO;
+import com.tms.backend.dto.ProjectTmAssignedDTO;
 import com.tms.backend.project.Project;
 import com.tms.backend.workflowSteps.WorkflowStep;
 
@@ -50,6 +51,10 @@ public class ProjectMapper {
             project.isDeleted(),
             project.getDeletedBy(),
             project.getDeletedDate(),
-            automationRules);
+            automationRules,
+            project.getTmAssignments()
+                        .stream()
+                        .map(ProjectTmAssignedDTO::fromEntity)
+                        .collect(Collectors.toSet()));
     }
 }
