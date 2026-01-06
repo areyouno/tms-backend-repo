@@ -7,7 +7,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 import com.tms.backend.dto.ProjectDTO;
-import com.tms.backend.dto.ProjectTmAssignedDTO;
+import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.project.Project;
 import com.tms.backend.workflowSteps.WorkflowStep;
 
@@ -54,7 +54,7 @@ public class ProjectMapper {
             automationRules,
             project.getTmAssignments()
                         .stream()
-                        .map(ProjectTmAssignedDTO::fromEntity)
+                        .map(ProjectTmAssignmentDTO::fromEntity)
                         .collect(Collectors.toSet()));
     }
 }
