@@ -8,6 +8,7 @@ import java.util.Map;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -124,6 +125,18 @@ public class UserController {
 
         userService.updateUserById(request.userId(), request);
         return ResponseEntity.ok("User updated");
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> softDeleteUser(@PathVariable Long id) {
+        userService.softDeleteUser(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @DeleteMapping("/{id}/hard")
+    public ResponseEntity<Void> hardDeleteUser(@PathVariable Long id) {
+        userService.hardDeleteUser(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/providers")

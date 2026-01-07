@@ -222,6 +222,12 @@ public class UserService {
                 .toList();
     }
 
+    public List<UserDTO> getAllActiveUsers() {
+        return userRepo.findByIsActiveTrue().stream()
+                .map(this::toDTO)
+                .toList();
+    }
+
     public User getUserById(Long id) {
         return userRepo.findById(id)
             .orElseThrow(() ->
@@ -232,6 +238,20 @@ public class UserService {
     public User getUserByUid(String uid) {
         return userRepo.findByUid(uid)
             .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    public void softDeleteUser(Long id) {
+        User user = userRepo.findById(id)
+            .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        user.setActive(false);
+        userRepo.save(user);
+    }
+
+    public void hardDeleteUser(Long id) {
+        if (!userRepo.existsById(id)) {
+            throw new EntityNotFoundException("User not found");
+        }
+        userRepo.deleteById(id);
     }
 
     public List<User> getProviders() {
