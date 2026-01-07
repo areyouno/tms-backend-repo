@@ -22,6 +22,7 @@ import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectSoftDeleteDTO;
+import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentRequest;
 import com.tms.backend.job.JobService;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
@@ -58,11 +59,11 @@ public class ProjectController {
     }
 
     @PostMapping("/{projectId}/assign-TMs")
-    public ResponseEntity<Void> assignTM(
+    public ResponseEntity<List<ProjectTmAssignmentDTO>> assignTM(
         @PathVariable Long projectId,
         @RequestBody ProjectTmAssignmentRequest request) {
-            tmAssignmentService.assignTMs(projectId, request);
-            return ResponseEntity.ok().build();
+            List<ProjectTmAssignmentDTO> savedAssignments = tmAssignmentService.assignTMs(projectId, request);
+            return ResponseEntity.ok(savedAssignments);
     }
 
     @GetMapping
