@@ -1,10 +1,16 @@
 package com.tms.backend.user;
 
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -14,14 +20,13 @@ import org.springframework.web.bind.annotation.RestController;
 import com.tms.backend.dto.CreateUserDTO;
 import com.tms.backend.dto.OwnerDTO;
 import com.tms.backend.dto.ProviderDTO;
+import com.tms.backend.dto.SetPasswordDTO;
+import com.tms.backend.dto.UpdateUserByIdDTO;
 import com.tms.backend.dto.UpdateUserDTO;
+import com.tms.backend.dto.UserDTO;
 import com.tms.backend.request.RegisterRequest;
 
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/users")
@@ -85,10 +90,21 @@ public class UserController {
         }
     }
 
+    @PostMapping("/set-password")
+    public ResponseEntity<Void> setPassword(@RequestBody SetPasswordDTO dto) {
+        userService.setPassword(dto);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping
     @PreAuthorize("hasAuthority('administrator')")
-    public List<User> getAllUsers() {
+    public List<UserDTO> getAllUsers() {
         return userService.getAllUsers();
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUserById(@PathVariable Long id) {
+        return ResponseEntity.ok(userService.getUserById(id));
     }
 
     @PatchMapping("/update-user")
@@ -98,6 +114,15 @@ public class UserController {
         String uid = userDetails.getUid();
 
         userService.updateUser(uid, request);
+        return ResponseEntity.ok("User updated");
+    }
+
+    @PatchMapping("/update-by-userId")
+    public ResponseEntity<?> updateUserById(
+            @RequestBody UpdateUserByIdDTO request,
+            Authentication authentication) {
+
+        userService.updateUserById(request.userId(), request);
         return ResponseEntity.ok("User updated");
     }
 
@@ -115,11 +140,9 @@ public class UserController {
     @GetMapping("/owners")
     public List<OwnerDTO> getOwners() {
         return userService.getOwners().stream()
-        .map(u -> new OwnerDTO(
-            u.getUid(),
-            (u.getFirstName() != null ? u.getFirstName() : "") +
-            " " +
-            (u.getLastName() != null ? u.getLastName() : "") 
+        .map(user -> new OwnerDTO(
+            user.id(),
+            user.ownerName()
         )).toList();
     }
 

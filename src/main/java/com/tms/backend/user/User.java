@@ -1,22 +1,28 @@
 package com.tms.backend.user;
 
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.tms.backend.project.Project;
 import com.tms.backend.role.Role;
 import com.tms.backend.verificationToken.VerificationToken;
 
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 
 @Entity
@@ -27,13 +33,13 @@ public class User {
     @Column(name = "user_id")
     private Long id;
     
-    @Column(unique = true, nullable = false)
-    private String uid = UUID.randomUUID().toString();
+    @Column(unique = true, nullable = false, updatable = false)
+    private String uid;
 
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String password;
 
     @Column(nullable = true)
@@ -60,12 +66,33 @@ public class User {
 
     private boolean agreedToTerms = false;
 
+    @JsonIgnore
     @OneToMany(mappedBy = "owner")
     private Set<Project> ownedProjects = new HashSet<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    @com.fasterxml.jackson.annotation.JsonIgnore
+    @JsonIgnore
     private Set<VerificationToken> verificationTokens;
+
+    private ZoneId timeZone = ZoneId.of("Asia/Manila"); // set default value
+
+    @Column(columnDefinition = "VARCHAR(10)")
+    private String sourceLang;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "user_target_languages", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "language_code", length = 10)
+    private Set<String> targetLanguages = new HashSet<>();
+
+    @Column(columnDefinition = "TEXT")
+    private String note;
+
+    @PrePersist
+    private void generateUid() {
+        if (uid == null) {
+            uid = UUID.randomUUID().toString();
+        }
+    }
 
     public Long getId() {
         return id;
@@ -218,5 +245,37 @@ public class User {
 
     public void setActive(boolean isActive) {
         this.isActive = isActive;
+    }
+
+    public ZoneId getTimeZone() {
+        return timeZone;
+    }
+
+    public void setTimeZone(ZoneId timeZone) {
+        this.timeZone = timeZone;
+    }
+
+    public String getSourceLang() {
+        return sourceLang;
+    }
+
+    public void setSourceLang(String sourceLang) {
+        this.sourceLang = sourceLang;
+    }
+
+    public Set<String> getTargetLanguages() {
+        return targetLanguages;
+    }
+
+    public void setTargetLanguages(Set<String> targetLanguages) {
+        this.targetLanguages = targetLanguages;
+    }
+
+    public String getNote() {
+        return note;
+    }
+
+    public void setNote(String note) {
+        this.note = note;
     }
 }
