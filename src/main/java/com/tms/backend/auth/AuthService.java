@@ -51,7 +51,8 @@ public class AuthService {
             user.isProfileComplete(),
             user.getRole().getId(),
             user.getRole().getName(),
-            token
+            token,
+            user.isActive()
         );
     }
 }
