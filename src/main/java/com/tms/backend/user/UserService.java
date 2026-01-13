@@ -162,15 +162,19 @@ public class UserService {
     }
 
     public void createUser(CreateUserDTO dto){
-        if (userRepo.existsByEmail(dto.email())){
-            throw new RuntimeException("Email already exists");
+        // if (userRepo.existsByEmail(dto.email())){
+        //     throw new RuntimeException("Email already exists");
+        // }
+        if (userRepo.existsByUsername(dto.username())){
+            throw new RuntimeException("Username already exists");
         }
 
         User user = new User();
         user.setFirstName(dto.firstName());
         user.setLastName(dto.lastName());
         user.setEmail(dto.email());
-        user.setUsername(dto.username());
+        String username = dto.username();
+        user.setUsername(username);
         
         Role role = roleRepo.findById(dto.roleId())
             .orElseThrow(() -> new EntityNotFoundException("Role not found with name: " + dto.roleId()));
@@ -189,9 +193,8 @@ public class UserService {
         tokenRepo.save(token);
 
         // Send verification email
-        String verLink = "https://xliffl10n.latispass.net/api/users/verify?token=" + tokenValue;
-        emailService.sendVerificationEmail(user.getEmail(), verLink);
-        
+        String verLink = "https://xliffl10n.latispass.net/api/users/verifyUserCreated?token=" + tokenValue;
+        emailService.sendInvitationEmail(user.getEmail(), verLink, username);
     }
 
     @Transactional

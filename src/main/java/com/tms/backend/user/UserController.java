@@ -164,10 +164,22 @@ public class UserController {
         try {
             userService.markUserAsVerified(token);
             // Redirect to login page after successful verification
-            response.sendRedirect("http://localhost:5173/login?verified=true");
+            response.sendRedirect("http://localhost:5173/?verified=true");
         } catch (Exception e) {
             // Redirect to error page or login with error message
-            response.sendRedirect("http://localhost:5173/login?error=verification_failed");
+            response.sendRedirect("http://localhost:5173/?error=verification_failed");
+        }
+    }
+
+    @GetMapping("/verifyUserCreated")
+    public void verifyUserCreated(@RequestParam String token, HttpServletResponse response) throws IOException {
+        try {
+            userService.markUserAsVerified(token);
+            // Redirect to login page after successful verification
+            response.sendRedirect("http://localhost:5173/setPassword");
+        } catch (Exception e) {
+            // Redirect to error page or login with error message
+            response.sendRedirect("http://localhost:5173/?error=verification_failed");
         }
     }
 }

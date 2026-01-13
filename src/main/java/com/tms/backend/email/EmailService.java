@@ -32,6 +32,12 @@ public class EmailService {
         sendEmail(toEmail, subject, htmlContent);
     }
 
+    public void sendInvitationEmail(String toEmail, String invitationLink, String username) {
+        String subject = "You have been invited to join " + appName;
+        String htmlContent = buildInvitationEmailHTML(invitationLink, username);
+        sendEmail(toEmail, subject, htmlContent);
+    }
+
     private String buildVerificationEmailHTML(String verificationLink) {
         return "<!DOCTYPE html>\n"
                 + "<html>\n"
@@ -50,13 +56,40 @@ public class EmailService {
                 + "        </p>\n"
                 + "        <a href=\"" + verificationLink + "\"\n"
                 + "           style=\"display: inline-block; margin-top: 25px; padding: 13px 16px; font-size: 14px; font-weight: 600;\n"
-                + "                  color: black; background-color:rgb(236, 126, 53); text-decoration: none;\n"
+                + "                  color: black; background-color:rgb(61, 138, 206); text-decoration: none;\n"
                 + "                  border-radius: 26px; min-width: 50px; text-align: center;\">\n"
                 + "          Verify email\n"
                 + "        </a>\n"
                 + "      </div>\n"
                 + "  </body>\n"
                 + "</html>".formatted(appName, verificationLink, verificationLink, appName);
+    }
+
+    private String buildInvitationEmailHTML(String invitationLink, String username) {
+        return "<!DOCTYPE html>\n"
+                + "<html>\n"
+                + "  <head>\n"
+                + "    <meta charset=\"UTF-8\">\n"
+                + "    <title></title>\n"
+                + "  </head>\n"
+                + "  <body style=\"margin: 0; padding: 0; background-color: #f9f9f9; font-family: sans-serif;\">\n"
+                + "    <div style=\"width: 100%; text-align: center; padding: 40px 0;\">\n"
+                + "      <div style=\"display: inline-block; max-width: 600px; padding: 30px; border-radius: 8px; \">\n" //box-shadow: 0 0 10px rgba(0,0,0,0.1); background: #ffffff;
+                + "        <h2 style=\"text-align: center; color: rgb(61, 138, 206);\">TransTree</h2>\n"
+                + "        <p style=\"text-align: center; color: #555555; font-size: 16px; line-height: 1.6;\">\n"
+                + "          You have been invited to join TransTree. <br> \n"
+                + "          The new username is <b> " + username + " . </b> <br> \n"
+                + "          To set a password and a new profile, click the button below. \n"
+                + "        </p>\n"
+                + "        <a href=\"" + invitationLink + "\"\n"
+                + "           style=\"display: inline-block; margin-top: 25px; padding: 13px 16px; font-size: 14px; font-weight: 600;\n"
+                + "                  color: black; background-color:rgb(61, 138, 206); text-decoration: none;\n"
+                + "                  border-radius: 26px; min-width: 50px; text-align: center;\">\n"
+                + "          Set up a new profile\n"
+                + "        </a>\n"
+                + "      </div>\n"
+                + "  </body>\n"
+                + "</html>".formatted(appName, invitationLink, invitationLink, appName);
     }
 
     public void sendEmail(String to, String subject, String htmlContent) {
@@ -99,8 +132,8 @@ public class EmailService {
         + "          The status of your job has been updated.<br><br>\n"
         + "          <strong>Project:</strong> " + projectName + "<br>\n"
         + "          <strong>For Workflow Step:</strong> " + stepName + "<br><br>\n"
-        + "          <strong>Status Change:</strong> from <span style=\"color: #ec7e35;\">" + previousStatus 
-        + "</span> to <span style=\"color: #ec7e35;\">" + newStatus + "</span>\n"
+        + "          <strong>Status Change:</strong> from <span style=\"color: rgb(61, 138, 206);\">" + previousStatus 
+        + "</span> to <span style=\"color: rgb(236, 126, 53);\">" + newStatus + "</span>\n"
         + "        </p>\n"
         + "      </div>\n"
         + "    </div>\n"
