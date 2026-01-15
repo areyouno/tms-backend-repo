@@ -164,10 +164,10 @@ public class UserController {
         try {
             userService.markUserAsVerified(token);
             // Redirect to login page after successful verification
-            response.sendRedirect("http://localhost:5173/?verified=true");
+            response.sendRedirect("https://xliffl10n.latispass.net/?verified=true");
         } catch (Exception e) {
             // Redirect to error page or login with error message
-            response.sendRedirect("http://localhost:5173/?error=verification_failed");
+            response.sendRedirect("https://xliffl10n.latispass.net/?error=verification_failed");
         }
     }
 
@@ -176,10 +176,10 @@ public class UserController {
         try {
             userService.markUserAsVerified(token);
             // Redirect to login page after successful verification
-            response.sendRedirect("http://localhost:5173/setPassword");
+            response.sendRedirect("https://xliffl10n.latispass.net/setPassword");
         } catch (Exception e) {
             // Redirect to error page or login with error message
-            response.sendRedirect("http://localhost:5173/?error=verification_failed");
+            response.sendRedirect("https://xliffl10n.latispass.net/?error=verification_failed");
         }
     }
 }

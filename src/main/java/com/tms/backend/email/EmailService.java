@@ -51,7 +51,7 @@ public class EmailService {
                 + "        <h2 style=\"text-align: center; color: #333333;\">Verify Your Email</h2>\n"
                 + "        <p style=\"text-align: left; color: #555555; font-size: 16px; line-height: 1.6;\">\n"
                 + "          Hello,<br>\n"
-                + "          We are happy to have you on board!\n"
+                + "          We are happy to have you on board! <br>\n"
                 + "          To get started, please click the button below to complete verification.\n"
                 + "        </p>\n"
                 + "        <a href=\"" + verificationLink + "\"\n"
