@@ -8,15 +8,20 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.tms.backend.dto.WorkflowStepCreateDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
+import com.tms.backend.netRateScheme.NetRateSchemeService;
 
 import jakarta.transaction.Transactional;
 
 @Service
 public class WorkflowStepService {
     private final WorkflowStepRepository wfRepo;
+    private final NetRateSchemeService netRateSchemeService;
 
-    public WorkflowStepService(WorkflowStepRepository wfRepo) {
+    public WorkflowStepService(
+        WorkflowStepRepository wfRepo,
+        NetRateSchemeService netRateSchemeService) {
         this.wfRepo = wfRepo;
+        this.netRateSchemeService = netRateSchemeService;
     }
 
     public List<WorkflowStep> getAllSteps() {
@@ -52,7 +57,9 @@ public class WorkflowStepService {
         workflowStep.setDisplayOrder(createDTO.displayOrder());
         workflowStep.setIsLQA(createDTO.isLQA() != null ? createDTO.isLQA() : false);
 
-        return wfRepo.save(workflowStep);
+         WorkflowStep savedStep = wfRepo.save(workflowStep);
+         netRateSchemeService.addStepToAllSchemes(savedStep.getId());
+         return savedStep;
     }
 
     public WorkflowStep updateWorkflowStep(Long id, WorkflowStepCreateDTO updateDTO) {
@@ -70,14 +77,16 @@ public class WorkflowStepService {
 
     @Transactional
     public String deleteWorkflowStep(Long id) {
+        // get workflow step
         WorkflowStep step = wfRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Workflow step with ID " + id + " not found"));
 
-        // 2. Get the name before deletion
+        // get the name before deletion
         String stepName = step.getName();
         wfRepo.deleteById(id);
+        
         return stepName;
     }
 }

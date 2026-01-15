@@ -162,12 +162,12 @@ public class UserService {
     }
 
     public void createUser(CreateUserDTO dto){
-        // if (userRepo.existsByEmail(dto.email())){
-        //     throw new RuntimeException("Email already exists");
-        // }
-        if (userRepo.existsByUsername(dto.username())){
-            throw new RuntimeException("Username already exists");
+        if (userRepo.existsByEmail(dto.email())){
+            throw new RuntimeException("Email already exists");
         }
+        // if (userRepo.existsByUsername(dto.username())){
+        //     throw new RuntimeException("Username already exists");
+        // }
 
         User user = new User();
         user.setFirstName(dto.firstName());

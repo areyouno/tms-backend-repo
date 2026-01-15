@@ -1,0 +1,1169 @@
+{
+    "name":"sample_netRate",
+    "workflow_steps": [
+        {
+            "wfName": "MT",
+            "netRateSchemePercentageCategories": [
+                {
+                    "name": "Repetitions",
+                    "matchType": [
+                        {
+                        "name": "translation memory",
+                        "discountRate": 10
+                        }
+                    ]
+                },
+                {
+                    "name": "101%",
+                    "matchType": [
+                        {
+                        "name": "translation memory",
+                        "discountRate": 10
+                        }
+                    ]
+                },
+                {
+                    "name": "100%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 10
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 30
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 10
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 10
+                        }
+                    ]
+                },
+                {
+                    "name": "95-99%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 33
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 40
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 33
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 33
+                        }
+                    ]
+                },
+                {
+                    "name": "85-94%",
+                   "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 66
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 70
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 66
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 66
+                        }
+                    ]
+                },
+                {
+                    "name": "75-84%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ] 
+                },
+                {
+                    "name": "50-74%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                },
+                {
+                    "name": "0-49%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "wfName": "Translation",
+            "netRateSchemePercentageCategories": [
+                {
+                    "name": "Repetitions",
+                    "matchType": [{
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                    ]
+                },
+                {
+                    "name": "101%",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "100%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 10
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 30
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 10
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 10
+                        }
+                    ]
+                },
+                {
+                    "name": "95-99%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 33
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 40
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 33
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 33
+                        }
+                    ]
+                },
+                {
+                    "name": "85-94%",
+                   "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 66
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 70
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 66
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 66
+                        }
+                    ]
+                },
+                {
+                    "name": "75-84%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ] 
+                },
+                {
+                    "name": "50-74%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                },
+                {
+                    "name": "0-49%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "wfName": "MT1",
+            "netRateSchemePercentageCategories": [
+                {
+                    "name": "Repetitions",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "101%",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "100%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 10
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 30
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 10
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 10
+                        }
+                    ]
+                },
+                {
+                    "name": "95-99%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 33
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 40
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 33
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 33
+                        }
+                    ]
+                },
+                {
+                    "name": "85-94%",
+                   "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 66
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 70
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 66
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 66
+                        }
+                    ]
+                },
+                {
+                    "name": "75-84%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ] 
+                },
+                {
+                    "name": "50-74%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                },
+                {
+                    "name": "0-49%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "wfName": "MTPE",
+            "netRateSchemePercentageCategories": [
+                {
+                    "name": "Repetitions",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "101%",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "100%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 10
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 30
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 10
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 10
+                        }
+                    ]
+                },
+                {
+                    "name": "95-99%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 33
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 40
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 33
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 33
+                        }
+                    ]
+                },
+                {
+                    "name": "85-94%",
+                   "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 66
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 70
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 66
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 66
+                        }
+                    ]
+                },
+                {
+                    "name": "75-84%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ] 
+                },
+                {
+                    "name": "50-74%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                },
+                {
+                    "name": "0-49%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "wfName": "Revision",
+            "netRateSchemePercentageCategories": [
+                {
+                    "name": "Repetitions",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "101%",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "100%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 10
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 30
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 10
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 10
+                        }
+                    ]
+                },
+                {
+                    "name": "95-99%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 33
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 40
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 33
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 33
+                        }
+                    ]
+                },
+                {
+                    "name": "85-94%",
+                   "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 66
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 70
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 66
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 66
+                        }
+                    ]
+                },
+                {
+                    "name": "75-84%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ] 
+                },
+                {
+                    "name": "50-74%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                },
+                {
+                    "name": "0-49%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                }
+            ]
+        },{
+            "wfName": "Client Review",
+            "netRateSchemePercentageCategories": [
+                {
+                    "name": "Repetitions",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "101%",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "100%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 10
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 30
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 10
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 10
+                        }
+                    ]
+                },
+                {
+                    "name": "95-99%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 33
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 40
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 33
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 33
+                        }
+                    ]
+                },
+                {
+                    "name": "85-94%",
+                   "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 66
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 70
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 66
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 66
+                        }
+                    ]
+                },
+                {
+                    "name": "75-84%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ] 
+                },
+                {
+                    "name": "50-74%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                },
+                {
+                    "name": "0-49%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "wfName": "Quality Assesment",
+            "netRateSchemePercentageCategories": [
+                {
+                    "name": "Repetitions",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "101%",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "100%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 10
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 30
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 10
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 10
+                        }
+                    ]
+                },
+                {
+                    "name": "95-99%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 33
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 40
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 33
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 33
+                        }
+                    ]
+                },
+                {
+                    "name": "85-94%",
+                   "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 66
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 70
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 66
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 66
+                        }
+                    ]
+                },
+                {
+                    "name": "75-84%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ] 
+                },
+                {
+                    "name": "50-74%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                },
+                {
+                    "name": "0-49%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "wfName": "Review",
+            "netRateSchemePercentageCategories": [
+                {
+                    "name": "Repetitions",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "101%",
+                    "matchType": {
+                        "name": "translation memory",
+                        "discountRate": 10
+                    }
+                },
+                {
+                    "name": "100%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 10
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 30
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 10
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 10
+                        }
+                    ]
+                },
+                {
+                    "name": "95-99%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 33
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 40
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 33
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 33
+                        }
+                    ]
+                },
+                {
+                    "name": "85-94%",
+                   "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 66
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 70
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 66
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 66
+                        }
+                    ]
+                },
+                {
+                    "name": "75-84%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ] 
+                },
+                {
+                    "name": "50-74%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                },
+                {
+                    "name": "0-49%",
+                    "matchType": [
+                        {
+                            "name":"translation memory",
+                            "discountRate": 100
+                        },
+                        {
+                             "name":"machine translation",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"non-translatable",
+                            "discountRate": 100
+                        },
+                        {
+                            "name":"internal fuzzies",
+                            "discountRate": 100
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
