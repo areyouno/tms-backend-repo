@@ -518,10 +518,10 @@ public class JobService {
             .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
 
         // Optional: Check if user owns the job or the project
-        if (!job.getJobOwner().getUid().equals(uid) && 
-            !job.getProject().getOwner().getUid().equals(uid)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot delete this job");
-        }
+        // if (!job.getJobOwner().getUid().equals(uid) && 
+        //     !job.getProject().getOwner().getUid().equals(uid)) {
+        //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot delete this job");
+        // }
 
         // Get current user for deletedBy field
         User currentUser = userRepo.findByUid(uid)
@@ -540,10 +540,10 @@ public class JobService {
             .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
 
         // Optional: Check if user owns the job or the project
-        if (!job.getJobOwner().getUid().equals(uid) && 
-            !job.getProject().getOwner().getUid().equals(uid)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot restore this job");
-        }
+        // if (!job.getJobOwner().getUid().equals(uid) && 
+        //     !job.getProject().getOwner().getUid().equals(uid)) {
+        //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot restore this job");
+        // }
 
         if (!job.isDeleted()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Job is not deleted");
@@ -663,11 +663,11 @@ public class JobService {
             .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
         
         // Check authorization: user must own the job or the project
-        if (!job.getJobOwner().getUid().equals(uid) && 
-            !job.getProject().getOwner().getUid().equals(uid)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, 
-                "You are not authorized to download this file");
-        }
+        // if (!job.getJobOwner().getUid().equals(uid) && 
+        //     !job.getProject().getOwner().getUid().equals(uid)) {
+        //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, 
+        //         "You are not authorized to download this file");
+        // }
         
         // Check if file path exists
         if (job.getOriginalFilePath() == null) {
@@ -694,11 +694,11 @@ public class JobService {
             .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
 
         // Check authorization
-        if (!job.getJobOwner().getUid().equals(uid) && 
-            !job.getProject().getOwner().getUid().equals(uid)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, 
-                "You are not authorized to download this file");
-        }
+        // if (!job.getJobOwner().getUid().equals(uid) && 
+        //     !job.getProject().getOwner().getUid().equals(uid)) {
+        //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, 
+        //         "You are not authorized to download this file");
+        // }
 
         // Check if converted file exists
         if (job.getConvertedFilePath() == null) {

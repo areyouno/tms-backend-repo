@@ -8,11 +8,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.tms.backend.businessUnit.BusinessUnit;
 import com.tms.backend.businessUnit.BusinessUnitRepository;
@@ -313,9 +311,9 @@ public class ProjectService {
         Project project = projectRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found with id: " + id));
 
-        if (!project.getOwner().getUid().equals(uid)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot update this project");
-        }
+        // if (!project.getOwner().getUid().equals(uid)) {
+        //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot update this project");
+        // }
 
         if (updatedData.name() != null) {
             project.setName(updatedData.name());
@@ -379,9 +377,9 @@ public class ProjectService {
         Project project = projectRepo.findById(id)
         .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
     
-        if (!project.getOwner().getUid().equals(uid)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot delete this project");
-        }
+        // if (!project.getOwner().getUid().equals(uid)) {
+        //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot delete this project");
+        // }
 
         // soft delete
         User currentUser = userRepo.findByUid(uid)
@@ -414,9 +412,9 @@ public class ProjectService {
         Project project = projectRepo.findByIdIncludingDeleted(id)
             .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
             
-        if (!project.getOwner().getUid().equals(uid)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot delete this project");
-        }
+        // if (!project.getOwner().getUid().equals(uid)) {
+        //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot delete this project");
+        // }
         
         // Permanently delete from database
         projectRepo.hardDeleteById(id);
@@ -427,9 +425,9 @@ public class ProjectService {
         Project project = projectRepo.findByIdIncludingDeleted(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Project not found"));
 
-        if (!project.getOwner().getUid().equals(uid)) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot restore this project");
-        }
+        // if (!project.getOwner().getUid().equals(uid)) {
+        //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot restore this project");
+        // }
 
         if (!project.isDeleted()) {
             throw new RuntimeException("Project is not deleted");
