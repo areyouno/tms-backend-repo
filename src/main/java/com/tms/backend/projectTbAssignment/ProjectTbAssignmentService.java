@@ -6,6 +6,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.Service;
+
 import com.tms.backend.dto.ProjectTbAssignmentDTO;
 import com.tms.backend.dto.ProjectTbAssignmentRequest;
 import com.tms.backend.project.Project;
@@ -14,6 +16,7 @@ import com.tms.backend.project.ProjectRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
 
+@Service
 public class ProjectTbAssignmentService {
     private ProjectRepository projectRepo;
     private ProjectTbAssignmentRepository tbAssignmentRepo;
