@@ -24,6 +24,7 @@ import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectSoftDeleteDTO;
 import com.tms.backend.dto.ProjectSummaryDTO;
+import com.tms.backend.dto.ProjectTbAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.job.Job;
@@ -302,6 +303,10 @@ public class ProjectService {
                 project.getTmAssignments()
                         .stream()
                         .map(ProjectTmAssignmentDTO::fromEntity)
+                        .collect(Collectors.toSet()),
+                project.getTbAssignments()
+                        .stream()
+                        .map(ProjectTbAssignmentDTO::fromEntity)
                         .collect(Collectors.toSet())
                 );
     }

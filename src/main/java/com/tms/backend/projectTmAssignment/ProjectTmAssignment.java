@@ -43,65 +43,29 @@ public class ProjectTmAssignment {
     @JoinColumn(name = "workflow_step_id", nullable = false)
     private WorkflowStep workflowStep;
 
+    private boolean readAccess;
     private boolean writeAccess;
     private Long penalty;
     private Long priorityOrder;
 
-    // Assignment attributes
-    private boolean readAccess;
-    public boolean isReadAccess() {
-        return readAccess;
-    }
+    public boolean isReadAccess() { return readAccess; }
+    public void setReadAccess(boolean readAccess) { this.readAccess = readAccess; }
 
-    public void setReadAccess(boolean readAccess) {
-        this.readAccess = readAccess;
-    }
+    public boolean isWriteAccess() { return writeAccess; }
+    public void setWriteAccess(boolean writeAccess) { this.writeAccess = writeAccess; }
 
-    public boolean isWriteAccess() {
-        return writeAccess;
-    }
+    public Long getTmId() { return tmId; }
+    public void setTmId(Long tmId) { this.tmId = tmId; }
 
-    public Long getTmId() {
-        return tmId;
-    }
+    public WorkflowStep getWorkflowStep() { return workflowStep; }
+    public void setWorkflowStep(WorkflowStep workflowStep) { this.workflowStep = workflowStep; }
 
-    public void setTmId(Long tmId) {
-        this.tmId = tmId;
-    }
+    public Long getPenalty() { return penalty; }
+    public void setPenalty(Long penalty) { this.penalty = penalty; }
 
-    public WorkflowStep getWorkflowStep() {
-        return workflowStep;
-    }
+    public Long getPriorityOrder() { return priorityOrder; }
+    public void setPriorityOrder(Long priorityOrder) { this.priorityOrder = priorityOrder; }
 
-    public void setWorkflowStep(WorkflowStep workflowStep) {
-        this.workflowStep = workflowStep;
-    }
-
-    public void setWriteAccess(boolean writeAccess) {
-        this.writeAccess = writeAccess;
-    }
-
-    public Long getPenalty() {
-        return penalty;
-    }
-
-    public void setPenalty(Long penalty) {
-        this.penalty = penalty;
-    }
-
-    public Long getPriorityOrder() {
-        return priorityOrder;
-    }
-
-    public void setPriorityOrder(Long priorityOrder) {
-        this.priorityOrder = priorityOrder;
-    }
-
-    public Project getProject() {
-        return project;
-    }
-
-    public void setProject(Project project) {
-        this.project = project;
-    }
+    public Project getProject() { return project; }
+    public void setProject(Project project) { this.project = project; }
 }

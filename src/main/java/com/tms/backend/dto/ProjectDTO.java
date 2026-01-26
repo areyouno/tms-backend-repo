@@ -34,7 +34,9 @@ public record ProjectDTO (
     LocalDateTime deletedDate,
     Set<String> automationRules,
 
-    Set<ProjectTmAssignmentDTO> assignedTMs
+    Set<ProjectTmAssignmentDTO> assignedTMs,
+
+    Set<ProjectTbAssignmentDTO> assignedTBs
 ) {
 
     public static ProjectDTO fromEntity(Project project) {
@@ -59,6 +61,12 @@ public record ProjectDTO (
                    .stream()
                    .map(ProjectTmAssignmentDTO::fromEntity)
                    .collect(Collectors.toSet());
+
+        Set<ProjectTbAssignmentDTO> assignedTBs =
+            project.getTbAssignments()
+                    .stream()
+                    .map(ProjectTbAssignmentDTO::fromEntity)
+                    .collect(Collectors.toSet());
 
         return new ProjectDTO(
             project.getId(),
@@ -111,7 +119,8 @@ public record ProjectDTO (
             project.getDeletedDate(),
 
             automationRules,
-            assignedTMs
+            assignedTMs,
+            assignedTBs
         );
     }
 }
