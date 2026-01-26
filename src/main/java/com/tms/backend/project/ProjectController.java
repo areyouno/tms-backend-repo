@@ -22,9 +22,12 @@ import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectSoftDeleteDTO;
+import com.tms.backend.dto.ProjectTbAssignmentDTO;
+import com.tms.backend.dto.ProjectTbAssignmentRequest;
 import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentRequest;
 import com.tms.backend.job.JobService;
+import com.tms.backend.projectTbAssignment.ProjectTbAssignmentService;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
 import com.tms.backend.user.CustomUserDetails;
 
@@ -37,14 +40,17 @@ public class ProjectController {
     private final ProjectService projectService;
     private final JobService jobService;
     private final ProjectTmAssignmentService tmAssignmentService;
+    private final ProjectTbAssignmentService tbAssignmentService;
     
     public ProjectController(
         ProjectService projectService,
         JobService jobService,
-        ProjectTmAssignmentService tmAssignmentService) {
+        ProjectTmAssignmentService tmAssignmentService,
+        ProjectTbAssignmentService tbAssignmentService) {
         this.projectService = projectService;
         this.jobService = jobService;
         this.tmAssignmentService = tmAssignmentService;
+        this.tbAssignmentService = tbAssignmentService;
     }
 
     @PostMapping("/create")
@@ -64,6 +70,15 @@ public class ProjectController {
         @RequestBody ProjectTmAssignmentRequest request) {
             List<ProjectTmAssignmentDTO> savedAssignments = tmAssignmentService.assignTMs(projectId, request);
             return ResponseEntity.ok(savedAssignments);
+    }
+
+    @PostMapping("{projectId}/assign-TBs")
+    public ResponseEntity<List<ProjectTbAssignmentDTO>> assignTB(
+        @PathVariable Long projectId,
+        @RequestBody ProjectTbAssignmentRequest request
+    ) {
+        List<ProjectTbAssignmentDTO> savedAssignments = tbAssignmentService.assignTBs(projectId, request);
+        return ResponseEntity.ok(savedAssignments);
     }
 
     @GetMapping
