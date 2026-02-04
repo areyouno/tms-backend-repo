@@ -419,7 +419,7 @@ public class ProjectService {
         projectRepo.save(project);
 
         // CASCADE: Soft delete all jobs under this project
-        List<Job> jobs = jobRepo.findByProjectId(id);
+        List<Job> jobs = jobRepo.findByProjectIdAndDeletedFalse(id);
         for (Job job : jobs) {
             if (!job.isDeleted()) { // Only delete if not already deleted
                 job.setDeleted(true);
