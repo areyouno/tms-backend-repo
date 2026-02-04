@@ -44,6 +44,11 @@ public class ClientController {
         return clientService.getActiveCLOrdered();
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<Client> getClientById(@PathVariable Long id) {
+        return ResponseEntity.ok(clientService.getClientById(id));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<Client> updateClient(
             @PathVariable Long id,

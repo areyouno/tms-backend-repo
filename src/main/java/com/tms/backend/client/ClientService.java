@@ -32,6 +32,13 @@ public class ClientService {
         return repo.findActiveClientOrderByName();
     }
 
+    public Client getClientById(Long id) {
+        return repo.findById(id)
+            .orElseThrow(() -> 
+                new EntityNotFoundException("Client not found with id: " + id)
+            );
+    }
+
     public Client updateClient(Long id, UpdateClientRequest req) {
         Client client = repo.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Client not found"));
