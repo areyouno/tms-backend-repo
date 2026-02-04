@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -32,6 +33,7 @@ import com.tms.backend.mapper.ProjectMapper;
 import com.tms.backend.project.Project;
 import com.tms.backend.project.ProjectRepository;
 import com.tms.backend.project.ProjectService;
+import com.tms.backend.role.RoleConstants;
 import com.tms.backend.tomato.FileConversionService;
 import com.tms.backend.tomato.SizingService;
 import com.tms.backend.user.User;
@@ -40,7 +42,6 @@ import com.tms.backend.workflowSteps.WorkflowStep;
 import com.tms.backend.workflowSteps.WorkflowStepRepository;
 
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
 
 @Service
 public class JobService {
@@ -347,8 +348,16 @@ public class JobService {
         return jobSteps;
     }
 
-    public List<JobDTO> getJobs() {
-        List<Job> jobs = jobRepo.findAll();
+    @Transactional(readOnly = true)
+    public List<JobDTO> getJobs(User user) {
+        List<Job> jobs;
+
+        if (RoleConstants.ADMIN.equals(user.getRole().getName()) || RoleConstants.PM.equals(user.getRole().getName())) {
+            jobs = jobRepo.findAllActive();
+        } else {
+            // linguist (or any non-admin/PM role)
+            jobs = jobRepo.findByJobOwnerIdAndDeletedFalse(user.getId());
+        }
         return jobs.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());

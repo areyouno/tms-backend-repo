@@ -50,6 +50,8 @@ import com.tms.backend.dto.TranslatedFileUploadRequest;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.tomato.FileConversionService;
 import com.tms.backend.user.CustomUserDetails;
+import com.tms.backend.user.User;
+import com.tms.backend.user.UserService;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -60,6 +62,7 @@ public class JobController {
 
     private final JobService jobService;
     private final FileConversionService fileService;
+    private final UserService userService;
 
     private static final Logger logger = LoggerFactory.getLogger(JobController.class);
 
@@ -68,9 +71,11 @@ public class JobController {
 
     public JobController(
         JobService jobService,
-        FileConversionService fileService){
+        FileConversionService fileService,
+        UserService userService){
         this.jobService = jobService;
         this.fileService = fileService;
+        this.userService = userService;
     }
     
     @PostMapping("/upload")
@@ -114,8 +119,12 @@ public class JobController {
     @GetMapping("/all")
     @PreAuthorize("isAuthenticated()")
     @Transactional(readOnly = true)
-    public List<JobDTO> getAllJobs() {
-        return jobService.getJobs();
+    public List<JobDTO> getAllJobs(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Get current user
+        String uid = userDetails.getUid();
+        User currentUser = userService.findByUid(uid)
+            .orElseThrow(() -> new RuntimeException("User not found with uid: " + uid));
+        return jobService.getJobs(currentUser);
     }
 
     @GetMapping("/{id}")
