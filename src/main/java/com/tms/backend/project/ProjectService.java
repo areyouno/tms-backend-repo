@@ -312,13 +312,21 @@ public class ProjectService {
                 );
     }
 
-    public List<Project> getProjectsForUser(User user) {
+    @Transactional(readOnly = true)
+    public List<ProjectDTO> getProjectsForUser(User user) {
+        List<Project> projects;
+
+
         if (RoleConstants.ADMIN.equals(user.getRole().getName()) || RoleConstants.PM.equals(user.getRole().getName())) {
-            return projectRepo.findAllActive();
+            projects = projectRepo.findAllActive();
+        } else {
+            // linguist (or any non-admin/PM role)
+            projects = projectRepo.findByOwnerId(user.getId());
         }
 
-        // linguist (or any non-admin/PM role)
-        return projectRepo.findByOwnerId(user.getId());
+        return projects.stream()
+            .map(this::convertToFullDTO)
+            .toList();
     }
 
     @Transactional

@@ -123,10 +123,7 @@ public class ProjectController {
         User currentUser = userService.findByUid(uid)
             .orElseThrow(() -> new RuntimeException("User not found with uid: " + uid));
 
-        return projectService.getProjectsForUser(currentUser)
-                .stream()
-                .map(ProjectDTO::fromEntity)
-                .toList();
+        return projectService.getProjectsForUser(currentUser);
     }
 
     @PatchMapping("/{id}")
