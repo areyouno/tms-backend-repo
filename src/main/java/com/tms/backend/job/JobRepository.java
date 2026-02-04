@@ -8,7 +8,7 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface JobRepository extends JpaRepository<Job, Long>{
-    List<Job> findByProjectId(Long projectId);
+    List<Job> findByProjectIdAndDeletedFalse(Long projectId);
     List<Job> findByProjectIdAndDeletedTrue(Long projectId);
     List<Job> findByJobOwnerUidAndDeletedTrue(String uid);
 

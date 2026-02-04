@@ -376,7 +376,7 @@ public class JobService {
     }
 
     public List<JobDTO> getJobsByProjectId(Long id) {
-        List<Job> jobs = jobRepo.findByProjectId(id);
+        List<Job> jobs = jobRepo.findByProjectIdAndDeletedFalse(id);
         return jobs.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -384,7 +384,7 @@ public class JobService {
 
     // return job entity
     List<Job> getJobEntitiesByProjectId(Long projectId) {
-        return jobRepo.findByProjectId(projectId);
+        return jobRepo.findByProjectIdAndDeletedFalse(projectId);
     }
 
     public List<JobSoftDeleteDTO> getDeletedJobsByUser(String uid) {
