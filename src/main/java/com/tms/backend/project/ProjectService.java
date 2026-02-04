@@ -33,6 +33,7 @@ import com.tms.backend.job.JobWorkflowStatus;
 import com.tms.backend.job.JobWorkflowStep;
 import com.tms.backend.machineTranslation.MachineTranslation;
 import com.tms.backend.machineTranslation.MachineTranslationRepository;
+import com.tms.backend.role.RoleConstants;
 import com.tms.backend.setting.AutomationSetting;
 import com.tms.backend.setting.AutomationSettingService;
 import com.tms.backend.subDomain.SubDomain;
@@ -192,16 +193,16 @@ public class ProjectService {
                 .collect(Collectors.toList());
     }
 
-    @Transactional(readOnly = true)
-    public List<ProjectDTO> getProjectsByOwner(String uid) {
-        User user = userRepo.findByUid(uid)
-        .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+    // @Transactional(readOnly = true)
+    // public List<ProjectDTO> getProjectsByOwner(String uid) {
+    //     User user = userRepo.findByUid(uid)
+    //     .orElseThrow(() -> new ResourceNotFoundException("User not found"));
 
-        List<Project> projects = projectRepo.findByOwnerId(user.getId());
-        return projects.stream()
-                .map(this::convertToFullDTO)
-                .collect(Collectors.toList());
-    }
+    //     List<Project> projects = projectRepo.findByOwnerId(user.getId());
+    //     return projects.stream()
+    //             .map(this::convertToFullDTO)
+    //             .collect(Collectors.toList());
+    // }
 
     // @Transactional(readOnly = true)
     // public ProjectDTO getProjectById(Long id) throws AccessDeniedException {
@@ -309,6 +310,15 @@ public class ProjectService {
                         .map(ProjectTbAssignmentDTO::fromEntity)
                         .collect(Collectors.toSet())
                 );
+    }
+
+    public List<Project> getProjectsForUser(User user) {
+        if (RoleConstants.ADMIN.equals(user.getRole().getName()) || RoleConstants.PM.equals(user.getRole().getName())) {
+            return projectRepo.findAllActive();
+        }
+
+        // linguist (or any non-admin/PM role)
+        return projectRepo.findByOwnerId(user.getId());
     }
 
     @Transactional

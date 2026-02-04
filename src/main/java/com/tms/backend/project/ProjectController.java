@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,6 +31,8 @@ import com.tms.backend.job.JobService;
 import com.tms.backend.projectTbAssignment.ProjectTbAssignmentService;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
 import com.tms.backend.user.CustomUserDetails;
+import com.tms.backend.user.User;
+import com.tms.backend.user.UserService;
 
 import jakarta.validation.Valid;
 
@@ -41,16 +44,19 @@ public class ProjectController {
     private final JobService jobService;
     private final ProjectTmAssignmentService tmAssignmentService;
     private final ProjectTbAssignmentService tbAssignmentService;
+    private final UserService userService;
     
     public ProjectController(
         ProjectService projectService,
         JobService jobService,
         ProjectTmAssignmentService tmAssignmentService,
-        ProjectTbAssignmentService tbAssignmentService) {
+        ProjectTbAssignmentService tbAssignmentService,
+        UserService userService) {
         this.projectService = projectService;
         this.jobService = jobService;
         this.tmAssignmentService = tmAssignmentService;
         this.tbAssignmentService = tbAssignmentService;
+        this.userService = userService;
     }
 
     @PostMapping("/create")
@@ -81,14 +87,14 @@ public class ProjectController {
         return ResponseEntity.ok(savedAssignments);
     }
 
-    @GetMapping
-    public List<ProjectDTO> getAllProjects(Authentication authentication){
-        // Extract user details from JWT
-        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
-        String uid = userDetails.getUid();
+    // @GetMapping("/all")
+    // public List<ProjectDTO> getAllProjects(Authentication authentication){
+    //     // Extract user details from JWT
+    //     CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+    //     String uid = userDetails.getUid();
 
-        return projectService.getProjectsByOwner(uid);
-    }
+    //     return projectService.getProjectsByOwner(uid);
+    // }
 
     // @GetMapping("/{id}")
     // public ProjectDTO getProject(@PathVariable Long id, Authentication authentication) throws AccessDeniedException {
@@ -107,6 +113,20 @@ public class ProjectController {
     @Transactional(readOnly = true)
     public List<JobDTO> getJobsByProject(@PathVariable Long projectId) {
         return jobService.getJobsByProjectId(projectId);
+    }
+
+    //get projects by role
+    @GetMapping
+    public List<ProjectDTO> getProjects(@AuthenticationPrincipal CustomUserDetails userDetails) {
+        // Get current user
+        String uid = userDetails.getUid();
+        User currentUser = userService.findByUid(uid)
+            .orElseThrow(() -> new RuntimeException("User not found with uid: " + uid));
+
+        return projectService.getProjectsForUser(currentUser)
+                .stream()
+                .map(ProjectDTO::fromEntity)
+                .toList();
     }
 
     @PatchMapping("/{id}")
