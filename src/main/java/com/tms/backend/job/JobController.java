@@ -103,6 +103,26 @@ public class JobController {
             }
     }
 
+    @PostMapping("/batch")
+    public ResponseEntity<?> createJobs(
+            @RequestPart("files") List<MultipartFile> files,
+            @RequestPart("job") JobDTO jobDTO,
+            @RequestPart(value = "note", required = false) String note,
+            @AuthenticationPrincipal CustomUserDetails userDetails) throws IOException {
+
+        String uid = userDetails.getUid();
+
+        if (jobDTO.projectId() != null) {
+            // Jobs under an existing project
+            List<JobDTO> jobs = jobService.createJobs(files, jobDTO, uid);
+            return ResponseEntity.ok(jobs);
+        } else {
+            // No project provided, auto-create one and attach the jobs to it
+            ProjectWithJobDTO result = jobService.createProjectWithJobs(files, note != null ? note : "", jobDTO, uid);
+            return ResponseEntity.ok(result);
+        }
+    }
+
     @PostMapping("/uploadFromPortal")
     public ResponseEntity<ProjectWithJobDTO> createMultipleJobs(
             @RequestPart("files") List<MultipartFile> files,

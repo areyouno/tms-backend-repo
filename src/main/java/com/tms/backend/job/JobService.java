@@ -120,6 +120,23 @@ public class JobService {
         return convertToDTO(savedJob);
     }
 
+    //create multiple jobs
+    @Transactional
+    public List<JobDTO> createJobs(List<MultipartFile> files, JobDTO jobDTO, String uid) throws IOException {
+        return createJobs(files, jobDTO, uid, null, false);
+    }
+
+    @Transactional
+    public List<JobDTO> createJobs(List<MultipartFile> files, JobDTO jobDTO, String uid, String projectFolder,
+            Boolean useSizingApi) throws IOException {
+        List<JobDTO> createdJobs = new ArrayList<>();
+        for (MultipartFile file : files) {
+            JobDTO created = createJob(file, jobDTO, uid, projectFolder, useSizingApi);
+            createdJobs.add(created);
+        }
+        return createdJobs;
+    }
+
     // for submitter portal
     @Transactional
     public ProjectWithJobDTO createProjectWithJobs(
