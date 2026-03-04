@@ -107,6 +107,10 @@ public class ProjectTemplate {
     @Column(name = "created_date")
     private LocalDateTime createdDate;
 
+    private boolean deleted = false;
+    private LocalDateTime deletedDate;
+    private String deletedBy;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -166,4 +170,13 @@ public class ProjectTemplate {
 
     public LocalDateTime getCreatedDate() { return createdDate; }
     public void setCreatedDate(LocalDateTime createdDate) { this.createdDate = createdDate; }
+
+    public boolean isDeleted() { return deleted; }
+    public void setDeleted(boolean deleted) { this.deleted = deleted; }
+
+    public LocalDateTime getDeletedDate() { return deletedDate; }
+    public void setDeletedDate(LocalDateTime deletedDate) { this.deletedDate = deletedDate; }
+    
+    public String getDeletedBy() { return deletedBy; }
+    public void setDeletedBy(String deletedBy) { this.deletedBy = deletedBy; }
 }

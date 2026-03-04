@@ -131,6 +131,38 @@ public class ProjectTemplateService {
         return "Template deleted successfully with id: " + id;
     }
 
+    @Transactional
+    public void softDeleteTemplate(Long templateId, String uid) {
+        ProjectTemplate template = templateRepository.findById(templateId)
+            .orElseThrow(() -> new ResourceNotFoundException("Template not found"));
+
+        User currentUser = userRepository.findByUid(uid)
+            .orElseThrow(() -> new RuntimeException("User not found"));
+
+            template.setDeleted(true);
+            template.setDeletedDate(LocalDateTime.now());
+            template.setDeletedBy(currentUser.getFirstName() + " " + currentUser.getLastName());
+        templateRepository.save(template);
+    }
+
+    @Transactional
+    public ProjectTemplateDTO restoreProjectTemplate(Long id, String uid) {
+        ProjectTemplate template = templateRepository.findByIdIncludingDeleted(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Project template not found"));
+
+        if (!template.isDeleted()) {
+            throw new RuntimeException("Project Template is not deleted");
+        }
+
+        template.setDeleted(false);
+        template.setDeletedDate(null);
+        template.setDeletedBy(null);
+
+        ProjectTemplate restored = templateRepository.save(template);
+
+        return convertToDTO(restored);
+    }
+
     private void applyCreateDTO(ProjectTemplate template, ProjectTemplateCreateDTO dto) {
         template.setName(dto.name());
         template.setProjectName(dto.projectName());

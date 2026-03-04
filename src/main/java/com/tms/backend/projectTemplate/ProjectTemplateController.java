@@ -65,13 +65,25 @@ public class ProjectTemplateController {
         return response;
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id}/hard")
     public ResponseEntity<String> deleteTemplate(@PathVariable Long id,
             Authentication authentication) {
         Long currentUserId = getCurrentUserId(authentication);
         boolean isAdmin = isAdmin(authentication);
         String message = templateService.deleteTemplate(id, currentUserId, isAdmin);
         return ResponseEntity.ok(message);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> softDeleteTemplate(
+        @PathVariable Long id,
+        Authentication authentication){
+        CustomUserDetails userDetails = (CustomUserDetails)
+        authentication.getPrincipal();
+        String uid= userDetails.getUid();
+
+        templateService.softDeleteTemplate(id, uid);
+        return ResponseEntity.noContent().build();
     }
 
     /**
