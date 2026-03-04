@@ -58,7 +58,7 @@ public class WorkflowStepService {
         workflowStep.setIsLQA(createDTO.isLQA() != null ? createDTO.isLQA() : false);
 
          WorkflowStep savedStep = wfRepo.save(workflowStep);
-         netRateSchemeService.addStepToAllSchemes(savedStep.getId());
+         netRateSchemeService.addStepToAllSchemes(savedStep.getId()); // when a new workflow step is created, automatically add it to all existing net rate schemes
          return savedStep;
     }
 
@@ -88,5 +88,18 @@ public class WorkflowStepService {
         wfRepo.deleteById(id);
         
         return stepName;
+    }
+
+    @Transactional
+    public void deleteWorkflowSteps(List<Long> id) {
+        // get workflow steps
+        List<WorkflowStep> steps = wfRepo.findAllById(id);
+
+        if (steps.isEmpty()) {
+            throw new RuntimeException("No steps found for the given IDs");
+        }
+
+        // get the name before deletion
+        wfRepo.deleteAll(steps);
     }
 }

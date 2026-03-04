@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.tms.backend.dto.WorkflowStepCreateDTO;
 import com.tms.backend.dto.WorkflowStepDTO;
+import com.tms.backend.dto.WorkflowStepDeleteRequestDTO;
 import com.tms.backend.security.AccessRolesConstants;
 
 import jakarta.validation.Valid;
@@ -61,6 +62,15 @@ public class WorkflowStepController {
     public ResponseEntity<String> deleteWorkflowStep(@PathVariable Long id, Authentication authentication) {
         String deletedWfStep = wfService.deleteWorkflowStep(id);
         String successMessage = "Workflow step '" + deletedWfStep + "' (ID: " + id + ") deleted successfully.";
+
+        return ResponseEntity.ok(successMessage);
+    }
+
+    @DeleteMapping("/delete")
+    @PreAuthorize(AccessRolesConstants.ADMIN_OR_PM)  // Only admin, pm can delete workflow steps 
+    public ResponseEntity<String> deleteWorkflowSteps(@RequestBody WorkflowStepDeleteRequestDTO request, Authentication authentication) {
+        wfService.deleteWorkflowSteps(request.ids());
+        String successMessage = "Workflow steps " + request.ids() + " deleted successfully.";
 
         return ResponseEntity.ok(successMessage);
     }
