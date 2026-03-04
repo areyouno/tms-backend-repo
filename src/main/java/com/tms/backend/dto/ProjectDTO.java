@@ -110,7 +110,7 @@ public record ProjectDTO (
             project.getCreateDate(),
             project.getStatus(),
             project.getProgress() != null
-                ? project.getProgress().toPlainString()
+                ? project.getProgress().toString()
                 : null,
 
             project.getFileHandover(),
