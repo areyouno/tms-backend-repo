@@ -9,6 +9,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -34,6 +36,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -41,6 +44,8 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 
 import com.tms.backend.dto.DownloadJobsRequest;
 import com.tms.backend.dto.DownloadProjectsRequest;
+import com.tms.backend.settingCompletedFilesNaming.CompletedFilesNamingSetting;
+import com.tms.backend.settingCompletedFilesNaming.CompletedFilesNamingSettingService;
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.JobSoftDeleteDTO;
 import com.tms.backend.dto.JobWorkflowStepDTO;
@@ -63,6 +68,7 @@ public class JobController {
     private final JobService jobService;
     private final FileConversionService fileService;
     private final UserService userService;
+    private final CompletedFilesNamingSettingService completedFilesNamingSettingService;
 
     private static final Logger logger = LoggerFactory.getLogger(JobController.class);
 
@@ -72,10 +78,12 @@ public class JobController {
     public JobController(
         JobService jobService,
         FileConversionService fileService,
-        UserService userService){
+        UserService userService,
+        CompletedFilesNamingSettingService completedFilesNamingSettingService){
         this.jobService = jobService;
         this.fileService = fileService;
         this.userService = userService;
+        this.completedFilesNamingSettingService = completedFilesNamingSettingService;
     }
     
     @PostMapping("/upload")
@@ -266,31 +274,98 @@ public class JobController {
 
     // Download translated file
     @GetMapping("/{jobId}/download/translated")
-    public ResponseEntity<Resource> downloadTranslatedFile(@PathVariable Long jobId) {
+    @Transactional(readOnly = true)
+    public ResponseEntity<Resource> downloadTranslatedFile(
+            @PathVariable Long jobId,
+            @RequestParam(required = false) Long workflowStepId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         try {
             Job job = jobService.getJobById(jobId);
             Path filePath = jobService.getTranslatedFilePath(jobId);
-            
+
             Resource resource = new UrlResource(filePath.toUri());
-            
+
             if (!resource.exists() || !resource.isReadable()) {
-                logger.error("Converted file not readable: {}", filePath);
+                logger.error("Translated file not readable: {}", filePath);
                 return ResponseEntity.notFound().build();
             }
-            
+
+            String downloadFileName = job.getTranslatedFileName();
+
+            if (userDetails != null && isJobCompleted(job, workflowStepId)) {
+                User currentUser = userService.findByUid(userDetails.getUid()).orElse(null);
+                if (currentUser != null) {
+                    CompletedFilesNamingSetting setting = completedFilesNamingSettingService.getForUser(currentUser);
+                    if (setting.isHasNamingRule()) {
+                        downloadFileName = applyNamingRule(setting.getNamingRule(), job);
+                    }
+                }
+            }
+
             return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/xml"))
-                .header(HttpHeaders.CONTENT_DISPOSITION, 
-                        "attachment; filename=\"" + job.getTranslatedFileName() + "\"")
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + downloadFileName + "\"")
                 .body(resource);
-                
+
         } catch (ResourceNotFoundException e) {
             logger.error("File not found: {}", e.getMessage());
             return ResponseEntity.notFound().build();
         } catch (Exception e) {
-            logger.error("Error downloading converted file for job: " + jobId, e);
+            logger.error("Error downloading translated file for job: " + jobId, e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    private boolean isJobCompleted(Job job, Long workflowStepId) {
+        if (workflowStepId == null) {
+            return false;
+        }
+        Set<JobWorkflowStep> steps = job.getWorkflowSteps();
+        return steps.stream()
+                .anyMatch(ws -> ws.getId().equals(workflowStepId)
+                        && ws.getStatus() == JobWorkflowStatus.COMPLETED);
+    }
+
+    private String applyNamingRule(String rule, Job job) {
+        String translatedFileName = job.getTranslatedFileName() != null
+                ? job.getTranslatedFileName() : job.getFileName();
+
+        String baseName = translatedFileName;
+        String extension = "";
+        int dotIndex = translatedFileName.lastIndexOf('.');
+        if (dotIndex != -1) {
+            baseName = translatedFileName.substring(0, dotIndex);
+            extension = translatedFileName.substring(dotIndex);
+        }
+
+        String sourceLang = job.getSourceLang() != null ? job.getSourceLang() : "";
+        String targetLang = (job.getTargetLangs() != null && !job.getTargetLangs().isEmpty())
+                ? job.getTargetLangs().stream().sorted().collect(Collectors.joining("-"))
+                : "";
+        String workflow = job.getWorkflowSteps().stream()
+                .filter(ws -> ws.getWorkflowStep() != null && ws.getWorkflowStep().getName() != null)
+                .map(ws -> ws.getWorkflowStep().getName())
+                .collect(Collectors.joining("-"));
+
+        String result = rule
+                .replace("{path}", "")
+                .replace("{fileName}", baseName)
+                .replace("{sourceLang}", sourceLang)
+                .replace("{targetLang}", targetLang)
+                .replace("{workflow}", workflow)
+                .replace("{status}", "completed");
+
+        // Strip any path prefix — only use the filename segment
+        int slashIndex = result.lastIndexOf('/');
+        if (slashIndex != -1) {
+            result = result.substring(slashIndex + 1);
+        }
+
+        // Clean up repeated or leading/trailing dashes
+        result = result.replaceAll("-{2,}", "-").replaceAll("^[-_]+|[-_]+$", "");
+
+        return result + extension;
     }
 
     @PostMapping("/{jobId}/download/target")
