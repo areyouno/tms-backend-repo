@@ -63,11 +63,11 @@ public class ProjectTbAssignmentService {
             ProjectTbAssignment assignment;
 
             if (existingAssignment.isPresent()) {
-                // ---- UPDATE ----
+                // Update existing assignment
                 assignment = existingAssignment.get();
 
             } else {
-                // ---- CREATE ----
+                // Create new assignment
                 assignment = new ProjectTbAssignment();
                 assignment.setProject(project);
                 assignment.setTbId(tbDto.tbId());
