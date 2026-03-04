@@ -111,7 +111,7 @@ public class Project {
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Job> jobs = new HashSet<>();
 
-    BigDecimal progress;
+    BigDecimal progress = BigDecimal.ZERO;
 
     private boolean deleted = false;
     private LocalDateTime deletedDate;

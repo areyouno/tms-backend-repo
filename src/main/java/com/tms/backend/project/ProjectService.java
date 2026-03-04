@@ -18,7 +18,6 @@ import com.tms.backend.client.Client;
 import com.tms.backend.client.ClientRepository;
 import com.tms.backend.costCenter.CostCenter;
 import com.tms.backend.costCenter.CostCenterRepository;
-import com.tms.backend.domain.Domain;
 import com.tms.backend.domain.DomainRepository;
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
@@ -129,11 +128,11 @@ public class ProjectService {
             project.setCostCenter(cc);
         }
 
-        if (createDTO.domainId() != null) {
-            Domain domain = domainRepo.findById(createDTO.domainId())
-                    .orElseThrow(() -> new RuntimeException("Cost center not found: " + createDTO.domainId()));
-            project.setDomain(domain);
-        }
+        // if (createDTO.domainId() != null) {
+        //     Domain domain = domainRepo.findById(createDTO.domainId())
+        //             .orElseThrow(() -> new RuntimeException("Cost center not found: " + createDTO.domainId()));
+        //     project.setDomain(domain);
+        // }
 
         if (createDTO.subdomainId() != null) {
             SubDomain subdomain = subDomainRepo.findById(createDTO.subdomainId())
@@ -389,6 +388,12 @@ public class ProjectService {
                 .map(ProjectAutomationRule::valueOf)
                 .collect(Collectors.toSet());
             project.getStatusAutomationSetting().setEnabledRules(enabledRules);
+        }
+
+        if (updatedData.costCenterId() != null) {
+            CostCenter cc = ccRepo.findById(updatedData.costCenterId())
+                .orElseThrow(() -> new EntityNotFoundException("Cost center not found"));
+            project.setCostCenter(cc);
         }
 
         Project saved = projectRepo.save(project);
