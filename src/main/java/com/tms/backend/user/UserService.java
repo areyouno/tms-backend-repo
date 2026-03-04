@@ -185,6 +185,9 @@ public class UserService {
         user.setSourceLang(dto.sourceLang());
         user.setTargetLanguages(dto.targetLanguages() != null ? dto.targetLanguages() : new HashSet<>());
 
+        user.setNote(dto.note());
+        user.setProfileComplete(true);
+
         userRepo.save(user);
 
         // send email

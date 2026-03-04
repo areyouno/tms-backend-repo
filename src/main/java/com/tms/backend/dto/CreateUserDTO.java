@@ -12,6 +12,7 @@ public record CreateUserDTO(
     boolean isActive,
 
     ZoneId timeZone,
+    String note,
 
     //optional fields
     String sourceLang,
