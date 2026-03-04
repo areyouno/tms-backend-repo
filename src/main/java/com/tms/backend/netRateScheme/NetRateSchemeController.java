@@ -55,6 +55,12 @@ public class NetRateSchemeController {
         return ResponseEntity.ok(dto);
     }
 
+    @GetMapping("/default")
+    public ResponseEntity<NetRateSchemeResponseDTO> getDefaultScheme() {
+        NetRateSchemeResponseDTO dto = netRateSchemeService.getDefaultScheme();
+        return ResponseEntity.ok(dto);
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<NetRateScheme> updateScheme(
             @PathVariable Long id,

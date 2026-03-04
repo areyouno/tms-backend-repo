@@ -54,6 +54,8 @@ public class NetRateScheme {
     @JoinColumn(name = "created_by")
     private User createdBy;
 
+    private boolean isDefault;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -72,4 +74,6 @@ public class NetRateScheme {
     public User getCreatedBy() { return createdBy; }
     public void setCreatedBy(User createdBy) { this.createdBy = createdBy; }
 
+    public boolean isDefault() { return isDefault; }
+    public void setDefault(boolean isDefault) { this.isDefault = isDefault; }
 }

@@ -55,6 +55,10 @@ public class NetRateSchemeService {
                 .orElseThrow(() -> new RuntimeException("Project not found"));
         scheme.setProject(project);
 
+        // set scheme to default if there is no default yet
+        if (!netRateSchemeRepository.existsByIsDefaultTrue()) {
+            scheme.setDefault(true);
+        }
 
         if (dto.workflowSteps() != null) {
             for (NetRateSchemeWfDTO wfDto : dto.workflowSteps()) {
@@ -125,6 +129,13 @@ public class NetRateSchemeService {
         );
     }
 
+    public NetRateSchemeResponseDTO getDefaultScheme() {
+        NetRateScheme scheme = netRateSchemeRepository.findByIsDefaultTrue()
+                .orElseThrow(() -> new RuntimeException("No default NetRateScheme set"));
+
+        return toDTO(scheme);
+    }
+
     @Transactional
     public NetRateScheme updateScheme(Long schemeId, NetRateSchemeUpdateDTO dto) {
         // fetch existing scheme
@@ -139,7 +150,7 @@ public class NetRateSchemeService {
         // Clear existing workflow steps (orphanRemoval will delete child records)
         scheme.getWorkflowStepRates().clear();
 
-        // 4️⃣ Add new workflow steps from DTO
+        // Add new workflow steps from DTO
         if (dto.netRateSchemeWfList() != null) {
             for (NetRateSchemeWfDTO wfDto : dto.netRateSchemeWfList()) {
                 WorkflowStep workflowStep = workflowStepRepo
@@ -172,6 +183,22 @@ public class NetRateSchemeService {
         // save the scheme (cascade will persist workflow steps and match type rates)
         return netRateSchemeRepository.save(scheme);
     }
+
+    @Transactional
+    public void setDefault(Long schemeId) {
+
+        NetRateScheme scheme = netRateSchemeRepository.findById(schemeId)
+                .orElseThrow(() -> new RuntimeException("Scheme not found"));
+
+        // Step 1: clear old default
+        netRateSchemeRepository.clearCurrentDefault();
+
+        // Step 2: set new default
+        scheme.setDefault(true);
+
+        netRateSchemeRepository.save(scheme);
+    }
+
 
     public void deleteSchemes(List<Long> ids) {
         List<NetRateScheme> schemes = netRateSchemeRepository.findAllById(ids);
@@ -226,6 +253,7 @@ public class NetRateSchemeService {
         return netRateSchemeRepository.save(copy);
     }
 
+    // adds workflow step to all existing schemes
     @Transactional
     public void addStepToAllSchemes(Long workflowStepId) {
         // define default percentages for each match type
@@ -233,11 +261,11 @@ public class NetRateSchemeService {
             MatchType.REPETITIONS, new MatchTypeRate(MatchType.REPETITIONS, 10L, 0L, 0L, 0L),
             MatchType.PERCENT_101, new MatchTypeRate(MatchType.PERCENT_101, 10L, 0L, 0L, 0L),
             MatchType.PERCENT_100, new MatchTypeRate(MatchType.PERCENT_100, 10L, 30L, 10L, 10L),
-            MatchType.PERCENT_95_99, new MatchTypeRate(MatchType.PERCENT_95_99, 33L, 40L, 33L, 33L),
-            MatchType.PERCENT_85_94, new MatchTypeRate(MatchType.PERCENT_85_94, 66L, 70L, 66L, 66L),
-            MatchType.PERCENT_75_84, new MatchTypeRate(MatchType.PERCENT_75_84, 100L, 100L, 100L, 100L),
-            MatchType.PERCENT_50_74, new MatchTypeRate(MatchType.PERCENT_50_74, 100L, 100L, 100L, 100L),
-            MatchType.PERCENT_0_49, new MatchTypeRate(MatchType.PERCENT_0_49, 100L, 100L, 100L, 100L)
+            MatchType.PERCENT_95, new MatchTypeRate(MatchType.PERCENT_95, 33L, 40L, 33L, 33L),
+            MatchType.PERCENT_85, new MatchTypeRate(MatchType.PERCENT_85, 66L, 70L, 66L, 66L),
+            MatchType.PERCENT_75, new MatchTypeRate(MatchType.PERCENT_75, 100L, 100L, 100L, 100L),
+            MatchType.PERCENT_50, new MatchTypeRate(MatchType.PERCENT_50, 100L, 100L, 100L, 100L),
+            MatchType.PERCENT_0, new MatchTypeRate(MatchType.PERCENT_0, 100L, 100L, 100L, 100L)
         );
 
         // fetch workflow step once
