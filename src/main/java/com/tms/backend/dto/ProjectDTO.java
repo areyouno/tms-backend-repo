@@ -22,7 +22,7 @@ public record ProjectDTO (
     Long costCenterId,
     Long domainId,
     Long subdomainId,
-    Set<Long> workflowSteps,
+    Set<Long> workflowStepIds,
     String ownerUid,
     String createdBy,
     LocalDateTime createDate,
