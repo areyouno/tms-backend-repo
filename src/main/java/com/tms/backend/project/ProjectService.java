@@ -1,5 +1,6 @@
 package com.tms.backend.project;
 
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -7,6 +8,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
+
+import org.springframework.context.annotation.Lazy;
+import org.springframework.web.multipart.MultipartFile;
 
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -19,15 +23,18 @@ import com.tms.backend.client.ClientRepository;
 import com.tms.backend.costCenter.CostCenter;
 import com.tms.backend.costCenter.CostCenterRepository;
 import com.tms.backend.domain.DomainRepository;
+import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectSoftDeleteDTO;
 import com.tms.backend.dto.ProjectSummaryDTO;
 import com.tms.backend.dto.ProjectTbAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentDTO;
+import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.job.Job;
 import com.tms.backend.job.JobRepository;
+import com.tms.backend.job.JobService;
 import com.tms.backend.job.JobWorkflowStatus;
 import com.tms.backend.job.JobWorkflowStep;
 import com.tms.backend.machineTranslation.MachineTranslation;
@@ -59,6 +66,7 @@ public class ProjectService {
     private WorkflowStepRepository wfRepo;
     private JobRepository jobRepo;
     private final AutomationSettingService automationSettingService;
+    private final JobService jobService;
 
 
     public ProjectService(
@@ -73,7 +81,8 @@ public class ProjectService {
         CostCenterRepository ccRepo,
         WorkflowStepRepository wfRepo,
         JobRepository jobRepo,
-        AutomationSettingService automationSettingService
+        AutomationSettingService automationSettingService,
+        @Lazy JobService jobService
     ) {
         this.projectRepo = projectRepo;
         this.businessUnitRepo = businessUnitRepo;
@@ -87,6 +96,7 @@ public class ProjectService {
         this.wfRepo = wfRepo;
         this.jobRepo = jobRepo;
         this.automationSettingService = automationSettingService;
+        this.jobService = jobService;
     }
 
     public ProjectDTO createProject(ProjectCreateDTO createDTO, String userEmail) throws UsernameNotFoundException {
@@ -162,9 +172,9 @@ public class ProjectService {
                    .map(ProjectAutomationRule::valueOf)
                    .collect(Collectors.toSet());
        } else {
-           // Fallback: use user's default automation settings
+           // Fallback: use user's default automation settings (copy to avoid shared collection reference)
            AutomationSetting userSetting = automationSettingService.getOrCreateUserAutomationSetting(currentUser);
-           automationRules = userSetting.getUserAutomationRules().getEnabledRules();
+           automationRules = new HashSet<>(userSetting.getUserAutomationRules().getEnabledRules());
        }
 
        // Apply automation rules to project's embedded StatusAutomationSetting
@@ -182,6 +192,49 @@ public class ProjectService {
         
         // Convert to response DTO
         return convertToFullDTO(savedProject);
+    }
+
+    @Transactional
+    public ProjectWithJobDTO createProjectWithJobs(
+            ProjectCreateDTO createDTO,
+            List<MultipartFile> files,
+            List<com.tms.backend.dto.JobWorkflowStepDTO> workflowSteps,
+            String userEmail) throws IOException {
+
+        // 1. Create the full project using existing logic
+        ProjectDTO projectDTO = createProject(createDTO, userEmail);
+
+        // 2. Build job workflow steps
+        List<com.tms.backend.dto.JobWorkflowStepDTO> jobWfSteps = null;
+        if (workflowSteps != null && !workflowSteps.isEmpty()) {
+            // Use the provided workflow steps with provider assignments
+            jobWfSteps = workflowSteps;
+        } else if (createDTO.workflowSteps() != null && !createDTO.workflowSteps().isEmpty()) {
+            // Fallback: use project workflow step IDs without providers
+            jobWfSteps = createDTO.workflowSteps().stream()
+                    .map(stepId -> new com.tms.backend.dto.JobWorkflowStepDTO(
+                            stepId, null, null, null, null, null, null, null))
+                    .toList();
+        }
+
+        JobDTO jobDTO = new JobDTO(
+                null,
+                createDTO.sourceLang(),
+                createDTO.targetLang(),
+                null, null, null, null, null, null, null, null, null,
+                projectDTO.id(),
+                jobWfSteps,
+                null, null, null, null, null, null
+        );
+
+        // 3. Get user uid from email
+        User user = userRepo.findByEmail(userEmail)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found: " + userEmail));
+
+        // 4. Create jobs for each uploaded file
+        List<JobDTO> jobs = jobService.createJobs(files, jobDTO, user.getUid());
+
+        return new ProjectWithJobDTO(projectDTO, jobs);
     }
 
     @Transactional(readOnly = true)

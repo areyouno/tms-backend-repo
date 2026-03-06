@@ -201,7 +201,7 @@ public class JobService {
 
     private Project createWidgetProject(String note, JobDTO jobDTO, User user) {
         Project project = new Project();
-        String projectName = "Widget Project" + " " + "portal page" + " " + user.getEmail();
+        String projectName = "Widget Project" + " " + user.getEmail();
         project.setName(projectName);
         project.setSourceLang(jobDTO.sourceLang());
         project.setTargetLanguages(jobDTO.targetLangs());
@@ -346,15 +346,13 @@ public class JobService {
             jobWfStep.setWorkflowStep(wfStepReference);
 
             if (stepDTO.providerUid() != null){
-                User wfStepProvider = userRepo.findByUid(stepDTO.providerUid())
-                    .orElseThrow(() -> new ResourceNotFoundException("Provider not found"));
-                jobWfStep.setProvider(wfStepProvider);
+                userRepo.findByUid(stepDTO.providerUid())
+                    .ifPresent(jobWfStep::setProvider);
             }
 
             if (stepDTO.notifyUserUid() != null){
-                User notifyUser = userRepo.findByUid(stepDTO.notifyUserUid())
-                    .orElseThrow(() -> new ResourceNotFoundException("User to notify not found"));
-                jobWfStep.setNotifyUser(notifyUser);
+                userRepo.findByUid(stepDTO.notifyUserUid())
+                    .ifPresent(jobWfStep::setNotifyUser);
             }
 
             jobWfStep.setDueDate(stepDTO.dueDate());

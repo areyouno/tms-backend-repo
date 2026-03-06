@@ -93,16 +93,8 @@ public class FileConversionService {
             
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
             
-            // Make API request - expecting binary response
-            ResponseEntity<byte[]> response = restTemplate.postForEntity(
-                endpoint,
-                requestEntity,
-                byte[].class
-            );
-            
-            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-                throw new RuntimeException("API returned unsuccessful status: " + response.getStatusCode());
-            }
+            // Make API request with retry
+            ResponseEntity<byte[]> response = callWithRetry(endpoint, requestEntity, 3, 5000);
             
             logger.info("Successfully received converted file from API. Status: {}", response.getStatusCode());
             
@@ -296,6 +288,46 @@ public class FileConversionService {
         return relativeTargetPath;
     }
 
+
+    private ResponseEntity<byte[]> callWithRetry(
+            String endpoint,
+            HttpEntity<MultiValueMap<String, Object>> requestEntity,
+            int maxRetries,
+            long delayMs) {
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++) {
+            try {
+                ResponseEntity<byte[]> response = restTemplate.postForEntity(
+                        endpoint, requestEntity, byte[].class);
+
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    return response;
+                }
+
+                logger.warn("Conversion API returned status {} on attempt {}/{}",
+                        response.getStatusCode(), attempt, maxRetries);
+
+            } catch (RestClientException e) {
+                logger.warn("Conversion API call failed on attempt {}/{}: {}",
+                        attempt, maxRetries, e.getMessage());
+
+                if (attempt == maxRetries) {
+                    throw new RuntimeException(
+                            "Conversion API failed after " + maxRetries + " attempts", e);
+                }
+            }
+
+            try {
+                logger.info("Retrying in {} seconds...", delayMs / 1000);
+                Thread.sleep(delayMs);
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                throw new RuntimeException("Retry interrupted", ie);
+            }
+        }
+
+        throw new RuntimeException("Conversion API failed after " + maxRetries + " attempts");
+    }
 
     private enum FileType {
         XML,

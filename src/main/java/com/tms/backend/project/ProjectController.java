@@ -1,5 +1,6 @@
 package com.tms.backend.project;
 
+import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.util.List;
 import java.util.Set;
@@ -17,16 +18,20 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectSoftDeleteDTO;
+import com.tms.backend.dto.ProjectWithJobsCreateDTO;
 import com.tms.backend.dto.ProjectTbAssignmentDTO;
 import com.tms.backend.dto.ProjectTbAssignmentRequest;
 import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentRequest;
+import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.job.JobService;
 import com.tms.backend.projectTbAssignment.ProjectTbAssignmentService;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
@@ -68,6 +73,18 @@ public class ProjectController {
 
         ProjectDTO createdProject = projectService.createProject(createDTO, email);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdProject);
+    }
+
+    @PostMapping("/create-with-jobs")
+    public ResponseEntity<ProjectWithJobDTO> createProjectWithJobs(
+            @RequestPart("data") @Valid ProjectWithJobsCreateDTO data,
+            @RequestPart("files") List<MultipartFile> files,
+            Authentication authentication) throws IOException {
+
+        String email = authentication.getName();
+        ProjectWithJobDTO result = projectService.createProjectWithJobs(
+                data.project(), files, data.workflowSteps(), email);
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @PostMapping("/{projectId}/assign-TMs")
