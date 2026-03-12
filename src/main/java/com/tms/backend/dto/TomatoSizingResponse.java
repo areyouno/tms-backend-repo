@@ -1,10 +1,13 @@
 package com.tms.backend.dto;
 
-public record TomatoSizingResponse(Statistics statistics){
+public record TomatoSizingResponse(Statistics statistics) {
     public record Statistics(
         Long approvedCount,
         Long approvedSegments,
         Double approvedPercentage,
+        Long nonTranslatableCount,
+        Long nonTranslatableSegments,
+        Double nonTranslatablePercentage,
         Long repetitionCount,
         Long repetitionSegments,
         Double repetitionPercentage,
@@ -32,6 +35,94 @@ public record TomatoSizingResponse(Statistics statistics){
         Long totalCount,
         Long totalSegments,
         Long totalWords,
-        Long totalCharacters
+        Long totalCharacters,
+
+        // TM breakdown
+        Long approvedTM_Words,
+        Long approvedTM_Characters,
+        Long approvedTM_Segments,
+        Long approvedNT_Words,
+        Long approvedNT_Characters,
+        Long approvedNT_Segments,
+
+        Long repetitionTM_Words,
+        Long repetitionTM_Characters,
+        Long repetitionTM_Segments,
+        Long repetitionNT_Words,
+        Long repetitionNT_Characters,
+        Long repetitionNT_Segments,
+
+        Long context101TM_Words,
+        Long context101TM_Characters,
+        Long context101TM_Segments,
+        Long context101NT_Words,
+        Long context101NT_Characters,
+        Long context101NT_Segments,
+
+        Long perfect100TM_Words,
+        Long perfect100TM_Characters,
+        Long perfect100TM_Segments,
+        Long perfect100NT_Words,
+        Long perfect100NT_Characters,
+        Long perfect100NT_Segments,
+
+        Long fuzzy95TM_Words,
+        Long fuzzy95TM_Characters,
+        Long fuzzy95TM_Segments,
+        Long fuzzy95NT_Words,
+        Long fuzzy95NT_Characters,
+        Long fuzzy95NT_Segments,
+
+        Long fuzzy85TM_Words,
+        Long fuzzy85TM_Characters,
+        Long fuzzy85TM_Segments,
+        Long fuzzy85NT_Words,
+        Long fuzzy85NT_Characters,
+        Long fuzzy85NT_Segments,
+
+        Long fuzzy75TM_Words,
+        Long fuzzy75TM_Characters,
+        Long fuzzy75TM_Segments,
+        Long fuzzy75NT_Words,
+        Long fuzzy75NT_Characters,
+        Long fuzzy75NT_Segments,
+
+        Long fuzzy50TM_Words,
+        Long fuzzy50TM_Characters,
+        Long fuzzy50TM_Segments,
+        Long fuzzy50NT_Words,
+        Long fuzzy50NT_Characters,
+        Long fuzzy50NT_Segments,
+
+        Long noMatchTM_Words,
+        Long noMatchTM_Characters,
+        Long noMatchTM_Segments,
+        Long noMatchNT_Words,
+        Long noMatchNT_Characters,
+        Long noMatchNT_Segments,
+
+        // Weighted values
+        Double approvedTM_Weighted,
+        Double approvedNT_Weighted,
+        Double repetitionTM_Weighted,
+        Double repetitionNT_Weighted,
+        Double context101TM_Weighted,
+        Double context101NT_Weighted,
+        Double perfect100TM_Weighted,
+        Double perfect100NT_Weighted,
+        Double fuzzy95TM_Weighted,
+        Double fuzzy95NT_Weighted,
+        Double fuzzy85TM_Weighted,
+        Double fuzzy85NT_Weighted,
+        Double fuzzy75TM_Weighted,
+        Double fuzzy75NT_Weighted,
+        Double fuzzy50TM_Weighted,
+        Double fuzzy50NT_Weighted,
+        Double noMatchTM_Weighted,
+        Double noMatchNT_Weighted,
+        Double totalWeighted,
+        Double totalWeightedPercentage,
+        String sourceLanguage,
+        String targetLanguage
     ) {}
 }

@@ -66,16 +66,23 @@ public class JobAnalysis {
     @Enumerated(EnumType.STRING)
     private AnalysisScope scope = AnalysisScope.SOURCE;
 
-    // net rate results
-    private Double netRateRepetition;
-    private Double netRateContextMatch;
-    private Double netRatePerfect100;
-    private Double netRateFuzzy95;
-    private Double netRateFuzzy85;
-    private Double netRateFuzzy75;
-    private Double netRateFuzzy50;
-    private Double netRateNoMatch;
-    private Double netRateTotal;
+    // sizing results (TM words and segments)
+    private Long repetitionWords;
+    private Long repetitionSegments;
+    private Long contextMatchWords;
+    private Long contextMatchSegments;
+    private Long perfect100Words;
+    private Long perfect100Segments;
+    private Long fuzzy95Words;
+    private Long fuzzy95Segments;
+    private Long fuzzy85Words;
+    private Long fuzzy85Segments;
+    private Long fuzzy75Words;
+    private Long fuzzy75Segments;
+    private Long fuzzy50Words;
+    private Long fuzzy50Segments;
+    private Long noMatchWords;
+    private Long noMatchSegments;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -134,30 +141,51 @@ public class JobAnalysis {
     public AnalysisScope getScope() { return scope; }
     public void setScope(AnalysisScope scope) { this.scope = scope; }
 
-    public Double getNetRateRepetition() { return netRateRepetition; }
-    public void setNetRateRepetition(Double netRateRepetition) { this.netRateRepetition = netRateRepetition; }
+    public Long getRepetitionWords() { return repetitionWords; }
+    public void setRepetitionWords(Long repetitionWords) { this.repetitionWords = repetitionWords; }
 
-    public Double getNetRateContextMatch() { return netRateContextMatch; }
-    public void setNetRateContextMatch(Double netRateContextMatch) { this.netRateContextMatch = netRateContextMatch; }
+    public Long getRepetitionSegments() { return repetitionSegments; }
+    public void setRepetitionSegments(Long repetitionSegments) { this.repetitionSegments = repetitionSegments; }
 
-    public Double getNetRatePerfect100() { return netRatePerfect100; }
-    public void setNetRatePerfect100(Double netRatePerfect100) { this.netRatePerfect100 = netRatePerfect100; }
+    public Long getContextMatchWords() { return contextMatchWords; }
+    public void setContextMatchWords(Long contextMatchWords) { this.contextMatchWords = contextMatchWords; }
 
-    public Double getNetRateFuzzy95() { return netRateFuzzy95; }
-    public void setNetRateFuzzy95(Double netRateFuzzy95) { this.netRateFuzzy95 = netRateFuzzy95; }
+    public Long getContextMatchSegments() { return contextMatchSegments; }
+    public void setContextMatchSegments(Long contextMatchSegments) { this.contextMatchSegments = contextMatchSegments; }
 
-    public Double getNetRateFuzzy85() { return netRateFuzzy85; }
-    public void setNetRateFuzzy85(Double netRateFuzzy85) { this.netRateFuzzy85 = netRateFuzzy85; }
+    public Long getPerfect100Words() { return perfect100Words; }
+    public void setPerfect100Words(Long perfect100Words) { this.perfect100Words = perfect100Words; }
 
-    public Double getNetRateFuzzy75() { return netRateFuzzy75; }
-    public void setNetRateFuzzy75(Double netRateFuzzy75) { this.netRateFuzzy75 = netRateFuzzy75; }
+    public Long getPerfect100Segments() { return perfect100Segments; }
+    public void setPerfect100Segments(Long perfect100Segments) { this.perfect100Segments = perfect100Segments; }
 
-    public Double getNetRateFuzzy50() { return netRateFuzzy50; }
-    public void setNetRateFuzzy50(Double netRateFuzzy50) { this.netRateFuzzy50 = netRateFuzzy50; }
+    public Long getFuzzy95Words() { return fuzzy95Words; }
+    public void setFuzzy95Words(Long fuzzy95Words) { this.fuzzy95Words = fuzzy95Words; }
 
-    public Double getNetRateNoMatch() { return netRateNoMatch; }
-    public void setNetRateNoMatch(Double netRateNoMatch) { this.netRateNoMatch = netRateNoMatch; }
+    public Long getFuzzy95Segments() { return fuzzy95Segments; }
+    public void setFuzzy95Segments(Long fuzzy95Segments) { this.fuzzy95Segments = fuzzy95Segments; }
 
-    public Double getNetRateTotal() { return netRateTotal; }
-    public void setNetRateTotal(Double netRateTotal) { this.netRateTotal = netRateTotal; }
+    public Long getFuzzy85Words() { return fuzzy85Words; }
+    public void setFuzzy85Words(Long fuzzy85Words) { this.fuzzy85Words = fuzzy85Words; }
+
+    public Long getFuzzy85Segments() { return fuzzy85Segments; }
+    public void setFuzzy85Segments(Long fuzzy85Segments) { this.fuzzy85Segments = fuzzy85Segments; }
+
+    public Long getFuzzy75Words() { return fuzzy75Words; }
+    public void setFuzzy75Words(Long fuzzy75Words) { this.fuzzy75Words = fuzzy75Words; }
+
+    public Long getFuzzy75Segments() { return fuzzy75Segments; }
+    public void setFuzzy75Segments(Long fuzzy75Segments) { this.fuzzy75Segments = fuzzy75Segments; }
+
+    public Long getFuzzy50Words() { return fuzzy50Words; }
+    public void setFuzzy50Words(Long fuzzy50Words) { this.fuzzy50Words = fuzzy50Words; }
+
+    public Long getFuzzy50Segments() { return fuzzy50Segments; }
+    public void setFuzzy50Segments(Long fuzzy50Segments) { this.fuzzy50Segments = fuzzy50Segments; }
+
+    public Long getNoMatchWords() { return noMatchWords; }
+    public void setNoMatchWords(Long noMatchWords) { this.noMatchWords = noMatchWords; }
+
+    public Long getNoMatchSegments() { return noMatchSegments; }
+    public void setNoMatchSegments(Long noMatchSegments) { this.noMatchSegments = noMatchSegments; }
 }

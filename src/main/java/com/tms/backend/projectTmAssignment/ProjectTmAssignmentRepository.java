@@ -16,4 +16,10 @@ public interface ProjectTmAssignmentRepository
             Long tmId,
             Long workflowStepId
         );
+
+    Optional<ProjectTmAssignment>
+        findByProjectIdAndWorkflowStepIdAndReadAccessTrue(
+            Long projectId,
+            Long workflowStepId
+        );
 }

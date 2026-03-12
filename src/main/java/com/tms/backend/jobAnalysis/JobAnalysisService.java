@@ -2,8 +2,6 @@ package com.tms.backend.jobAnalysis;
 
 import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -22,10 +20,13 @@ import com.tms.backend.job.JobWorkflowStep;
 import com.tms.backend.job.JobWorkflowStepRepository;
 import com.tms.backend.netRateScheme.MatchType;
 import com.tms.backend.netRateScheme.NetRateSchemeService;
+import com.tms.backend.projectTmAssignment.ProjectTmAssignment;
+import com.tms.backend.projectTmAssignment.ProjectTmAssignmentRepository;
 import com.tms.backend.settingAnalysis.AnalysisSetting;
 import com.tms.backend.settingAnalysis.AnalysisSettingService;
 import com.tms.backend.tomato.SizingService;
 import com.tms.backend.user.User;
+import com.tms.backend.workflowSteps.WorkflowStep;
 
 import lombok.RequiredArgsConstructor;
 
@@ -40,6 +41,7 @@ public class JobAnalysisService {
     private final SizingService sizingService;
     private final NetRateSchemeService netRateSchemeService;
     private final JobWorkflowStepRepository jobWorkflowStepRepository;
+    private final ProjectTmAssignmentRepository tmAssignmentRepo;
 
     /**
      * Creates a new JobAnalysis using the user's default analysis settings.
@@ -51,7 +53,7 @@ public class JobAnalysisService {
      * @return The created JobAnalysis
      */
     @Transactional
-    public JobAnalysis createJobAnalysis(Job job, Long workflowStepId, User user, Set<String> languages) {
+    public JobAnalysis createJobAnalysis(Job job, Long workflowStepId, User user) {
         // Get the user's analysis setting (or global default)
         AnalysisSetting setting = analysisSettingService.getUserSetting(user);
 
@@ -62,22 +64,19 @@ public class JobAnalysisService {
         String resolvedName = resolveNameMacros(setting.getName(), job, workflowStepId);
         jobAnalysis.setName(resolvedName);
 
-        jobAnalysis.setTargetLanguages(languages);
+        jobAnalysis.setTargetLanguages(new java.util.HashSet<>(job.getTargetLangs()));
         jobAnalysis.setCreateDate(LocalDateTime.now());
         jobAnalysis.setCreatedBy(user.getUsername());
         jobAnalysis.setType(JobAnalysisType.DEFAULT);
 
-        // Send file to Tomato API for sizing
-        String filePath = job.getConvertedFilePath();
-        TomatoSizingResponse sizingResponse = sizingService.sendFileToTomatoAPI(filePath);
-        TomatoSizingResponse.Statistics stats = sizingResponse.statistics();
-
-        // Resolve the actual WorkflowStep id from the JobWorkflowStep id
+        // Resolve the actual WorkflowStep from the JobWorkflowStep id
         JobWorkflowStep jobWorkflowStep = jobWorkflowStepRepository.findById(workflowStepId)
                 .orElseThrow(() -> new RuntimeException(
                         "JobWorkflowStep not found with id: " + workflowStepId));
-        Long actualWorkflowStepId = jobWorkflowStep.getWorkflowStep().getId();
-        log.info("Resolved JobWorkflowStep id {} -> WorkflowStep id {}", workflowStepId, actualWorkflowStepId);
+        WorkflowStep workflowStep = jobWorkflowStep.getWorkflowStep();
+        Long actualWorkflowStepId = workflowStep.getId();
+        log.info("Resolved JobWorkflowStep id {} -> WorkflowStep id {} (name: {})",
+                workflowStepId, actualWorkflowStepId, workflowStep.getName());
 
         // Get default net rate scheme and find the matching workflow step rates
         NetRateSchemeResponseDTO defaultScheme = netRateSchemeService.getDefaultScheme();
@@ -87,43 +86,69 @@ public class JobAnalysisService {
                 .orElseThrow(() -> new RuntimeException(
                         "No rates found for workflowStepId: " + actualWorkflowStepId));
 
-        // Build a map of MatchType -> transMemoryPercent for quick lookup
-        Map<MatchType, Long> transMemPercentMap = stepRate.matchTypeRates().stream()
+        // Determine if this is an MTPE or Translation workflow step
+        boolean isMTPE = isMTPEWorkflowStep(workflowStep);
+        log.info("Workflow step '{}' identified as: {}", workflowStep.getName(), isMTPE ? "MTPE" : "Translation");
+
+        // Build a map of MatchType -> percentage based on workflow step type
+        // MTPE: use machineTransPercent, Translation: use transMemoryPercent
+        // Internal fuzzies and non-translatable are excluded from computation
+        Map<MatchType, Long> netRatePercentMap = stepRate.matchTypeRates().stream()
                 .collect(Collectors.toMap(
                         MatchTypeRateResponseDTO::matchType,
-                        MatchTypeRateResponseDTO::transMemoryPercent
+                        rate -> isMTPE ? rate.machineTransPercent() : rate.transMemoryPercent()
                 ));
-        log.info("transMemPercentMap for workflowStepId {}: {}", actualWorkflowStepId, transMemPercentMap);
+        log.info("netRatePercentMap for workflowStepId {}: {}", actualWorkflowStepId, netRatePercentMap);
+
+        // Resolve the TM with read access for this project + workflow step
+        Long tmId = tmAssignmentRepo
+                .findByProjectIdAndWorkflowStepIdAndReadAccessTrue(
+                        job.getProject().getId(), actualWorkflowStepId)
+                .map(ProjectTmAssignment::getTmId)
+                .orElseThrow(() -> new RuntimeException(
+                        "No translation memory with read access assigned for project "
+                                + job.getProject().getId() + " and workflow step " + actualWorkflowStepId));
+        log.info("Resolved tmId {} for project {} and workflowStep {}",
+                tmId, job.getProject().getId(), actualWorkflowStepId);
+
+        // Send file to Tomato API with net rate percentages and TM for weighted computation
+        String filePath = job.getConvertedFilePath();
+        TomatoSizingResponse sizingResponse = sizingService.sendFileToTomatoAPI(filePath, netRatePercentMap, tmId);
+        TomatoSizingResponse.Statistics stats = sizingResponse.statistics();
+
         log.info("Sizing stats - repetition: {}, contextMatch: {}, perfect100: {}, fuzzy95: {}, fuzzy85: {}, fuzzy75: {}, fuzzy50: {}, noMatch: {}",
                 stats.repetitionSegments(), stats.contextMatchSegments(), stats.perfect100Segments(),
                 stats.fuzzy95Segments(), stats.fuzzy85Segments(), stats.fuzzy75Segments(),
                 stats.fuzzy50Segments(), stats.noMatchSegments());
 
-        // Calculate net rates: segments * (transMemoryPercent / 100)
-        Function<Long, Long> safeVal = v -> v != null ? v : 0L;
+        // Set source and target language from API response
+        jobAnalysis.setSourceLang(stats.sourceLanguage());
+        if (stats.targetLanguage() != null) {
+            jobAnalysis.setTargetLanguages(java.util.Set.of(stats.targetLanguage()));
+        }
 
-        double netRepetition = safeVal.apply(stats.repetitionSegments()) * transMemPercentMap.getOrDefault(MatchType.REPETITIONS, 0L) / 100.0;
-        double netContextMatch = safeVal.apply(stats.contextMatchSegments()) * transMemPercentMap.getOrDefault(MatchType.PERCENT_101, 0L) / 100.0;
-        double netPerfect100 = safeVal.apply(stats.perfect100Segments()) * transMemPercentMap.getOrDefault(MatchType.PERCENT_100, 0L) / 100.0;
-        double netFuzzy95 = safeVal.apply(stats.fuzzy95Segments()) * transMemPercentMap.getOrDefault(MatchType.PERCENT_95, 0L) / 100.0;
-        double netFuzzy85 = safeVal.apply(stats.fuzzy85Segments()) * transMemPercentMap.getOrDefault(MatchType.PERCENT_85, 0L) / 100.0;
-        double netFuzzy75 = safeVal.apply(stats.fuzzy75Segments()) * transMemPercentMap.getOrDefault(MatchType.PERCENT_75, 0L) / 100.0;
-        double netFuzzy50 = safeVal.apply(stats.fuzzy50Segments()) * transMemPercentMap.getOrDefault(MatchType.PERCENT_50, 0L) / 100.0;
-        double netNoMatch = safeVal.apply(stats.noMatchSegments()) * transMemPercentMap.getOrDefault(MatchType.PERCENT_0, 0L) / 100.0;
+        // Read TM words and segments from API response
+        jobAnalysis.setRepetitionWords(safeLong(stats.repetitionTM_Words()));
+        jobAnalysis.setRepetitionSegments(safeLong(stats.repetitionTM_Segments()));
+        jobAnalysis.setContextMatchWords(safeLong(stats.context101TM_Words()));
+        jobAnalysis.setContextMatchSegments(safeLong(stats.context101TM_Segments()));
+        jobAnalysis.setPerfect100Words(safeLong(stats.perfect100TM_Words()));
+        jobAnalysis.setPerfect100Segments(safeLong(stats.perfect100TM_Segments()));
+        jobAnalysis.setFuzzy95Words(safeLong(stats.fuzzy95TM_Words()));
+        jobAnalysis.setFuzzy95Segments(safeLong(stats.fuzzy95TM_Segments()));
+        jobAnalysis.setFuzzy85Words(safeLong(stats.fuzzy85TM_Words()));
+        jobAnalysis.setFuzzy85Segments(safeLong(stats.fuzzy85TM_Segments()));
+        jobAnalysis.setFuzzy75Words(safeLong(stats.fuzzy75TM_Words()));
+        jobAnalysis.setFuzzy75Segments(safeLong(stats.fuzzy75TM_Segments()));
+        jobAnalysis.setFuzzy50Words(safeLong(stats.fuzzy50TM_Words()));
+        jobAnalysis.setFuzzy50Segments(safeLong(stats.fuzzy50TM_Segments()));
+        jobAnalysis.setNoMatchWords(safeLong(stats.noMatchTM_Words()));
+        jobAnalysis.setNoMatchSegments(safeLong(stats.noMatchTM_Segments()));
 
-        log.info("Net rates - repetition: {}, contextMatch: {}, perfect100: {}, fuzzy95: {}, fuzzy85: {}, fuzzy75: {}, fuzzy50: {}, noMatch: {}, total: {}",
-                netRepetition, netContextMatch, netPerfect100, netFuzzy95, netFuzzy85, netFuzzy75, netFuzzy50, netNoMatch,
-                netRepetition + netContextMatch + netPerfect100 + netFuzzy95 + netFuzzy85 + netFuzzy75 + netFuzzy50 + netNoMatch);
-
-        jobAnalysis.setNetRateRepetition(netRepetition);
-        jobAnalysis.setNetRateContextMatch(netContextMatch);
-        jobAnalysis.setNetRatePerfect100(netPerfect100);
-        jobAnalysis.setNetRateFuzzy95(netFuzzy95);
-        jobAnalysis.setNetRateFuzzy85(netFuzzy85);
-        jobAnalysis.setNetRateFuzzy75(netFuzzy75);
-        jobAnalysis.setNetRateFuzzy50(netFuzzy50);
-        jobAnalysis.setNetRateNoMatch(netNoMatch);
-        jobAnalysis.setNetRateTotal(netRepetition + netContextMatch + netPerfect100 + netFuzzy95 + netFuzzy85 + netFuzzy75 + netFuzzy50 + netNoMatch);
+        log.info("TM Words - repetition: {}, contextMatch: {}, perfect100: {}, fuzzy95: {}, fuzzy85: {}, fuzzy75: {}, fuzzy50: {}, noMatch: {}",
+                jobAnalysis.getRepetitionWords(), jobAnalysis.getContextMatchWords(), jobAnalysis.getPerfect100Words(),
+                jobAnalysis.getFuzzy95Words(), jobAnalysis.getFuzzy85Words(), jobAnalysis.getFuzzy75Words(),
+                jobAnalysis.getFuzzy50Words(), jobAnalysis.getNoMatchWords());
 
         return jobAnalysisRepository.save(jobAnalysis);
     }
@@ -138,12 +163,14 @@ public class JobAnalysisService {
      * @return The created JobAnalysisResponseDTO
      */
     @Transactional
-    public JobAnalysisResponseDTO createJobAnalysisFromJobId(Long jobId, Long workflowStepId, User user, Set<String> languages) {
+    public JobAnalysisResponseDTO createJobAnalysisFromJobId(Long jobId, Long workflowStepId, User user) {
         Job job = jobRepository.findById(jobId)
                 .orElseThrow(() -> new RuntimeException("Job not found with id: " + jobId));
 
-        JobAnalysis jobAnalysis = createJobAnalysis(job, workflowStepId, user, languages);
-        return toResponseDTO(jobAnalysis);
+        JobAnalysis jobAnalysis = createJobAnalysis(job, workflowStepId, user);
+        JobAnalysisResponseDTO dto = toResponseDTO(jobAnalysis);
+        log.info("JobAnalysisResponseDTO: {}", dto);
+        return dto;
     }
 
     /**
@@ -161,15 +188,22 @@ public class JobAnalysisService {
             jobAnalysis.getTargetLanguages(),
             jobAnalysis.getCreateDate(),
             jobAnalysis.getCreatedBy(),
-            jobAnalysis.getNetRateRepetition(),
-            jobAnalysis.getNetRateContextMatch(),
-            jobAnalysis.getNetRatePerfect100(),
-            jobAnalysis.getNetRateFuzzy95(),
-            jobAnalysis.getNetRateFuzzy85(),
-            jobAnalysis.getNetRateFuzzy75(),
-            jobAnalysis.getNetRateFuzzy50(),
-            jobAnalysis.getNetRateNoMatch(),
-            jobAnalysis.getNetRateTotal()
+            jobAnalysis.getRepetitionWords(),
+            jobAnalysis.getRepetitionSegments(),
+            jobAnalysis.getContextMatchWords(),
+            jobAnalysis.getContextMatchSegments(),
+            jobAnalysis.getPerfect100Words(),
+            jobAnalysis.getPerfect100Segments(),
+            jobAnalysis.getFuzzy95Words(),
+            jobAnalysis.getFuzzy95Segments(),
+            jobAnalysis.getFuzzy85Words(),
+            jobAnalysis.getFuzzy85Segments(),
+            jobAnalysis.getFuzzy75Words(),
+            jobAnalysis.getFuzzy75Segments(),
+            jobAnalysis.getFuzzy50Words(),
+            jobAnalysis.getFuzzy50Segments(),
+            jobAnalysis.getNoMatchWords(),
+            jobAnalysis.getNoMatchSegments()
         );
     }
 
@@ -218,5 +252,16 @@ public class JobAnalysisService {
         }
 
         return resolved;
+    }
+
+    private boolean isMTPEWorkflowStep(WorkflowStep workflowStep) {
+        String name = workflowStep.getName();
+        if (name == null) return false;
+        String lower = name.toLowerCase();
+        return lower.contains("mtpe") || lower.contains("post-editing") || lower.contains("post editing");
+    }
+
+    private long safeLong(Long value) {
+        return value != null ? value : 0L;
     }
 }

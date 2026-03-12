@@ -46,8 +46,7 @@ public class JobAnalysisController {
         JobAnalysisResponseDTO response = jobAnalysisService.createJobAnalysisFromJobId(
             request.jobId(),
             request.workflowStepId(),
-            currentUser,
-            request.languages()
+            currentUser
         );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

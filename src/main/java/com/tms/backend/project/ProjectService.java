@@ -449,6 +449,35 @@ public class ProjectService {
             project.setCostCenter(cc);
         }
 
+        if (updatedData.workflowStepIds() != null) {
+            if (!project.getWorkflowSteps().isEmpty()) {
+                throw new IllegalStateException("Workflow steps have already been set and cannot be modified");
+            }
+
+            Set<WorkflowStep> steps = updatedData.workflowStepIds().stream()
+                .map(stepId -> wfRepo.findById(stepId)
+                    .orElseThrow(() -> new EntityNotFoundException("WorkflowStep not found: " + stepId)))
+                .collect(Collectors.toSet());
+            project.setWorkflowSteps(steps);
+
+            // Sync workflow steps to all active jobs in this project
+            List<Job> jobs = jobRepo.findByProjectIdAndDeletedFalse(id);
+            for (Job job : jobs) {
+                Set<Long> existingStepIds = job.getWorkflowSteps().stream()
+                    .map(jws -> jws.getWorkflowStep().getId())
+                    .collect(Collectors.toSet());
+
+                for (WorkflowStep step : steps) {
+                    if (!existingStepIds.contains(step.getId())) {
+                        JobWorkflowStep jws = new JobWorkflowStep();
+                        jws.setJob(job);
+                        jws.setWorkflowStep(step);
+                        job.getWorkflowSteps().add(jws);
+                    }
+                }
+            }
+        }
+
         Project saved = projectRepo.save(project);
         return convertToFullDTO(saved);
     }
