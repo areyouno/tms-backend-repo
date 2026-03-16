@@ -101,15 +101,15 @@ public class JobAnalysisService {
         log.info("netRatePercentMap for workflowStepId {}: {}", actualWorkflowStepId, netRatePercentMap);
 
         // Resolve the TM with read access for this project + workflow step
+        Long projectId = job.getProject().getId();
         Long tmId = tmAssignmentRepo
-                .findByProjectIdAndWorkflowStepIdAndReadAccessTrue(
-                        job.getProject().getId(), actualWorkflowStepId)
+                .findByProjectIdAndWorkflowStepIdAndReadAccessTrue(projectId, actualWorkflowStepId)
                 .map(ProjectTmAssignment::getTmId)
                 .orElseThrow(() -> new RuntimeException(
                         "No translation memory with read access assigned for project "
-                                + job.getProject().getId() + " and workflow step " + actualWorkflowStepId));
-        log.info("Resolved tmId {} for project {} and workflowStep {}",
-                tmId, job.getProject().getId(), actualWorkflowStepId);
+                                + projectId + " and workflow step " + actualWorkflowStepId));
+        log.info("Resolved tmId {} for project {} and workflowStep {} ({})",
+                tmId, job.getProject().getId(), actualWorkflowStepId, workflowStep.getName());
 
         // Send file to Tomato API with net rate percentages and TM for weighted computation
         String filePath = job.getConvertedFilePath();

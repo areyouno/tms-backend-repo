@@ -41,8 +41,22 @@ public class ProjectTmAssignmentService {
         Project project = projectRepo.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
 
-        // Create a set of composite keys (tmId + workflowStepId) from the request
-        Set<String> requestedKeys = req.tmAssignments().stream()
+        // Expand assignments: if workflowStepId is null, create one per project workflow step
+        List<ProjectTmAssignmentDTO> expandedAssignments = new ArrayList<>();
+        for (ProjectTmAssignmentDTO tmDto : req.tmAssignments()) {
+            if (tmDto.workflowStepId() == null) {
+                for (WorkflowStep step : project.getWorkflowSteps()) {
+                    expandedAssignments.add(new ProjectTmAssignmentDTO(
+                            tmDto.tmId(), tmDto.read(), tmDto.write(),
+                            tmDto.penalty(), tmDto.priorityOrder(), step.getId()));
+                }
+            } else {
+                expandedAssignments.add(tmDto);
+            }
+        }
+
+        // Create a set of composite keys (tmId + workflowStepId) from the expanded request
+        Set<String> requestedKeys = expandedAssignments.stream()
                 .map(dto -> dto.tmId() + "_" + dto.workflowStepId())
                 .collect(Collectors.toSet());
 
@@ -57,15 +71,14 @@ public class ProjectTmAssignmentService {
         }
 
         List<ProjectTmAssignment> savedAssignments = new ArrayList<>();
-        // Add or update assignments from the request
-        for (ProjectTmAssignmentDTO tmDto : req.tmAssignments()) {
+        // Add or update assignments from the expanded request
+        for (ProjectTmAssignmentDTO tmDto : expandedAssignments) {
             WorkflowStep step = wfRepo.findById(tmDto.workflowStepId())
                     .orElseThrow(() -> new EntityNotFoundException("Workflow step not found"));
 
-            Optional<ProjectTmAssignment> existingAssignment = tmAssignmentRepo.findByProjectIdAndTmIdAndWorkflowStepId(
-                    projectId,
-                    tmDto.tmId(),
-                    tmDto.workflowStepId());
+            Optional<ProjectTmAssignment> existingAssignment =
+                    tmAssignmentRepo.findByProjectIdAndTmIdAndWorkflowStepId(
+                            projectId, tmDto.tmId(), tmDto.workflowStepId());
 
             ProjectTmAssignment assignment;
             if (existingAssignment.isPresent()) {
@@ -96,13 +109,13 @@ public class ProjectTmAssignmentService {
     }
 
     private ProjectTmAssignmentDTO convertToDTO(ProjectTmAssignment assignment) {
-    return new ProjectTmAssignmentDTO(
-            assignment.getTmId(),
-            assignment.isReadAccess(),
-            assignment.isWriteAccess(),
-            assignment.getPenalty(),
-            assignment.getPriorityOrder(),
-            assignment.getWorkflowStep().getId()
-    );
-}
+        return new ProjectTmAssignmentDTO(
+                assignment.getTmId(),
+                assignment.isReadAccess(),
+                assignment.isWriteAccess(),
+                assignment.getPenalty(),
+                assignment.getPriorityOrder(),
+                assignment.getWorkflowStep().getId()
+        );
+    }
 }
