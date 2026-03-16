@@ -39,6 +39,8 @@ import com.tms.backend.job.JobWorkflowStatus;
 import com.tms.backend.job.JobWorkflowStep;
 import com.tms.backend.machineTranslation.MachineTranslation;
 import com.tms.backend.machineTranslation.MachineTranslationRepository;
+import com.tms.backend.netRateScheme.NetRateScheme;
+import com.tms.backend.netRateScheme.NetRateSchemeRepository;
 import com.tms.backend.role.RoleConstants;
 import com.tms.backend.setting.AutomationSetting;
 import com.tms.backend.setting.AutomationSettingService;
@@ -67,6 +69,7 @@ public class ProjectService {
     private JobRepository jobRepo;
     private final AutomationSettingService automationSettingService;
     private final JobService jobService;
+    private final NetRateSchemeRepository netRateSchemeRepo;
 
 
     public ProjectService(
@@ -82,7 +85,8 @@ public class ProjectService {
         WorkflowStepRepository wfRepo,
         JobRepository jobRepo,
         AutomationSettingService automationSettingService,
-        @Lazy JobService jobService
+        @Lazy JobService jobService,
+        NetRateSchemeRepository netRateSchemeRepo
     ) {
         this.projectRepo = projectRepo;
         this.businessUnitRepo = businessUnitRepo;
@@ -97,6 +101,7 @@ public class ProjectService {
         this.jobRepo = jobRepo;
         this.automationSettingService = automationSettingService;
         this.jobService = jobService;
+        this.netRateSchemeRepo = netRateSchemeRepo;
     }
 
     public ProjectDTO createProject(ProjectCreateDTO createDTO, String userEmail) throws UsernameNotFoundException {
@@ -113,6 +118,12 @@ public class ProjectService {
             MachineTranslation mt = mtRepo.findById(createDTO.machineTranslationId())
                 .orElseThrow(() -> new RuntimeException("MachineTranslation not found: " + createDTO.machineTranslationId()));
             project.setMachineTranslation(mt);
+        }
+
+        if (createDTO.netRateSchemeId() != null) {
+            NetRateScheme nrs = netRateSchemeRepo.findById(createDTO.netRateSchemeId())
+                .orElseThrow(() -> new RuntimeException("NetRateScheme not found: " + createDTO.netRateSchemeId()));
+            project.setNetRateScheme(nrs);
         }
 
         if (createDTO.businessUnitId() != null) {
@@ -332,6 +343,7 @@ public class ProjectService {
                 project.getSourceLang(),
                 project.getTargetLanguages(),
                 project.getMachineTranslation() != null ? project.getMachineTranslation().getId() : null,
+                project.getNetRateScheme() != null ? project.getNetRateScheme().getId() : null,
                 project.getBusinessUnit() != null ? project.getBusinessUnit().getId() : null,
                 project.getPurchaseOrderNum(),
                 project.getType(),
@@ -404,6 +416,12 @@ public class ProjectService {
 
         if (updatedData.targetLang() != null) {
             project.setTargetLanguages(updatedData.targetLang());
+        }
+
+        if (updatedData.netRateSchemeId() != null) {
+            NetRateScheme nrs = netRateSchemeRepo.findById(updatedData.netRateSchemeId())
+                    .orElseThrow(() -> new EntityNotFoundException("NetRateScheme not found"));
+            project.setNetRateScheme(nrs);
         }
 
         if (updatedData.businessUnitId() != null) {

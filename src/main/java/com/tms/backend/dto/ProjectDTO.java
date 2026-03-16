@@ -14,6 +14,7 @@ public record ProjectDTO (
     String sourceLang,
     Set<String> targetLang,
     Long machineTranslationId,
+    Long netRateSchemeId,
     Long businessUnitId,
     String purchaseOrder,
     String type,
@@ -76,6 +77,10 @@ public record ProjectDTO (
             project.getTargetLanguages(),
             project.getMachineTranslation() != null
                 ? project.getMachineTranslation().getId()
+                : null,
+
+            project.getNetRateScheme() != null
+                ? project.getNetRateScheme().getId()
                 : null,
 
             project.getBusinessUnit() != null

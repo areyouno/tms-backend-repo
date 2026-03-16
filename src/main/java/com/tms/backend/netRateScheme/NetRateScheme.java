@@ -6,8 +6,6 @@ import java.util.List;
 
 import org.hibernate.annotations.CreationTimestamp;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.tms.backend.project.Project;
 import com.tms.backend.user.User;
 
 import jakarta.persistence.CascadeType;
@@ -31,11 +29,6 @@ public class NetRateScheme {
     private Long id;
 
     private String name;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id", nullable = false)
-    @JsonIgnore
-    private Project project;
 
     @OneToMany(
         mappedBy = "netRateScheme",
@@ -62,9 +55,6 @@ public class NetRateScheme {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
     
-    public Project getProject() { return project; }
-    public void setProject(Project project) { this.project = project; }
-
     public List<WorkflowStepRate> getWorkflowStepRates() { return workflowStepRates; }
     public void setWorkflowStepRates(List<WorkflowStepRate> workflowStepRates) { this.workflowStepRates = workflowStepRates; }
 

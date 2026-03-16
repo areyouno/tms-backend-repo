@@ -5,6 +5,7 @@ import org.springframework.boot.ApplicationRunner;
 import org.springframework.stereotype.Component;
 
 import com.tms.backend.currency.CurrencyService;
+import com.tms.backend.netRateScheme.NetRateSchemeService;
 import com.tms.backend.settingAnalysis.AnalysisSettingService;
 import com.tms.backend.settingCatEditor.CatEditorSettingService;
 import com.tms.backend.settingCompletedFilesNaming.CompletedFilesNamingSettingService;
@@ -17,19 +18,22 @@ public class DataInitializer implements ApplicationRunner {
     private final CompletedFilesNamingSettingService completedFilesNamingSettingService;
     private final PreTranslationSettingService preTranslationSettingService;
     private final CurrencyService currencyService;
+    private final NetRateSchemeService netRateSchemeService;
 
     public DataInitializer(
             AnalysisSettingService analysisSettingService,
             CatEditorSettingService catEditorSettingService,
             CompletedFilesNamingSettingService completedFilesNamingSettingService,
             PreTranslationSettingService preTranslationSettingService,
-            CurrencyService currencyService
+            CurrencyService currencyService,
+            NetRateSchemeService netRateSchemeService
     ) {
         this.analysisSettingService = analysisSettingService;
         this.catEditorSettingService = catEditorSettingService;
         this.completedFilesNamingSettingService = completedFilesNamingSettingService;
         this.preTranslationSettingService = preTranslationSettingService;
         this.currencyService = currencyService;
+        this.netRateSchemeService = netRateSchemeService;
     }
 
     @Override
@@ -39,6 +43,7 @@ public class DataInitializer implements ApplicationRunner {
         completedFilesNamingSettingService.insertGlobalDefaultIfMissing();
         preTranslationSettingService.insertGlobalDefaultIfMissing();
         currencyService.seedDefaultCurrencies();
+        netRateSchemeService.insertDefaultNetRateSchemeIfMissing();
     }
     
 }

@@ -12,8 +12,6 @@ import com.tms.backend.dto.NetRateSchemeResponseDTO;
 import com.tms.backend.dto.NetRateSchemeUpdateDTO;
 import com.tms.backend.dto.NetRateSchemeWfDTO;
 import com.tms.backend.dto.WorkflowStepRateResponseDTO;
-import com.tms.backend.project.Project;
-import com.tms.backend.project.ProjectRepository;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
 import com.tms.backend.workflowSteps.WorkflowStep;
@@ -25,19 +23,16 @@ import jakarta.transaction.Transactional;
 public class NetRateSchemeService {
     private final NetRateSchemeRepository netRateSchemeRepository;
     private final UserRepository userRepository;
-    private final ProjectRepository projectRepository;
     private final WorkflowStepRepository workflowStepRepo;
 
     public NetRateSchemeService(
         NetRateSchemeRepository netRateSchemeRepository,
         UserRepository userRepository,
-        ProjectRepository projectRepository,
         WorkflowStepRepository workflowStepRepo
-    ) 
+    )
     {
         this.netRateSchemeRepository = netRateSchemeRepository;
         this.userRepository = userRepository;
-        this.projectRepository = projectRepository;
         this.workflowStepRepo = workflowStepRepo;
     }
 
@@ -49,11 +44,6 @@ public class NetRateSchemeService {
         User creator = userRepository.findById(userId)
             .orElseThrow(() -> new RuntimeException("User not found"));
         scheme.setCreatedBy(creator);
-
-        // set project
-        Project project = projectRepository.findById(dto.projectId())
-                .orElseThrow(() -> new RuntimeException("Project not found"));
-        scheme.setProject(project);
 
         // set scheme to default if there is no default yet
         if (!netRateSchemeRepository.existsByIsDefaultTrue()) {
@@ -124,7 +114,6 @@ public class NetRateSchemeService {
         return new NetRateSchemeResponseDTO(
                 scheme.getId(),
                 scheme.getName(),
-                scheme.getProject().getId(),
                 wfDtos
         );
     }
@@ -223,7 +212,6 @@ public class NetRateSchemeService {
         // create new scheme
         NetRateScheme copy = new NetRateScheme();
         copy.setName(original.getName() + " (Copy)");
-        copy.setProject(original.getProject());
         copy.setCreatedBy(creator);
 
         for (WorkflowStepRate originalWf : original.getWorkflowStepRates()) {
@@ -251,6 +239,40 @@ public class NetRateSchemeService {
 
         // save
         return netRateSchemeRepository.save(copy);
+    }
+
+    @Transactional
+    public void insertDefaultNetRateSchemeIfMissing() {
+        if (netRateSchemeRepository.existsByIsDefaultTrue()) return;
+
+        NetRateScheme scheme = new NetRateScheme();
+        scheme.setName("Default");
+        scheme.setDefault(true);
+
+        // create default with default match type rates for each existing workflow step
+        List<WorkflowStep> allSteps = workflowStepRepo.findAll();
+        for (WorkflowStep step : allSteps) {
+            WorkflowStepRate wfRate = new WorkflowStepRate();
+            wfRate.setWorkflowStep(step);
+            wfRate.setNetRateScheme(scheme);
+            wfRate.setMatchTypeRates(createDefaultMatchTypeRates());
+            scheme.getWorkflowStepRates().add(wfRate);
+        }
+
+        netRateSchemeRepository.save(scheme);
+    }
+
+    private List<MatchTypeRate> createDefaultMatchTypeRates() {
+        return List.of(
+            new MatchTypeRate(MatchType.REPETITIONS, 10L, 0L, 0L, 0L),
+            new MatchTypeRate(MatchType.PERCENT_101, 10L, 0L, 0L, 0L),
+            new MatchTypeRate(MatchType.PERCENT_100, 10L, 30L, 10L, 10L),
+            new MatchTypeRate(MatchType.PERCENT_95, 33L, 40L, 33L, 33L),
+            new MatchTypeRate(MatchType.PERCENT_85, 66L, 70L, 66L, 66L),
+            new MatchTypeRate(MatchType.PERCENT_75, 100L, 100L, 100L, 100L),
+            new MatchTypeRate(MatchType.PERCENT_50, 100L, 100L, 100L, 100L),
+            new MatchTypeRate(MatchType.PERCENT_0, 100L, 100L, 100L, 100L)
+        );
     }
 
     // adds workflow step to all existing schemes

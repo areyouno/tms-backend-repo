@@ -29,7 +29,9 @@ public record ProjectCreateDTO(
     Set<@NotBlank @Size(max = 10) String> targetLang,
     
     Long machineTranslationId,
-    
+
+    Long netRateSchemeId,
+
     Long businessUnitId,
     
     @Size(max = 10, message = "Purchase order must not exceed 10 characters")
