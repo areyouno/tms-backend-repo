@@ -17,6 +17,7 @@ import com.tms.backend.dto.PermissionItemDTO;
 import com.tms.backend.dto.PermissionTemplateDTO;
 import com.tms.backend.dto.RolePermissionCreateDTO;
 import com.tms.backend.dto.RolePermissionGroupDTO;
+import com.tms.backend.dto.RolePermissionUpdateDTO;
 import com.tms.backend.role.Role;
 import com.tms.backend.role.RoleConstants;
 import com.tms.backend.role.RoleRepository;
@@ -102,6 +103,31 @@ public class RolePermissionService {
         }
 
         return rolePermissionRepository.saveAll(rolePermissions);
+    }
+
+    @Transactional
+    public Map<String, RolePermissionGroupDTO> updateRolePermissions(List<RolePermissionUpdateDTO> updates) {
+        Map<String, RolePermissionGroupDTO> result = new LinkedHashMap<>();
+
+        for (RolePermissionUpdateDTO update : updates) {
+            List<RolePermission> existing = rolePermissionRepository.findByRoleId(update.roleId());
+            if (existing.isEmpty()) {
+                throw new EntityNotFoundException("No role permissions found for role id: " + update.roleId());
+            }
+
+            for (RolePermission rp : existing) {
+                Boolean active = update.permissions().get(rp.getPermission());
+                if (active != null) {
+                    rp.setActive(active);
+                }
+            }
+
+            rolePermissionRepository.saveAll(existing);
+            String roleName = existing.get(0).getRole().getName();
+            result.put(roleName, toGroupDTO(update.roleId(), existing));
+        }
+
+        return result;
     }
 
     public Map<String, RolePermissionGroupDTO> getAllRolePermissions() {

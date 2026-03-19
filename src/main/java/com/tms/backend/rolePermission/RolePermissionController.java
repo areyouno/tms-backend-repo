@@ -11,12 +11,14 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tms.backend.dto.RolePermissionCreateDTO;
 import com.tms.backend.dto.RolePermissionGroupDTO;
+import com.tms.backend.dto.RolePermissionUpdateDTO;
 
 @RestController
 @RequestMapping("/api/role-permissions")
@@ -30,6 +32,12 @@ public class RolePermissionController {
     public ResponseEntity<List<RolePermission>> createRolePermissions(@RequestBody RolePermissionCreateDTO dto) {
         List<RolePermission> created = rolePermissionService.createRolePermissions(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PutMapping("/update")
+    public Map<String, RolePermissionGroupDTO> updateRolePermissions(
+            @RequestBody List<RolePermissionUpdateDTO> updates) {
+        return rolePermissionService.updateRolePermissions(updates);
     }
 
     @GetMapping("/all")
