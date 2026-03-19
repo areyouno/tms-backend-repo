@@ -81,15 +81,15 @@ public class RolePermissionService {
         Role role = roleRepository.findById(dto.roleId())
                 .orElseThrow(() -> new EntityNotFoundException("Role not found"));
 
-        Set<Permission> availablePermissions = ROLE_PERMISSIONS.get(role.getName());
-        if (availablePermissions == null) {
-            throw new IllegalArgumentException("No permissions defined for role: " + role.getName());
+        List<RolePermission> existing = rolePermissionRepository.findByRoleId(role.getId());
+        if (!existing.isEmpty()) {
+            throw new IllegalStateException("Role permissions already exist for role: " + role.getName());
         }
 
         Map<Permission, Boolean> permissionToggles = dto.permissions();
 
         List<RolePermission> rolePermissions = new ArrayList<>();
-        for (Permission permission : availablePermissions) {
+        for (Permission permission : Permission.values()) {
             RolePermission rp = new RolePermission();
             rp.setRole(role);
             rp.setCategory(permission.getCategory());
@@ -146,15 +146,10 @@ public class RolePermissionService {
     }
 
     public Map<PermissionCategory, List<PermissionItemDTO>> getAvailablePermissions(Long roleId) {
-        Role role = roleRepository.findById(roleId)
+        roleRepository.findById(roleId)
                 .orElseThrow(() -> new EntityNotFoundException("Role not found"));
 
-        Set<Permission> availablePermissions = ROLE_PERMISSIONS.get(role.getName());
-        if (availablePermissions == null) {
-            return Map.of();
-        }
-
-        return availablePermissions.stream()
+        return Arrays.stream(Permission.values())
                 .collect(Collectors.groupingBy(
                         Permission::getCategory,
                         LinkedHashMap::new,
