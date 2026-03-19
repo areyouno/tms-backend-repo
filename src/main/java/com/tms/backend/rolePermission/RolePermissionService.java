@@ -104,38 +104,7 @@ public class RolePermissionService {
     }
 
     public Map<String, RolePermissionGroupDTO> getAllRolePermissions() {
-        List<RolePermission> allRecords = rolePermissionRepository.findAll();
-        Map<String, RolePermissionGroupDTO> result = groupByRole(allRecords);
-
-        Set<Long> configuredRoleIds = allRecords.stream()
-                .map(rp -> rp.getRole().getId())
-                .collect(Collectors.toSet());
-
-        List<Role> allRoles = roleRepository.findAll();
-        for (Role role : allRoles) {
-            if (configuredRoleIds.contains(role.getId())) {
-                continue;
-            }
-
-            Set<Permission> scopedPermissions = ROLE_PERMISSIONS.get(role.getName());
-            Collection<Permission> permissions = scopedPermissions != null ? scopedPermissions : EnumSet.allOf(Permission.class);
-
-            Map<PermissionCategory, List<PermissionItemDTO>> categories = permissions.stream()
-                    .collect(Collectors.groupingBy(
-                            Permission::getCategory,
-                            LinkedHashMap::new,
-                            Collectors.mapping(p -> new PermissionItemDTO(
-                                    null,
-                                    p.name(),
-                                    p.getDisplayName(),
-                                    p.getDescription(),
-                                    false
-                            ), Collectors.toList())
-                    ));
-            result.put(role.getName(), new RolePermissionGroupDTO(role.getId(), categories));
-        }
-
-        return result;
+        return groupByRole(rolePermissionRepository.findAll());
     }
 
     public RolePermissionGroupDTO getRolePermissionsByRoleId(Long roleId) {
