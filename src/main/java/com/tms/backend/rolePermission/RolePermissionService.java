@@ -2,6 +2,7 @@ package com.tms.backend.rolePermission;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -87,9 +88,10 @@ public class RolePermissionService {
         }
 
         Map<Permission, Boolean> permissionToggles = dto.permissions();
+        Set<Permission> scopedPermissions = ROLE_PERMISSIONS.get(role.getName());
 
         List<RolePermission> rolePermissions = new ArrayList<>();
-        for (Permission permission : Permission.values()) {
+        for (Permission permission : (scopedPermissions != null ? scopedPermissions : EnumSet.allOf(Permission.class))) {
             RolePermission rp = new RolePermission();
             rp.setRole(role);
             rp.setCategory(permission.getCategory());
@@ -146,10 +148,13 @@ public class RolePermissionService {
     }
 
     public Map<PermissionCategory, List<PermissionItemDTO>> getAvailablePermissions(Long roleId) {
-        roleRepository.findById(roleId)
+        Role role = roleRepository.findById(roleId)
                 .orElseThrow(() -> new EntityNotFoundException("Role not found"));
 
-        return Arrays.stream(Permission.values())
+        Set<Permission> scopedPermissions = ROLE_PERMISSIONS.get(role.getName());
+        Collection<Permission> permissions = scopedPermissions != null ? scopedPermissions : EnumSet.allOf(Permission.class);
+
+        return permissions.stream()
                 .collect(Collectors.groupingBy(
                         Permission::getCategory,
                         LinkedHashMap::new,
