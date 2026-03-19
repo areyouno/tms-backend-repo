@@ -42,6 +42,11 @@ public class RolePermissionController {
         return rolePermissionService.getRolePermissionsByRoleId(roleId);
     }
 
+    @GetMapping("/permissions")
+    public Map<PermissionCategory, List<com.tms.backend.dto.PermissionItemDTO>> getAllPermissions() {
+        return rolePermissionService.getAllPermissions();
+    }
+
     @GetMapping("/available/{roleId}")
     public Map<PermissionCategory, List<com.tms.backend.dto.PermissionItemDTO>> getAvailablePermissions(@PathVariable Long roleId) {
         return rolePermissionService.getAvailablePermissions(roleId);
