@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.tms.backend.dto.PermissionItemDTO;
+import com.tms.backend.dto.PermissionTemplateDTO;
 import com.tms.backend.dto.RolePermissionCreateDTO;
 import com.tms.backend.dto.RolePermissionGroupDTO;
 import com.tms.backend.role.Role;
@@ -145,6 +146,20 @@ public class RolePermissionService {
                 rp.getPermission().getDescription(),
                 rp.isActive()
         );
+    }
+
+    public Map<PermissionCategory, List<PermissionTemplateDTO>> getAllPermissions() {
+        return EnumSet.allOf(Permission.class).stream()
+                .collect(Collectors.groupingBy(
+                        Permission::getCategory,
+                        LinkedHashMap::new,
+                        Collectors.mapping(p -> new PermissionTemplateDTO(
+                                p.name(),
+                                p.getDisplayName(),
+                                p.getDescription(),
+                                false
+                        ), Collectors.toList())
+                ));
     }
 
     public Map<PermissionCategory, List<PermissionItemDTO>> getAvailablePermissions(Long roleId) {

@@ -43,7 +43,7 @@ public class RolePermissionController {
     }
 
     @GetMapping("/permissions")
-    public Map<PermissionCategory, List<com.tms.backend.dto.PermissionItemDTO>> getAllPermissions() {
+    public Map<PermissionCategory, List<com.tms.backend.dto.PermissionTemplateDTO>> getAllPermissions() {
         return rolePermissionService.getAllPermissions();
     }
 
