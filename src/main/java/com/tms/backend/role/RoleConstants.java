@@ -6,4 +6,6 @@ public final class RoleConstants {
 
     public static final String ADMIN = "administrator";
     public static final String PM = "project_manager";
+    public static final String LINGUIST = "linguist";
+    public static final String GUEST = "guest";
 }
