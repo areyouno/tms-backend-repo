@@ -13,6 +13,7 @@ import com.tms.backend.client.Client;
 import com.tms.backend.costCenter.CostCenter;
 import com.tms.backend.domain.Domain;
 import com.tms.backend.job.Job;
+import com.tms.backend.jobAnalysis.JobAnalysis;
 import com.tms.backend.machineTranslation.MachineTranslation;
 import com.tms.backend.netRateScheme.NetRateScheme;
 import com.tms.backend.projectTbAssignment.ProjectTbAssignment;
@@ -140,6 +141,9 @@ public class Project {
     )
     private List<ProjectTbAssignment> tbAssignments = new ArrayList<>();
 
+    @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<JobAnalysis> jobAnalyses = new ArrayList<>();
+
     public void addJob(Job job) {
         jobs.add(job);
         job.setProject(this);
@@ -239,4 +243,7 @@ public class Project {
 
     public List<ProjectTbAssignment> getTbAssignments() { return tbAssignments; }
     public void setTbAssignments(List<ProjectTbAssignment> tbAssignments) { this.tbAssignments = tbAssignments; }
+
+    public List<JobAnalysis> getJobAnalyses() { return jobAnalyses; }
+    public void setJobAnalyses(List<JobAnalysis> jobAnalyses) { this.jobAnalyses = jobAnalyses; }
 }

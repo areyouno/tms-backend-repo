@@ -6,6 +6,7 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
+import com.tms.backend.dto.JobAnalysisResponseDTO;
 import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectTbAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentDTO;
@@ -61,6 +62,10 @@ public class ProjectMapper {
             project.getTbAssignments()
                         .stream()
                         .map(ProjectTbAssignmentDTO::fromEntity)
+                        .collect(Collectors.toSet()),
+            project.getJobAnalyses()
+                        .stream()
+                        .map(JobAnalysisResponseDTO::fromEntity)
                         .collect(Collectors.toSet())
                     );
     }

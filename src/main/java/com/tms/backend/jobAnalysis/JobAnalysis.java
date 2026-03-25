@@ -4,6 +4,7 @@ package com.tms.backend.jobAnalysis;
 import java.time.LocalDateTime;
 import java.util.Set;
 
+import com.tms.backend.project.Project;
 import com.tms.backend.settingAnalysis.AnalysisScope;
 import com.tms.backend.user.User;
 
@@ -41,6 +42,10 @@ public class JobAnalysis {
     @CollectionTable(name = "job_analysis_languages", 
                     joinColumns = @JoinColumn(name = "job_analysis_id"))
     private Set<String> targetLanguages;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id")
+    private Project project;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "provider_id")
@@ -86,6 +91,9 @@ public class JobAnalysis {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Project getProject() { return project; }
+    public void setProject(Project project) { this.project = project; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

@@ -10,11 +10,10 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.context.annotation.Lazy;
-import org.springframework.web.multipart.MultipartFile;
-
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.tms.backend.businessUnit.BusinessUnit;
 import com.tms.backend.businessUnit.BusinessUnitRepository;
@@ -23,6 +22,7 @@ import com.tms.backend.client.ClientRepository;
 import com.tms.backend.costCenter.CostCenter;
 import com.tms.backend.costCenter.CostCenterRepository;
 import com.tms.backend.domain.DomainRepository;
+import com.tms.backend.dto.JobAnalysisResponseDTO;
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
@@ -372,6 +372,10 @@ public class ProjectService {
                 project.getTbAssignments()
                         .stream()
                         .map(ProjectTbAssignmentDTO::fromEntity)
+                        .collect(Collectors.toSet()),
+                project.getJobAnalyses()
+                        .stream()
+                        .map(JobAnalysisResponseDTO::fromEntity)
                         .collect(Collectors.toSet())
                 );
     }

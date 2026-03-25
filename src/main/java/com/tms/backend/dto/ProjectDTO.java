@@ -37,7 +37,9 @@ public record ProjectDTO (
 
     Set<ProjectTmAssignmentDTO> assignedTMs,
 
-    Set<ProjectTbAssignmentDTO> assignedTBs
+    Set<ProjectTbAssignmentDTO> assignedTBs,
+
+    Set<JobAnalysisResponseDTO> jobAnalyses
 ) {
 
     public static ProjectDTO fromEntity(Project project) {
@@ -68,6 +70,12 @@ public record ProjectDTO (
                     .stream()
                     .map(ProjectTbAssignmentDTO::fromEntity)
                     .collect(Collectors.toSet());
+
+        Set<JobAnalysisResponseDTO> jobAnalyses =
+            project.getJobAnalyses()
+                   .stream()
+                   .map(JobAnalysisResponseDTO::fromEntity)
+                   .collect(Collectors.toSet());
 
         return new ProjectDTO(
             project.getId(),
@@ -125,7 +133,8 @@ public record ProjectDTO (
 
             automationRules,
             assignedTMs,
-            assignedTBs
+            assignedTBs,
+            jobAnalyses
         );
     }
 }

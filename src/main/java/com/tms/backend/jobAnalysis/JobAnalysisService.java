@@ -64,6 +64,7 @@ public class JobAnalysisService {
         String resolvedName = resolveNameMacros(setting.getName(), job, workflowStepId);
         jobAnalysis.setName(resolvedName);
 
+        jobAnalysis.setProject(job.getProject());
         jobAnalysis.setTargetLanguages(new java.util.HashSet<>(job.getTargetLangs()));
         jobAnalysis.setCreateDate(LocalDateTime.now());
         jobAnalysis.setCreatedBy(user.getUsername());
@@ -112,7 +113,8 @@ public class JobAnalysisService {
                 tmId, job.getProject().getId(), actualWorkflowStepId, workflowStep.getName());
 
         // Send file to Tomato API with net rate percentages and TM for weighted computation
-        String filePath = job.getConvertedFilePath();
+        // String filePath = job.getConvertedFilePath();
+        String filePath = job.getOriginalFilePath();
         TomatoSizingResponse sizingResponse = sizingService.sendFileToTomatoAPI(filePath, netRatePercentMap, tmId);
         TomatoSizingResponse.Statistics stats = sizingResponse.statistics();
 
@@ -180,31 +182,7 @@ public class JobAnalysisService {
      * @return The JobAnalysisResponseDTO
      */
     public JobAnalysisResponseDTO toResponseDTO(JobAnalysis jobAnalysis) {
-        return new JobAnalysisResponseDTO(
-            jobAnalysis.getId(),
-            jobAnalysis.getName(),
-            jobAnalysis.getType(),
-            jobAnalysis.getSourceLang(),
-            jobAnalysis.getTargetLanguages(),
-            jobAnalysis.getCreateDate(),
-            jobAnalysis.getCreatedBy(),
-            jobAnalysis.getRepetitionWords(),
-            jobAnalysis.getRepetitionSegments(),
-            jobAnalysis.getContextMatchWords(),
-            jobAnalysis.getContextMatchSegments(),
-            jobAnalysis.getPerfect100Words(),
-            jobAnalysis.getPerfect100Segments(),
-            jobAnalysis.getFuzzy95Words(),
-            jobAnalysis.getFuzzy95Segments(),
-            jobAnalysis.getFuzzy85Words(),
-            jobAnalysis.getFuzzy85Segments(),
-            jobAnalysis.getFuzzy75Words(),
-            jobAnalysis.getFuzzy75Segments(),
-            jobAnalysis.getFuzzy50Words(),
-            jobAnalysis.getFuzzy50Segments(),
-            jobAnalysis.getNoMatchWords(),
-            jobAnalysis.getNoMatchSegments()
-        );
+        return JobAnalysisResponseDTO.fromEntity(jobAnalysis);
     }
 
     /**
