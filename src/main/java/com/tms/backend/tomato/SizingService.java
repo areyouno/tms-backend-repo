@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -38,20 +39,23 @@ public class SizingService {
         this.restTemplate = builder.build();
     }
 
-    public TomatoSizingResponse sendFileToTomatoAPI(MultipartFile file){
+    public TomatoSizingResponse sendFilesToTomatoAPI(List<MultipartFile> files){
          try {
-            String filename = file.getOriginalFilename();
-            boolean isXliff = filename != null && (filename.endsWith(".xliff") || filename.endsWith(".xlf"));
-            String fileKey = isXliff ? "xliffFile" : "ditaFile";
+            String firstFilename = files.get(0).getOriginalFilename();
+            boolean isXliff = firstFilename != null && (firstFilename.endsWith(".xliff") || firstFilename.endsWith(".xlf"));
+            String fileKey = isXliff ? "xliffFiles" : "ditaFiles";
             String endpoint = isXliff ? "/api/Sizing/sizing-from-xliff" : "/api/Sizing/sizing-from-dita";
 
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add(fileKey, new ByteArrayResource(file.getBytes()) {
-                @Override
-                public String getFilename() {
-                    return filename;
-                }
-            });
+            for (MultipartFile file : files) {
+                String filename = file.getOriginalFilename();
+                body.add(fileKey, new ByteArrayResource(file.getBytes()) {
+                    @Override
+                    public String getFilename() {
+                        return filename;
+                    }
+                });
+            }
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
@@ -74,38 +78,42 @@ public class SizingService {
         }
     }
 
-    public TomatoSizingResponse sendFileToTomatoAPI(String filePath) {
-        return sendFileToTomatoAPI(filePath, null, null);
+    public TomatoSizingResponse sendFilesToTomatoAPIByPath(List<String> filePaths) {
+        return sendFilesToTomatoAPIByPath(filePaths, null, null);
     }
 
-    public TomatoSizingResponse sendFileToTomatoAPI(String filePath, Map<MatchType, Long> netRatePercents) {
-        return sendFileToTomatoAPI(filePath, netRatePercents, null);
+    public TomatoSizingResponse sendFilesToTomatoAPIByPath(List<String> filePaths, Map<MatchType, Long> netRatePercents) {
+        return sendFilesToTomatoAPIByPath(filePaths, netRatePercents, null);
     }
 
-    public TomatoSizingResponse sendFileToTomatoAPI(String filePath, Map<MatchType, Long> netRatePercents, Long tmId) {
-        Path path = Paths.get(uploadDir).resolve(filePath);
-        String filename = path.getFileName().toString();
+    public TomatoSizingResponse sendFilesToTomatoAPIByPath(List<String> filePaths, Map<MatchType, Long> netRatePercents, Long tmId) {
+        String firstFilename = Paths.get(filePaths.get(0)).getFileName().toString();
+        boolean isXliff = firstFilename.endsWith(".xliff") || firstFilename.endsWith(".xlf");
+        String fileKey = isXliff ? "xliffFiles" : "ditaFiles";
+        String endpoint = isXliff ? "/api/Sizing/sizing-from-xliff" : "/api/Sizing/sizing-from-dita";
 
-        byte[] fileBytes;
-        try {
-            fileBytes = Files.readAllBytes(path);
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to read file from path: " + filePath, e);
-        }
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
 
-        try {
-            boolean isXliff = filename.endsWith(".xliff") || filename.endsWith(".xlf");
-            String fileKey = isXliff ? "xliffFile" : "ditaFile";
-            String endpoint = isXliff ? "/api/Sizing/sizing-from-xliff" : "/api/Sizing/sizing-from-dita";
+        for (String filePath : filePaths) {
+            Path path = Paths.get(uploadDir).resolve(filePath);
+            String filename = path.getFileName().toString();
 
-            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            byte[] fileBytes;
+            try {
+                fileBytes = Files.readAllBytes(path);
+            } catch (IOException e) {
+                throw new RuntimeException("Failed to read file from path: " + filePath, e);
+            }
+
             body.add(fileKey, new ByteArrayResource(fileBytes) {
                 @Override
                 public String getFilename() {
                     return filename;
                 }
             });
+        }
 
+        try {
             if (tmId != null) {
                 body.add("tmId", String.valueOf(tmId));
             }

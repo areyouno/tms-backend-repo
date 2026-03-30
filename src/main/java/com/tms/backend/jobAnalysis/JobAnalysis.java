@@ -71,22 +71,30 @@ public class JobAnalysis {
     @Enumerated(EnumType.STRING)
     private AnalysisScope scope = AnalysisScope.SOURCE;
 
-    // sizing results (TM words and segments)
+    // sizing results (TM words, characters, and segments)
     private Long repetitionWords;
+    private Long repetitionCharacters;
     private Long repetitionSegments;
     private Long contextMatchWords;
+    private Long contextMatchCharacters;
     private Long contextMatchSegments;
     private Long perfect100Words;
+    private Long perfect100Characters;
     private Long perfect100Segments;
     private Long fuzzy95Words;
+    private Long fuzzy95Characters;
     private Long fuzzy95Segments;
     private Long fuzzy85Words;
+    private Long fuzzy85Characters;
     private Long fuzzy85Segments;
     private Long fuzzy75Words;
+    private Long fuzzy75Characters;
     private Long fuzzy75Segments;
     private Long fuzzy50Words;
+    private Long fuzzy50Characters;
     private Long fuzzy50Segments;
     private Long noMatchWords;
+    private Long noMatchCharacters;
     private Long noMatchSegments;
 
     public Long getId() { return id; }
@@ -152,11 +160,17 @@ public class JobAnalysis {
     public Long getRepetitionWords() { return repetitionWords; }
     public void setRepetitionWords(Long repetitionWords) { this.repetitionWords = repetitionWords; }
 
+    public Long getRepetitionCharacters() { return repetitionCharacters; }
+    public void setRepetitionCharacters(Long repetitionCharacters) { this.repetitionCharacters = repetitionCharacters; }
+
     public Long getRepetitionSegments() { return repetitionSegments; }
     public void setRepetitionSegments(Long repetitionSegments) { this.repetitionSegments = repetitionSegments; }
 
     public Long getContextMatchWords() { return contextMatchWords; }
     public void setContextMatchWords(Long contextMatchWords) { this.contextMatchWords = contextMatchWords; }
+
+    public Long getContextMatchCharacters() { return contextMatchCharacters; }
+    public void setContextMatchCharacters(Long contextMatchCharacters) { this.contextMatchCharacters = contextMatchCharacters; }
 
     public Long getContextMatchSegments() { return contextMatchSegments; }
     public void setContextMatchSegments(Long contextMatchSegments) { this.contextMatchSegments = contextMatchSegments; }
@@ -164,11 +178,17 @@ public class JobAnalysis {
     public Long getPerfect100Words() { return perfect100Words; }
     public void setPerfect100Words(Long perfect100Words) { this.perfect100Words = perfect100Words; }
 
+    public Long getPerfect100Characters() { return perfect100Characters; }
+    public void setPerfect100Characters(Long perfect100Characters) { this.perfect100Characters = perfect100Characters; }
+
     public Long getPerfect100Segments() { return perfect100Segments; }
     public void setPerfect100Segments(Long perfect100Segments) { this.perfect100Segments = perfect100Segments; }
 
     public Long getFuzzy95Words() { return fuzzy95Words; }
     public void setFuzzy95Words(Long fuzzy95Words) { this.fuzzy95Words = fuzzy95Words; }
+
+    public Long getFuzzy95Characters() { return fuzzy95Characters; }
+    public void setFuzzy95Characters(Long fuzzy95Characters) { this.fuzzy95Characters = fuzzy95Characters; }
 
     public Long getFuzzy95Segments() { return fuzzy95Segments; }
     public void setFuzzy95Segments(Long fuzzy95Segments) { this.fuzzy95Segments = fuzzy95Segments; }
@@ -176,11 +196,17 @@ public class JobAnalysis {
     public Long getFuzzy85Words() { return fuzzy85Words; }
     public void setFuzzy85Words(Long fuzzy85Words) { this.fuzzy85Words = fuzzy85Words; }
 
+    public Long getFuzzy85Characters() { return fuzzy85Characters; }
+    public void setFuzzy85Characters(Long fuzzy85Characters) { this.fuzzy85Characters = fuzzy85Characters; }
+
     public Long getFuzzy85Segments() { return fuzzy85Segments; }
     public void setFuzzy85Segments(Long fuzzy85Segments) { this.fuzzy85Segments = fuzzy85Segments; }
 
     public Long getFuzzy75Words() { return fuzzy75Words; }
     public void setFuzzy75Words(Long fuzzy75Words) { this.fuzzy75Words = fuzzy75Words; }
+
+    public Long getFuzzy75Characters() { return fuzzy75Characters; }
+    public void setFuzzy75Characters(Long fuzzy75Characters) { this.fuzzy75Characters = fuzzy75Characters; }
 
     public Long getFuzzy75Segments() { return fuzzy75Segments; }
     public void setFuzzy75Segments(Long fuzzy75Segments) { this.fuzzy75Segments = fuzzy75Segments; }
@@ -188,11 +214,17 @@ public class JobAnalysis {
     public Long getFuzzy50Words() { return fuzzy50Words; }
     public void setFuzzy50Words(Long fuzzy50Words) { this.fuzzy50Words = fuzzy50Words; }
 
+    public Long getFuzzy50Characters() { return fuzzy50Characters; }
+    public void setFuzzy50Characters(Long fuzzy50Characters) { this.fuzzy50Characters = fuzzy50Characters; }
+
     public Long getFuzzy50Segments() { return fuzzy50Segments; }
     public void setFuzzy50Segments(Long fuzzy50Segments) { this.fuzzy50Segments = fuzzy50Segments; }
 
     public Long getNoMatchWords() { return noMatchWords; }
     public void setNoMatchWords(Long noMatchWords) { this.noMatchWords = noMatchWords; }
+
+    public Long getNoMatchCharacters() { return noMatchCharacters; }
+    public void setNoMatchCharacters(Long noMatchCharacters) { this.noMatchCharacters = noMatchCharacters; }
 
     public Long getNoMatchSegments() { return noMatchSegments; }
     public void setNoMatchSegments(Long noMatchSegments) { this.noMatchSegments = noMatchSegments; }

@@ -91,7 +91,7 @@ public class JobService {
         // if job is created from submitter portal -> access sizing api
         TomatoSizingResponse sizingApiResponse = null;
         if (useSizingApi) {
-            sizingApiResponse = sizingService.sendFileToTomatoAPI(file);
+            sizingApiResponse = sizingService.sendFilesToTomatoAPI(List.of(file));
         }
 
         // pass file name and size when creating the db data

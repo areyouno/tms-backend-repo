@@ -1,6 +1,7 @@
 package com.tms.backend.jobAnalysis;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -53,7 +54,9 @@ public class JobAnalysisService {
      * @return The created JobAnalysis
      */
     @Transactional
-    public JobAnalysis createJobAnalysis(Job job, Long workflowStepId, User user) {
+    public JobAnalysis createJobAnalysis(List<Job> jobs, Long workflowStepId, User user, TomatoSizingResponse sizingResponse) {
+        Job job = jobs.get(0);
+
         // Get the user's analysis setting (or global default)
         AnalysisSetting setting = analysisSettingService.getUserSetting(user);
 
@@ -70,52 +73,6 @@ public class JobAnalysisService {
         jobAnalysis.setCreatedBy(user.getUsername());
         jobAnalysis.setType(JobAnalysisType.DEFAULT);
 
-        // Resolve the actual WorkflowStep from the JobWorkflowStep id
-        JobWorkflowStep jobWorkflowStep = jobWorkflowStepRepository.findById(workflowStepId)
-                .orElseThrow(() -> new RuntimeException(
-                        "JobWorkflowStep not found with id: " + workflowStepId));
-        WorkflowStep workflowStep = jobWorkflowStep.getWorkflowStep();
-        Long actualWorkflowStepId = workflowStep.getId();
-        log.info("Resolved JobWorkflowStep id {} -> WorkflowStep id {} (name: {})",
-                workflowStepId, actualWorkflowStepId, workflowStep.getName());
-
-        // Get default net rate scheme and find the matching workflow step rates
-        NetRateSchemeResponseDTO defaultScheme = netRateSchemeService.getDefaultScheme();
-        WorkflowStepRateResponseDTO stepRate = defaultScheme.workflowStepRates().stream()
-                .filter(wf -> wf.workflowStepId().equals(actualWorkflowStepId))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException(
-                        "No rates found for workflowStepId: " + actualWorkflowStepId));
-
-        // Determine if this is an MTPE or Translation workflow step
-        boolean isMTPE = isMTPEWorkflowStep(workflowStep);
-        log.info("Workflow step '{}' identified as: {}", workflowStep.getName(), isMTPE ? "MTPE" : "Translation");
-
-        // Build a map of MatchType -> percentage based on workflow step type
-        // MTPE: use machineTransPercent, Translation: use transMemoryPercent
-        // Internal fuzzies and non-translatable are excluded from computation
-        Map<MatchType, Long> netRatePercentMap = stepRate.matchTypeRates().stream()
-                .collect(Collectors.toMap(
-                        MatchTypeRateResponseDTO::matchType,
-                        rate -> isMTPE ? rate.machineTransPercent() : rate.transMemoryPercent()
-                ));
-        log.info("netRatePercentMap for workflowStepId {}: {}", actualWorkflowStepId, netRatePercentMap);
-
-        // Resolve the TM with read access for this project + workflow step
-        Long projectId = job.getProject().getId();
-        Long tmId = tmAssignmentRepo
-                .findByProjectIdAndWorkflowStepIdAndReadAccessTrue(projectId, actualWorkflowStepId)
-                .map(ProjectTmAssignment::getTmId)
-                .orElseThrow(() -> new RuntimeException(
-                        "No translation memory with read access assigned for project "
-                                + projectId + " and workflow step " + actualWorkflowStepId));
-        log.info("Resolved tmId {} for project {} and workflowStep {} ({})",
-                tmId, job.getProject().getId(), actualWorkflowStepId, workflowStep.getName());
-
-        // Send file to Tomato API with net rate percentages and TM for weighted computation
-        // String filePath = job.getConvertedFilePath();
-        String filePath = job.getOriginalFilePath();
-        TomatoSizingResponse sizingResponse = sizingService.sendFileToTomatoAPI(filePath, netRatePercentMap, tmId);
         TomatoSizingResponse.Statistics stats = sizingResponse.statistics();
 
         log.info("Sizing stats - repetition: {}, contextMatch: {}, perfect100: {}, fuzzy95: {}, fuzzy85: {}, fuzzy75: {}, fuzzy50: {}, noMatch: {}",
@@ -129,22 +86,30 @@ public class JobAnalysisService {
             jobAnalysis.setTargetLanguages(java.util.Set.of(stats.targetLanguage()));
         }
 
-        // Read TM words and segments from API response
+        // Read TM words, characters, and segments from API response
         jobAnalysis.setRepetitionWords(safeLong(stats.repetitionTM_Words()));
+        jobAnalysis.setRepetitionCharacters(safeLong(stats.repetitionTM_Characters()));
         jobAnalysis.setRepetitionSegments(safeLong(stats.repetitionTM_Segments()));
         jobAnalysis.setContextMatchWords(safeLong(stats.context101TM_Words()));
+        jobAnalysis.setContextMatchCharacters(safeLong(stats.context101TM_Characters()));
         jobAnalysis.setContextMatchSegments(safeLong(stats.context101TM_Segments()));
         jobAnalysis.setPerfect100Words(safeLong(stats.perfect100TM_Words()));
+        jobAnalysis.setPerfect100Characters(safeLong(stats.perfect100TM_Characters()));
         jobAnalysis.setPerfect100Segments(safeLong(stats.perfect100TM_Segments()));
         jobAnalysis.setFuzzy95Words(safeLong(stats.fuzzy95TM_Words()));
+        jobAnalysis.setFuzzy95Characters(safeLong(stats.fuzzy95TM_Characters()));
         jobAnalysis.setFuzzy95Segments(safeLong(stats.fuzzy95TM_Segments()));
         jobAnalysis.setFuzzy85Words(safeLong(stats.fuzzy85TM_Words()));
+        jobAnalysis.setFuzzy85Characters(safeLong(stats.fuzzy85TM_Characters()));
         jobAnalysis.setFuzzy85Segments(safeLong(stats.fuzzy85TM_Segments()));
         jobAnalysis.setFuzzy75Words(safeLong(stats.fuzzy75TM_Words()));
+        jobAnalysis.setFuzzy75Characters(safeLong(stats.fuzzy75TM_Characters()));
         jobAnalysis.setFuzzy75Segments(safeLong(stats.fuzzy75TM_Segments()));
         jobAnalysis.setFuzzy50Words(safeLong(stats.fuzzy50TM_Words()));
+        jobAnalysis.setFuzzy50Characters(safeLong(stats.fuzzy50TM_Characters()));
         jobAnalysis.setFuzzy50Segments(safeLong(stats.fuzzy50TM_Segments()));
         jobAnalysis.setNoMatchWords(safeLong(stats.noMatchTM_Words()));
+        jobAnalysis.setNoMatchCharacters(safeLong(stats.noMatchTM_Characters()));
         jobAnalysis.setNoMatchSegments(safeLong(stats.noMatchTM_Segments()));
 
         log.info("TM Words - repetition: {}, contextMatch: {}, perfect100: {}, fuzzy95: {}, fuzzy85: {}, fuzzy75: {}, fuzzy50: {}, noMatch: {}",
@@ -165,24 +130,60 @@ public class JobAnalysisService {
      * @return The created JobAnalysisResponseDTO
      */
     @Transactional
-    public JobAnalysisResponseDTO createJobAnalysisFromJobId(Long jobId, Long workflowStepId, User user) {
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found with id: " + jobId));
+    public JobAnalysisResponseDTO createJobAnalysisFromJobIds(List<Long> jobIds, Long workflowStepId, User user) {
+        List<Job> jobs = jobIds.stream()
+                .map(id -> jobRepository.findById(id)
+                        .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
+                .collect(Collectors.toList());
 
-        JobAnalysis jobAnalysis = createJobAnalysis(job, workflowStepId, user);
-        JobAnalysisResponseDTO dto = toResponseDTO(jobAnalysis);
+        Job primaryJob = jobs.get(0);
+
+        // Resolve the actual WorkflowStep from the JobWorkflowStep id
+        JobWorkflowStep jobWorkflowStep = jobWorkflowStepRepository.findById(workflowStepId)
+                .orElseThrow(() -> new RuntimeException("JobWorkflowStep not found with id: " + workflowStepId));
+        WorkflowStep workflowStep = jobWorkflowStep.getWorkflowStep();
+        Long actualWorkflowStepId = workflowStep.getId();
+        log.info("Resolved JobWorkflowStep id {} -> WorkflowStep id {} (name: {})",
+                workflowStepId, actualWorkflowStepId, workflowStep.getName());
+
+        // Get default net rate scheme and find the matching workflow step rates
+        NetRateSchemeResponseDTO defaultScheme = netRateSchemeService.getDefaultScheme();
+        WorkflowStepRateResponseDTO stepRate = defaultScheme.workflowStepRates().stream()
+                .filter(wf -> wf.workflowStepId().equals(actualWorkflowStepId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No rates found for workflowStepId: " + actualWorkflowStepId));
+
+        boolean isMTPE = isMTPEWorkflowStep(workflowStep);
+        log.info("Workflow step '{}' identified as: {}", workflowStep.getName(), isMTPE ? "MTPE" : "Translation");
+
+        Map<MatchType, Long> netRatePercentMap = stepRate.matchTypeRates().stream()
+                .collect(Collectors.toMap(
+                        MatchTypeRateResponseDTO::matchType,
+                        rate -> isMTPE ? rate.machineTransPercent() : rate.transMemoryPercent()
+                ));
+        log.info("netRatePercentMap for workflowStepId {}: {}", actualWorkflowStepId, netRatePercentMap);
+
+        // Resolve the TM with read access for this project + workflow step
+        Long projectId = primaryJob.getProject().getId();
+        Long tmId = tmAssignmentRepo
+                .findByProjectIdAndWorkflowStepIdAndReadAccessTrue(projectId, actualWorkflowStepId)
+                .map(ProjectTmAssignment::getTmId)
+                .orElseThrow(() -> new RuntimeException(
+                        "No translation memory with read access assigned for project "
+                                + projectId + " and workflow step " + actualWorkflowStepId));
+        log.info("Resolved tmId {} for project {} and workflowStep {} ({})",
+                tmId, projectId, actualWorkflowStepId, workflowStep.getName());
+
+        // Send files to Tomato API
+        List<String> filePaths = jobs.stream()
+                .map(Job::getOriginalFilePath)
+                .collect(Collectors.toList());
+        TomatoSizingResponse sizingResponse = sizingService.sendFilesToTomatoAPIByPath(filePaths, netRatePercentMap, tmId);
+
+        JobAnalysis jobAnalysis = createJobAnalysis(jobs, workflowStepId, user, sizingResponse);
+        JobAnalysisResponseDTO dto = JobAnalysisResponseDTO.fromEntity(jobAnalysis, sizingResponse);
         log.info("JobAnalysisResponseDTO: {}", dto);
         return dto;
-    }
-
-    /**
-     * Converts JobAnalysis entity to JobAnalysisResponseDTO.
-     *
-     * @param jobAnalysis The JobAnalysis entity
-     * @return The JobAnalysisResponseDTO
-     */
-    public JobAnalysisResponseDTO toResponseDTO(JobAnalysis jobAnalysis) {
-        return JobAnalysisResponseDTO.fromEntity(jobAnalysis);
     }
 
     /**

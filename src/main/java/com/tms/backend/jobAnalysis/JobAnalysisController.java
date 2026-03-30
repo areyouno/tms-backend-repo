@@ -43,8 +43,8 @@ public class JobAnalysisController {
                 .orElseThrow(() -> new RuntimeException("User not found with uid: " + uid));
 
         // Create job analysis with macro resolution
-        JobAnalysisResponseDTO response = jobAnalysisService.createJobAnalysisFromJobId(
-            request.jobId(),
+        JobAnalysisResponseDTO response = jobAnalysisService.createJobAnalysisFromJobIds(
+            request.jobIds(),
             request.workflowStepId(),
             currentUser
         );

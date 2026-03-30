@@ -1,6 +1,8 @@
 package com.tms.backend.dto;
 
-public record TomatoSizingResponse(Statistics statistics) {
+import java.util.List;
+
+public record TomatoSizingResponse(Statistics statistics, String fileName, List<TomatoSizingResponse> files) {
     public record Statistics(
         Long approvedCount,
         Long approvedSegments,
