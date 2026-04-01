@@ -8,6 +8,10 @@ import com.tms.backend.project.Project;
 import com.tms.backend.settingAnalysis.AnalysisScope;
 import com.tms.backend.user.User;
 
+import java.util.ArrayList;
+import java.util.List;
+
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -20,6 +24,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
 
 @Entity
 public class JobAnalysis {
@@ -70,6 +75,9 @@ public class JobAnalysis {
     // count units of
     @Enumerated(EnumType.STRING)
     private AnalysisScope scope = AnalysisScope.SOURCE;
+
+    @OneToMany(mappedBy = "jobAnalysis", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<JobAnalysisFile> files = new ArrayList<>();
 
     // sizing results (TM words, characters, and segments)
     private Long repetitionWords;
@@ -228,4 +236,7 @@ public class JobAnalysis {
 
     public Long getNoMatchSegments() { return noMatchSegments; }
     public void setNoMatchSegments(Long noMatchSegments) { this.noMatchSegments = noMatchSegments; }
+
+    public List<JobAnalysisFile> getFiles() { return files; }
+    public void setFiles(List<JobAnalysisFile> files) { this.files = files; }
 }

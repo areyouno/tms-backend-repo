@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.tms.backend.jobAnalysis.JobAnalysis;
+import com.tms.backend.jobAnalysis.JobAnalysisFile;
 import com.tms.backend.jobAnalysis.JobAnalysisType;
 
 public record JobAnalysisResponseDTO(
@@ -53,30 +54,25 @@ public record JobAnalysisResponseDTO(
         Long fuzzy50TM_Words, Long fuzzy50TM_Characters, Long fuzzy50TM_Segments,
         Long noMatchTM_Words, Long noMatchTM_Characters, Long noMatchTM_Segments
     ) {
-        public static FileAnalysis from(TomatoSizingResponse file) {
-            TomatoSizingResponse.Statistics s = file.statistics();
+        public static FileAnalysis fromEntity(JobAnalysisFile f) {
             return new FileAnalysis(
-                file.fileName(),
-                s.approvedTM_Words(), s.approvedTM_Characters(), s.approvedTM_Segments(),
-                s.repetitionTM_Words(), s.repetitionTM_Characters(), s.repetitionTM_Segments(),
-                s.context101TM_Words(), s.context101TM_Characters(), s.context101TM_Segments(),
-                s.perfect100TM_Words(), s.perfect100TM_Characters(), s.perfect100TM_Segments(),
-                s.fuzzy95TM_Words(), s.fuzzy95TM_Characters(), s.fuzzy95TM_Segments(),
-                s.fuzzy85TM_Words(), s.fuzzy85TM_Characters(), s.fuzzy85TM_Segments(),
-                s.fuzzy75TM_Words(), s.fuzzy75TM_Characters(), s.fuzzy75TM_Segments(),
-                s.fuzzy50TM_Words(), s.fuzzy50TM_Characters(), s.fuzzy50TM_Segments(),
-                s.noMatchTM_Words(), s.noMatchTM_Characters(), s.noMatchTM_Segments()
+                f.getFileName(),
+                f.getApprovedTM_Words(), f.getApprovedTM_Characters(), f.getApprovedTM_Segments(),
+                f.getRepetitionTM_Words(), f.getRepetitionTM_Characters(), f.getRepetitionTM_Segments(),
+                f.getContext101TM_Words(), f.getContext101TM_Characters(), f.getContext101TM_Segments(),
+                f.getPerfect100TM_Words(), f.getPerfect100TM_Characters(), f.getPerfect100TM_Segments(),
+                f.getFuzzy95TM_Words(), f.getFuzzy95TM_Characters(), f.getFuzzy95TM_Segments(),
+                f.getFuzzy85TM_Words(), f.getFuzzy85TM_Characters(), f.getFuzzy85TM_Segments(),
+                f.getFuzzy75TM_Words(), f.getFuzzy75TM_Characters(), f.getFuzzy75TM_Segments(),
+                f.getFuzzy50TM_Words(), f.getFuzzy50TM_Characters(), f.getFuzzy50TM_Segments(),
+                f.getNoMatchTM_Words(), f.getNoMatchTM_Characters(), f.getNoMatchTM_Segments()
             );
         }
     }
 
     public static JobAnalysisResponseDTO fromEntity(JobAnalysis a) {
-        return fromEntity(a, null);
-    }
-
-    public static JobAnalysisResponseDTO fromEntity(JobAnalysis a, TomatoSizingResponse sizing) {
-        List<FileAnalysis> files = sizing != null && sizing.files() != null
-                ? sizing.files().stream().map(FileAnalysis::from).collect(java.util.stream.Collectors.toList())
+        List<FileAnalysis> files = a.getFiles() != null && !a.getFiles().isEmpty()
+                ? a.getFiles().stream().map(FileAnalysis::fromEntity).collect(java.util.stream.Collectors.toList())
                 : null;
 
         return new JobAnalysisResponseDTO(

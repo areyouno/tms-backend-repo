@@ -37,6 +37,7 @@ public class JobAnalysisService {
     private static final Logger log = LoggerFactory.getLogger(JobAnalysisService.class);
 
     private final JobAnalysisRepository jobAnalysisRepository;
+    private final JobAnalysisFileRepository jobAnalysisFileRepository;
     private final AnalysisSettingService analysisSettingService;
     private final JobRepository jobRepository;
     private final SizingService sizingService;
@@ -117,7 +118,48 @@ public class JobAnalysisService {
                 jobAnalysis.getFuzzy95Words(), jobAnalysis.getFuzzy85Words(), jobAnalysis.getFuzzy75Words(),
                 jobAnalysis.getFuzzy50Words(), jobAnalysis.getNoMatchWords());
 
-        return jobAnalysisRepository.save(jobAnalysis);
+        JobAnalysis saved = jobAnalysisRepository.save(jobAnalysis);
+
+        if (sizingResponse.files() != null) {
+            List<JobAnalysisFile> fileEntities = sizingResponse.files().stream().map(f -> {
+                TomatoSizingResponse.Statistics s = f.statistics();
+                JobAnalysisFile file = new JobAnalysisFile();
+                file.setJobAnalysis(saved);
+                file.setFileName(f.fileName());
+                file.setApprovedTM_Words(safeLong(s.approvedTM_Words()));
+                file.setApprovedTM_Characters(safeLong(s.approvedTM_Characters()));
+                file.setApprovedTM_Segments(safeLong(s.approvedTM_Segments()));
+                file.setRepetitionTM_Words(safeLong(s.repetitionTM_Words()));
+                file.setRepetitionTM_Characters(safeLong(s.repetitionTM_Characters()));
+                file.setRepetitionTM_Segments(safeLong(s.repetitionTM_Segments()));
+                file.setContext101TM_Words(safeLong(s.context101TM_Words()));
+                file.setContext101TM_Characters(safeLong(s.context101TM_Characters()));
+                file.setContext101TM_Segments(safeLong(s.context101TM_Segments()));
+                file.setPerfect100TM_Words(safeLong(s.perfect100TM_Words()));
+                file.setPerfect100TM_Characters(safeLong(s.perfect100TM_Characters()));
+                file.setPerfect100TM_Segments(safeLong(s.perfect100TM_Segments()));
+                file.setFuzzy95TM_Words(safeLong(s.fuzzy95TM_Words()));
+                file.setFuzzy95TM_Characters(safeLong(s.fuzzy95TM_Characters()));
+                file.setFuzzy95TM_Segments(safeLong(s.fuzzy95TM_Segments()));
+                file.setFuzzy85TM_Words(safeLong(s.fuzzy85TM_Words()));
+                file.setFuzzy85TM_Characters(safeLong(s.fuzzy85TM_Characters()));
+                file.setFuzzy85TM_Segments(safeLong(s.fuzzy85TM_Segments()));
+                file.setFuzzy75TM_Words(safeLong(s.fuzzy75TM_Words()));
+                file.setFuzzy75TM_Characters(safeLong(s.fuzzy75TM_Characters()));
+                file.setFuzzy75TM_Segments(safeLong(s.fuzzy75TM_Segments()));
+                file.setFuzzy50TM_Words(safeLong(s.fuzzy50TM_Words()));
+                file.setFuzzy50TM_Characters(safeLong(s.fuzzy50TM_Characters()));
+                file.setFuzzy50TM_Segments(safeLong(s.fuzzy50TM_Segments()));
+                file.setNoMatchTM_Words(safeLong(s.noMatchTM_Words()));
+                file.setNoMatchTM_Characters(safeLong(s.noMatchTM_Characters()));
+                file.setNoMatchTM_Segments(safeLong(s.noMatchTM_Segments()));
+                return file;
+            }).collect(Collectors.toList());
+            jobAnalysisFileRepository.saveAll(fileEntities);
+            saved.setFiles(fileEntities);
+        }
+
+        return saved;
     }
 
     /**
@@ -181,7 +223,7 @@ public class JobAnalysisService {
         TomatoSizingResponse sizingResponse = sizingService.sendFilesToTomatoAPIByPath(filePaths, netRatePercentMap, tmId);
 
         JobAnalysis jobAnalysis = createJobAnalysis(jobs, workflowStepId, user, sizingResponse);
-        JobAnalysisResponseDTO dto = JobAnalysisResponseDTO.fromEntity(jobAnalysis, sizingResponse);
+        JobAnalysisResponseDTO dto = JobAnalysisResponseDTO.fromEntity(jobAnalysis);
         log.info("JobAnalysisResponseDTO: {}", dto);
         return dto;
     }
@@ -195,6 +237,28 @@ public class JobAnalysisService {
      * @param workflowStepId The JobWorkflowStep ID to resolve the provider's username
      * @return The resolved name with macros replaced
      */
+    @Transactional(readOnly = true)
+    public List<JobAnalysisResponseDTO> getAllJobAnalyses() {
+        return jobAnalysisRepository.findAll().stream()
+                .map(JobAnalysisResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public JobAnalysisResponseDTO getJobAnalysis(Long id) {
+        JobAnalysis jobAnalysis = jobAnalysisRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("JobAnalysis not found with id: " + id));
+        return JobAnalysisResponseDTO.fromEntity(jobAnalysis);
+    }
+
+    @Transactional
+    public void deleteJobAnalysis(Long id) {
+        if (!jobAnalysisRepository.existsById(id)) {
+            throw new RuntimeException("JobAnalysis not found with id: " + id);
+        }
+        jobAnalysisRepository.deleteById(id);
+    }
+
     private String resolveNameMacros(String template, Job job, Long workflowStepId) {
         if (template == null) {
             return "Analysis";
