@@ -14,9 +14,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tms.backend.dto.LanguagePairFilterDTO;
 import com.tms.backend.dto.PriceListCreateDTO;
 import com.tms.backend.dto.PriceListDeleteRequestDTO;
 import com.tms.backend.dto.PriceListLanguagePairDTO;
+import com.tms.backend.dto.PriceListLanguagePairResponseDTO;
 import com.tms.backend.dto.PriceListResponseDTO;
 import com.tms.backend.dto.PriceListUpdateDTO;
 import com.tms.backend.user.CustomUserDetails;
@@ -51,6 +53,14 @@ public class PriceListController {
     public ResponseEntity<PriceListResponseDTO> getPriceListById(@PathVariable Long id) {
         PriceListResponseDTO dto = priceListService.getPriceListById(id);
         return ResponseEntity.ok(dto);
+    }
+
+    @PostMapping("/{id}/language-pair/filter")
+    public ResponseEntity<PriceListLanguagePairResponseDTO> getLanguagePair(
+            @PathVariable Long id,
+            @RequestBody LanguagePairFilterDTO filter
+    ) {
+        return ResponseEntity.ok(priceListService.getLanguagePair(id, filter.sourceLanguage(), filter.targetLanguage()));
     }
 
     @PutMapping("/{id}")

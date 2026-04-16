@@ -65,16 +65,46 @@ public class PriceListService {
         return toDTO(saved);
     }
 
+    @Transactional
     public List<PriceListResponseDTO> getAllPriceLists() {
         return priceListRepository.findAll().stream()
             .map(this::toDTO)
             .toList();
     }
 
+    @Transactional
     public PriceListResponseDTO getPriceListById(Long id) {
         PriceList priceList = priceListRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("PriceList not found"));
         return toDTO(priceList);
+    }
+
+    @Transactional
+    public PriceListLanguagePairResponseDTO getLanguagePair(Long priceListId, String source, String target) {
+
+        PriceList priceList = priceListRepository.findById(priceListId)
+            .orElseThrow(() -> new RuntimeException("PriceList not found"));
+
+        PriceListLanguagePair lp = priceList.getLanguagePairs().stream()
+            .filter(pair -> source.equalsIgnoreCase(pair.getSourceLanguage())
+                         && target.equalsIgnoreCase(pair.getTargetLanguage()))
+            .findFirst()
+            .orElseThrow(() -> new RuntimeException(
+                "No language pair found for: " + source + " → " + target));
+
+        return new PriceListLanguagePairResponseDTO(
+            lp.getId(),
+            lp.getSourceLanguage(),
+            lp.getTargetLanguage(),
+            lp.getMinPrice(),
+            lp.getWorkflowStepPrices().stream()
+                .map(wf -> new PriceListWorkflowStepPriceResponseDTO(
+                    wf.getWorkflowStep().getId(),
+                    wf.getWorkflowStep().getName(),
+                    wf.getPrice()
+                ))
+                .toList()
+        );
     }
 
     @Transactional
