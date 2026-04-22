@@ -5,8 +5,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Map;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.core.io.ByteArrayResource;
@@ -21,7 +19,6 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.tms.backend.dto.TomatoSizingResponse;
-import com.tms.backend.netRateScheme.MatchType;
 
 
 @Service
@@ -82,11 +79,7 @@ public class SizingService {
         return sendFilesToTomatoAPIByPath(filePaths, null, null);
     }
 
-    public TomatoSizingResponse sendFilesToTomatoAPIByPath(List<String> filePaths, Map<MatchType, Long> netRatePercents) {
-        return sendFilesToTomatoAPIByPath(filePaths, netRatePercents, null);
-    }
-
-    public TomatoSizingResponse sendFilesToTomatoAPIByPath(List<String> filePaths, Map<MatchType, Long> netRatePercents, Long tmId) {
+    public TomatoSizingResponse sendFilesToTomatoAPIByPath(List<String> filePaths, String sizingRequestJson, Long tmId) {
         String firstFilename = Paths.get(filePaths.get(0)).getFileName().toString();
         boolean isXliff = firstFilename.endsWith(".xliff") || firstFilename.endsWith(".xlf");
         String fileKey = isXliff ? "xliffFiles" : "ditaFiles";
@@ -118,19 +111,7 @@ public class SizingService {
                 body.add("tmId", String.valueOf(tmId));
             }
 
-            if (netRatePercents != null) {
-                String sizingRequestJson = String.format(
-                        "{\"repetitionsPercent\":%d,\"percent101Percent\":%d,\"percent100Percent\":%d,"
-                        + "\"percent95Percent\":%d,\"percent85Percent\":%d,\"percent75Percent\":%d,"
-                        + "\"percent50Percent\":%d,\"percent0Percent\":%d}",
-                        netRatePercents.getOrDefault(MatchType.REPETITIONS, 0L),
-                        netRatePercents.getOrDefault(MatchType.PERCENT_101, 0L),
-                        netRatePercents.getOrDefault(MatchType.PERCENT_100, 0L),
-                        netRatePercents.getOrDefault(MatchType.PERCENT_95, 0L),
-                        netRatePercents.getOrDefault(MatchType.PERCENT_85, 0L),
-                        netRatePercents.getOrDefault(MatchType.PERCENT_75, 0L),
-                        netRatePercents.getOrDefault(MatchType.PERCENT_50, 0L),
-                        netRatePercents.getOrDefault(MatchType.PERCENT_0, 0L));
+            if (sizingRequestJson != null) {
                 body.add("sizingRequestJson", sizingRequestJson);
             }
 

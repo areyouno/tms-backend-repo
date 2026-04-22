@@ -10,6 +10,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tms.backend.dto.JobAnalysisResponseDTO;
 import com.tms.backend.dto.MatchTypeRateResponseDTO;
 import com.tms.backend.dto.NetRateSchemeResponseDTO;
@@ -19,7 +22,6 @@ import com.tms.backend.job.Job;
 import com.tms.backend.job.JobRepository;
 import com.tms.backend.job.JobWorkflowStep;
 import com.tms.backend.job.JobWorkflowStepRepository;
-import com.tms.backend.netRateScheme.MatchType;
 import com.tms.backend.netRateScheme.NetRateSchemeService;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignment;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignmentRepository;
@@ -113,6 +115,27 @@ public class JobAnalysisService {
         jobAnalysis.setNoMatchCharacters(safeLong(stats.noMatchTM_Characters()));
         jobAnalysis.setNoMatchSegments(safeLong(stats.noMatchTM_Segments()));
 
+        jobAnalysis.setApprovedTM_Weighted(stats.approvedTM_Weighted());
+        jobAnalysis.setApprovedNT_Weighted(stats.approvedNT_Weighted());
+        jobAnalysis.setRepetitionTM_Weighted(stats.repetitionTM_Weighted());
+        jobAnalysis.setRepetitionNT_Weighted(stats.repetitionNT_Weighted());
+        jobAnalysis.setContext101TM_Weighted(stats.context101TM_Weighted());
+        jobAnalysis.setContext101NT_Weighted(stats.context101NT_Weighted());
+        jobAnalysis.setPerfect100TM_Weighted(stats.perfect100TM_Weighted());
+        jobAnalysis.setPerfect100NT_Weighted(stats.perfect100NT_Weighted());
+        jobAnalysis.setFuzzy95TM_Weighted(stats.fuzzy95TM_Weighted());
+        jobAnalysis.setFuzzy95NT_Weighted(stats.fuzzy95NT_Weighted());
+        jobAnalysis.setFuzzy85TM_Weighted(stats.fuzzy85TM_Weighted());
+        jobAnalysis.setFuzzy85NT_Weighted(stats.fuzzy85NT_Weighted());
+        jobAnalysis.setFuzzy75TM_Weighted(stats.fuzzy75TM_Weighted());
+        jobAnalysis.setFuzzy75NT_Weighted(stats.fuzzy75NT_Weighted());
+        jobAnalysis.setFuzzy50TM_Weighted(stats.fuzzy50TM_Weighted());
+        jobAnalysis.setFuzzy50NT_Weighted(stats.fuzzy50NT_Weighted());
+        jobAnalysis.setNoMatchTM_Weighted(stats.noMatchTM_Weighted());
+        jobAnalysis.setNoMatchNT_Weighted(stats.noMatchNT_Weighted());
+        jobAnalysis.setTotalWeighted(stats.totalWeighted());
+        jobAnalysis.setTotalWeightedPercentage(stats.totalWeightedPercentage());
+
         log.info("TM Words - repetition: {}, contextMatch: {}, perfect100: {}, fuzzy95: {}, fuzzy85: {}, fuzzy75: {}, fuzzy50: {}, noMatch: {}",
                 jobAnalysis.getRepetitionWords(), jobAnalysis.getContextMatchWords(), jobAnalysis.getPerfect100Words(),
                 jobAnalysis.getFuzzy95Words(), jobAnalysis.getFuzzy85Words(), jobAnalysis.getFuzzy75Words(),
@@ -153,6 +176,26 @@ public class JobAnalysisService {
                 file.setNoMatchTM_Words(safeLong(s.noMatchTM_Words()));
                 file.setNoMatchTM_Characters(safeLong(s.noMatchTM_Characters()));
                 file.setNoMatchTM_Segments(safeLong(s.noMatchTM_Segments()));
+                file.setApprovedTM_Weighted(s.approvedTM_Weighted());
+                file.setApprovedNT_Weighted(s.approvedNT_Weighted());
+                file.setRepetitionTM_Weighted(s.repetitionTM_Weighted());
+                file.setRepetitionNT_Weighted(s.repetitionNT_Weighted());
+                file.setContext101TM_Weighted(s.context101TM_Weighted());
+                file.setContext101NT_Weighted(s.context101NT_Weighted());
+                file.setPerfect100TM_Weighted(s.perfect100TM_Weighted());
+                file.setPerfect100NT_Weighted(s.perfect100NT_Weighted());
+                file.setFuzzy95TM_Weighted(s.fuzzy95TM_Weighted());
+                file.setFuzzy95NT_Weighted(s.fuzzy95NT_Weighted());
+                file.setFuzzy85TM_Weighted(s.fuzzy85TM_Weighted());
+                file.setFuzzy85NT_Weighted(s.fuzzy85NT_Weighted());
+                file.setFuzzy75TM_Weighted(s.fuzzy75TM_Weighted());
+                file.setFuzzy75NT_Weighted(s.fuzzy75NT_Weighted());
+                file.setFuzzy50TM_Weighted(s.fuzzy50TM_Weighted());
+                file.setFuzzy50NT_Weighted(s.fuzzy50NT_Weighted());
+                file.setNoMatchTM_Weighted(s.noMatchTM_Weighted());
+                file.setNoMatchNT_Weighted(s.noMatchNT_Weighted());
+                file.setTotalWeighted(s.totalWeighted());
+                file.setTotalWeightedPercentage(s.totalWeightedPercentage());
                 return file;
             }).collect(Collectors.toList());
             jobAnalysisFileRepository.saveAll(fileEntities);
@@ -195,15 +238,7 @@ public class JobAnalysisService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("No rates found for workflowStepId: " + actualWorkflowStepId));
 
-        boolean isMTPE = isMTPEWorkflowStep(workflowStep);
-        log.info("Workflow step '{}' identified as: {}", workflowStep.getName(), isMTPE ? "MTPE" : "Translation");
-
-        Map<MatchType, Long> netRatePercentMap = stepRate.matchTypeRates().stream()
-                .collect(Collectors.toMap(
-                        MatchTypeRateResponseDTO::matchType,
-                        rate -> isMTPE ? rate.machineTransPercent() : rate.transMemoryPercent()
-                ));
-        log.info("netRatePercentMap for workflowStepId {}: {}", actualWorkflowStepId, netRatePercentMap);
+        log.info("matchTypeRates for workflowStepId {}: {}", actualWorkflowStepId, stepRate.matchTypeRates());
 
         // Resolve the TM with read access for this project + workflow step
         Long projectId = primaryJob.getProject().getId();
@@ -216,11 +251,15 @@ public class JobAnalysisService {
         log.info("Resolved tmId {} for project {} and workflowStep {} ({})",
                 tmId, projectId, actualWorkflowStepId, workflowStep.getName());
 
+        // Build sizingRequestJson with the full net rate scheme structure Tomato expects
+        String sizingRequestJson = buildSizingRequestJson(defaultScheme, projectId, stepRate.matchTypeRates());
+        log.info("sizingRequestJson: {}", sizingRequestJson);
+
         // Send files to Tomato API
         List<String> filePaths = jobs.stream()
                 .map(Job::getOriginalFilePath)
                 .collect(Collectors.toList());
-        TomatoSizingResponse sizingResponse = sizingService.sendFilesToTomatoAPIByPath(filePaths, netRatePercentMap, tmId);
+        TomatoSizingResponse sizingResponse = sizingService.sendFilesToTomatoAPIByPath(filePaths, sizingRequestJson, tmId);
 
         JobAnalysis jobAnalysis = createJobAnalysis(jobs, workflowStepId, user, sizingResponse);
         JobAnalysisResponseDTO dto = JobAnalysisResponseDTO.fromEntity(jobAnalysis);
@@ -297,11 +336,25 @@ public class JobAnalysisService {
         return resolved;
     }
 
-    private boolean isMTPEWorkflowStep(WorkflowStep workflowStep) {
-        String name = workflowStep.getName();
-        if (name == null) return false;
-        String lower = name.toLowerCase();
-        return lower.contains("mtpe") || lower.contains("post-editing") || lower.contains("post editing");
+    private String buildSizingRequestJson(NetRateSchemeResponseDTO scheme, Long projectId, List<MatchTypeRateResponseDTO> rates) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode root = mapper.createObjectNode();
+            root.put("id", scheme.id());
+            root.put("name", scheme.name());
+            root.put("projectId", projectId);
+            ArrayNode matchTypeRates = root.putArray("matchTypeRates");
+            for (MatchTypeRateResponseDTO rate : rates) {
+                ObjectNode rateNode = matchTypeRates.addObject();
+                rateNode.put("matchType", rate.matchType().name());
+                rateNode.put("transMemoryPercent", rate.transMemoryPercent());
+                rateNode.put("nonTranslatablePercent", rate.nonTranslatablePercent());
+                rateNode.put("machineTransPercent", rate.machineTransPercent());
+            }
+            return mapper.writeValueAsString(root);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to build sizingRequestJson", e);
+        }
     }
 
     private long safeLong(Long value) {

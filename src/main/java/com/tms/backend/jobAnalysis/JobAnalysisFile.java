@@ -48,6 +48,28 @@ public class JobAnalysisFile {
     private Long noMatchTM_Characters;
     private Long noMatchTM_Segments;
 
+    // weighted values
+    private Double approvedTM_Weighted;
+    private Double approvedNT_Weighted;
+    private Double repetitionTM_Weighted;
+    private Double repetitionNT_Weighted;
+    private Double context101TM_Weighted;
+    private Double context101NT_Weighted;
+    private Double perfect100TM_Weighted;
+    private Double perfect100NT_Weighted;
+    private Double fuzzy95TM_Weighted;
+    private Double fuzzy95NT_Weighted;
+    private Double fuzzy85TM_Weighted;
+    private Double fuzzy85NT_Weighted;
+    private Double fuzzy75TM_Weighted;
+    private Double fuzzy75NT_Weighted;
+    private Double fuzzy50TM_Weighted;
+    private Double fuzzy50NT_Weighted;
+    private Double noMatchTM_Weighted;
+    private Double noMatchNT_Weighted;
+    private Double totalWeighted;
+    private Double totalWeightedPercentage;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -137,4 +159,64 @@ public class JobAnalysisFile {
 
     public Long getNoMatchTM_Segments() { return noMatchTM_Segments; }
     public void setNoMatchTM_Segments(Long noMatchTM_Segments) { this.noMatchTM_Segments = noMatchTM_Segments; }
+
+    public Double getApprovedTM_Weighted() { return approvedTM_Weighted; }
+    public void setApprovedTM_Weighted(Double v) { this.approvedTM_Weighted = v; }
+
+    public Double getApprovedNT_Weighted() { return approvedNT_Weighted; }
+    public void setApprovedNT_Weighted(Double v) { this.approvedNT_Weighted = v; }
+
+    public Double getRepetitionTM_Weighted() { return repetitionTM_Weighted; }
+    public void setRepetitionTM_Weighted(Double v) { this.repetitionTM_Weighted = v; }
+
+    public Double getRepetitionNT_Weighted() { return repetitionNT_Weighted; }
+    public void setRepetitionNT_Weighted(Double v) { this.repetitionNT_Weighted = v; }
+
+    public Double getContext101TM_Weighted() { return context101TM_Weighted; }
+    public void setContext101TM_Weighted(Double v) { this.context101TM_Weighted = v; }
+
+    public Double getContext101NT_Weighted() { return context101NT_Weighted; }
+    public void setContext101NT_Weighted(Double v) { this.context101NT_Weighted = v; }
+
+    public Double getPerfect100TM_Weighted() { return perfect100TM_Weighted; }
+    public void setPerfect100TM_Weighted(Double v) { this.perfect100TM_Weighted = v; }
+
+    public Double getPerfect100NT_Weighted() { return perfect100NT_Weighted; }
+    public void setPerfect100NT_Weighted(Double v) { this.perfect100NT_Weighted = v; }
+
+    public Double getFuzzy95TM_Weighted() { return fuzzy95TM_Weighted; }
+    public void setFuzzy95TM_Weighted(Double v) { this.fuzzy95TM_Weighted = v; }
+
+    public Double getFuzzy95NT_Weighted() { return fuzzy95NT_Weighted; }
+    public void setFuzzy95NT_Weighted(Double v) { this.fuzzy95NT_Weighted = v; }
+
+    public Double getFuzzy85TM_Weighted() { return fuzzy85TM_Weighted; }
+    public void setFuzzy85TM_Weighted(Double v) { this.fuzzy85TM_Weighted = v; }
+
+    public Double getFuzzy85NT_Weighted() { return fuzzy85NT_Weighted; }
+    public void setFuzzy85NT_Weighted(Double v) { this.fuzzy85NT_Weighted = v; }
+
+    public Double getFuzzy75TM_Weighted() { return fuzzy75TM_Weighted; }
+    public void setFuzzy75TM_Weighted(Double v) { this.fuzzy75TM_Weighted = v; }
+
+    public Double getFuzzy75NT_Weighted() { return fuzzy75NT_Weighted; }
+    public void setFuzzy75NT_Weighted(Double v) { this.fuzzy75NT_Weighted = v; }
+
+    public Double getFuzzy50TM_Weighted() { return fuzzy50TM_Weighted; }
+    public void setFuzzy50TM_Weighted(Double v) { this.fuzzy50TM_Weighted = v; }
+
+    public Double getFuzzy50NT_Weighted() { return fuzzy50NT_Weighted; }
+    public void setFuzzy50NT_Weighted(Double v) { this.fuzzy50NT_Weighted = v; }
+
+    public Double getNoMatchTM_Weighted() { return noMatchTM_Weighted; }
+    public void setNoMatchTM_Weighted(Double v) { this.noMatchTM_Weighted = v; }
+
+    public Double getNoMatchNT_Weighted() { return noMatchNT_Weighted; }
+    public void setNoMatchNT_Weighted(Double v) { this.noMatchNT_Weighted = v; }
+
+    public Double getTotalWeighted() { return totalWeighted; }
+    public void setTotalWeighted(Double v) { this.totalWeighted = v; }
+
+    public Double getTotalWeightedPercentage() { return totalWeightedPercentage; }
+    public void setTotalWeightedPercentage(Double v) { this.totalWeightedPercentage = v; }
 }

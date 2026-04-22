@@ -40,6 +40,16 @@ public record JobAnalysisResponseDTO(
     Long noMatchWords,
     Long noMatchCharacters,
     Long noMatchSegments,
+    Double approvedTM_Weighted, Double approvedNT_Weighted,
+    Double repetitionTM_Weighted, Double repetitionNT_Weighted,
+    Double context101TM_Weighted, Double context101NT_Weighted,
+    Double perfect100TM_Weighted, Double perfect100NT_Weighted,
+    Double fuzzy95TM_Weighted, Double fuzzy95NT_Weighted,
+    Double fuzzy85TM_Weighted, Double fuzzy85NT_Weighted,
+    Double fuzzy75TM_Weighted, Double fuzzy75NT_Weighted,
+    Double fuzzy50TM_Weighted, Double fuzzy50NT_Weighted,
+    Double noMatchTM_Weighted, Double noMatchNT_Weighted,
+    Double totalWeighted, Double totalWeightedPercentage,
     List<FileAnalysis> files
 ) {
     public record FileAnalysis(
@@ -52,7 +62,17 @@ public record JobAnalysisResponseDTO(
         Long fuzzy85TM_Words, Long fuzzy85TM_Characters, Long fuzzy85TM_Segments,
         Long fuzzy75TM_Words, Long fuzzy75TM_Characters, Long fuzzy75TM_Segments,
         Long fuzzy50TM_Words, Long fuzzy50TM_Characters, Long fuzzy50TM_Segments,
-        Long noMatchTM_Words, Long noMatchTM_Characters, Long noMatchTM_Segments
+        Long noMatchTM_Words, Long noMatchTM_Characters, Long noMatchTM_Segments,
+        Double approvedTM_Weighted, Double approvedNT_Weighted,
+        Double repetitionTM_Weighted, Double repetitionNT_Weighted,
+        Double context101TM_Weighted, Double context101NT_Weighted,
+        Double perfect100TM_Weighted, Double perfect100NT_Weighted,
+        Double fuzzy95TM_Weighted, Double fuzzy95NT_Weighted,
+        Double fuzzy85TM_Weighted, Double fuzzy85NT_Weighted,
+        Double fuzzy75TM_Weighted, Double fuzzy75NT_Weighted,
+        Double fuzzy50TM_Weighted, Double fuzzy50NT_Weighted,
+        Double noMatchTM_Weighted, Double noMatchNT_Weighted,
+        Double totalWeighted, Double totalWeightedPercentage
     ) {
         public static FileAnalysis fromEntity(JobAnalysisFile f) {
             return new FileAnalysis(
@@ -65,7 +85,17 @@ public record JobAnalysisResponseDTO(
                 f.getFuzzy85TM_Words(), f.getFuzzy85TM_Characters(), f.getFuzzy85TM_Segments(),
                 f.getFuzzy75TM_Words(), f.getFuzzy75TM_Characters(), f.getFuzzy75TM_Segments(),
                 f.getFuzzy50TM_Words(), f.getFuzzy50TM_Characters(), f.getFuzzy50TM_Segments(),
-                f.getNoMatchTM_Words(), f.getNoMatchTM_Characters(), f.getNoMatchTM_Segments()
+                f.getNoMatchTM_Words(), f.getNoMatchTM_Characters(), f.getNoMatchTM_Segments(),
+                f.getApprovedTM_Weighted(), f.getApprovedNT_Weighted(),
+                f.getRepetitionTM_Weighted(), f.getRepetitionNT_Weighted(),
+                f.getContext101TM_Weighted(), f.getContext101NT_Weighted(),
+                f.getPerfect100TM_Weighted(), f.getPerfect100NT_Weighted(),
+                f.getFuzzy95TM_Weighted(), f.getFuzzy95NT_Weighted(),
+                f.getFuzzy85TM_Weighted(), f.getFuzzy85NT_Weighted(),
+                f.getFuzzy75TM_Weighted(), f.getFuzzy75NT_Weighted(),
+                f.getFuzzy50TM_Weighted(), f.getFuzzy50NT_Weighted(),
+                f.getNoMatchTM_Weighted(), f.getNoMatchNT_Weighted(),
+                f.getTotalWeighted(), f.getTotalWeightedPercentage()
             );
         }
     }
@@ -107,6 +137,16 @@ public record JobAnalysisResponseDTO(
             a.getNoMatchWords(),
             a.getNoMatchCharacters(),
             a.getNoMatchSegments(),
+            a.getApprovedTM_Weighted(), a.getApprovedNT_Weighted(),
+            a.getRepetitionTM_Weighted(), a.getRepetitionNT_Weighted(),
+            a.getContext101TM_Weighted(), a.getContext101NT_Weighted(),
+            a.getPerfect100TM_Weighted(), a.getPerfect100NT_Weighted(),
+            a.getFuzzy95TM_Weighted(), a.getFuzzy95NT_Weighted(),
+            a.getFuzzy85TM_Weighted(), a.getFuzzy85NT_Weighted(),
+            a.getFuzzy75TM_Weighted(), a.getFuzzy75NT_Weighted(),
+            a.getFuzzy50TM_Weighted(), a.getFuzzy50NT_Weighted(),
+            a.getNoMatchTM_Weighted(), a.getNoMatchNT_Weighted(),
+            a.getTotalWeighted(), a.getTotalWeightedPercentage(),
             files
         );
     }
