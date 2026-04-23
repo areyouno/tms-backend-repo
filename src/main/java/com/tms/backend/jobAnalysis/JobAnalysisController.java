@@ -62,6 +62,11 @@ public class JobAnalysisController {
         return ResponseEntity.ok(jobAnalysisService.getAllJobAnalyses());
     }
 
+    @GetMapping("/project/{projectId}")
+    public ResponseEntity<List<JobAnalysisResponseDTO>> getJobAnalysesByProjectId(@PathVariable Long projectId) {
+        return ResponseEntity.ok(jobAnalysisService.getJobAnalysesByProjectId(projectId));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<JobAnalysisResponseDTO> getJobAnalysis(@PathVariable Long id) {
         return ResponseEntity.ok(jobAnalysisService.getJobAnalysis(id));

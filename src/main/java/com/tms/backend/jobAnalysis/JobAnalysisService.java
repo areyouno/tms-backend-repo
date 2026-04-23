@@ -284,6 +284,13 @@ public class JobAnalysisService {
     }
 
     @Transactional(readOnly = true)
+    public List<JobAnalysisResponseDTO> getJobAnalysesByProjectId(Long projectId) {
+        return jobAnalysisRepository.findByProjectId(projectId).stream()
+                .map(JobAnalysisResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public JobAnalysisResponseDTO getJobAnalysis(Long id) {
         JobAnalysis jobAnalysis = jobAnalysisRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("JobAnalysis not found with id: " + id));
