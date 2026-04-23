@@ -350,6 +350,18 @@ public class JobAnalysisService {
             root.put("id", scheme.id());
             root.put("name", scheme.name());
             root.put("projectId", projectId);
+
+            ObjectNode ntRules = root.putObject("ntRules");
+            ntRules.putArray("regexPatterns")
+                .add("^Model\\s+[A-Z0-9]+$")
+                .add("\\bBMW\\s+X[0-9]\\b");
+            ntRules.putArray("staticTerms")
+                .add("API").add("USB").add("ABS");
+            ntRules.putArray("exactTerms")
+                .add("OK").add("Cancel").add("Yes").add("No");
+            ntRules.putArray("inlineElements")
+                .add("xref").add("userinput");
+
             ArrayNode matchTypeRates = root.putArray("matchTypeRates");
             for (MatchTypeRateResponseDTO rate : rates) {
                 ObjectNode rateNode = matchTypeRates.addObject();
