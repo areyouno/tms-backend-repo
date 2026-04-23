@@ -13,11 +13,7 @@ import com.tms.backend.dto.QuoteCreateDTO;
 import com.tms.backend.dto.QuoteResponseDTO;
 import com.tms.backend.jobAnalysis.JobAnalysis;
 import com.tms.backend.jobAnalysis.JobAnalysisRepository;
-import com.tms.backend.netRateScheme.MatchType;
-import com.tms.backend.netRateScheme.MatchTypeRate;
-import com.tms.backend.netRateScheme.NetRateScheme;
 import com.tms.backend.netRateScheme.NetRateSchemeRepository;
-import com.tms.backend.netRateScheme.WorkflowStepRate;
 import com.tms.backend.priceList.PriceList;
 import com.tms.backend.priceList.PriceListLanguagePair;
 import com.tms.backend.priceList.PriceListRepository;
@@ -87,9 +83,8 @@ public class QuoteService {
         }
 
         if (request.netRateSchemeId() != null) {
-            NetRateScheme netRateScheme = netRateSchemeRepository.findById(request.netRateSchemeId())
-                    .orElseThrow(() -> new RuntimeException("NetRateScheme not found with id: " + request.netRateSchemeId()));
-            quote.setNetRateScheme(netRateScheme);
+            netRateSchemeRepository.findById(request.netRateSchemeId())
+                    .ifPresent(quote::setNetRateScheme);
         } else {
             netRateSchemeRepository.findByIsDefaultTrue().ifPresent(quote::setNetRateScheme);
         }
@@ -106,33 +101,28 @@ public class QuoteService {
 
         if (request.workflowSteps() != null) {
             final JobAnalysis resolvedAnalysis = quote.getJobAnalysis();
-            final NetRateScheme resolvedScheme = quote.getNetRateScheme();
             final PriceList resolvedPriceList = quote.getPriceList();
 
             if (resolvedAnalysis == null) {
-                throw new RuntimeException("A job analysis is required to compute net words");
-            }
-            if (resolvedScheme == null) {
-                throw new RuntimeException("No net rate scheme selected and no default net rate scheme is configured");
+                throw new RuntimeException("A job analysis is required");
             }
             if (resolvedPriceList == null) {
                 throw new RuntimeException("A price list is required to compute step prices");
             }
 
-            // Find the language pair in the price list matching the analysis languages
             String sourceLang = resolvedAnalysis.getSourceLang();
             String targetLang = quote.getTargetLanguage();
 
-            log.info("[Quote] Creating quote '{}' | Language pair: {} → {} | Analysis: {} | Net rate scheme: {} | Price list: {}",
+            log.info("[Quote] Creating quote '{}' | Language pair: {} -> {} | Analysis: {} | Price list: {}",
                     quote.getName(), sourceLang, targetLang,
-                    resolvedAnalysis.getId(), resolvedScheme.getId(), resolvedPriceList.getId());
+                    resolvedAnalysis.getId(), resolvedPriceList.getId());
 
             PriceListLanguagePair languagePair = resolvedPriceList.getLanguagePairs().stream()
                     .filter(lp -> sourceLang != null && sourceLang.equalsIgnoreCase(lp.getSourceLanguage())
                                && targetLang != null && targetLang.equalsIgnoreCase(lp.getTargetLanguage()))
                     .findFirst()
                     .orElseThrow(() -> new RuntimeException(
-                        "No language pair found in price list for: " + sourceLang + " → " + targetLang));
+                        "No language pair found in price list for: " + sourceLang + " -> " + targetLang));
 
             log.info("[Quote] Matched language pair id={} | minPrice={}", languagePair.getId(), languagePair.getMinPrice());
 
@@ -140,22 +130,15 @@ public class QuoteService {
                 WorkflowStep workflowStep = workflowStepRepository.findById(entry.workflowStepId())
                         .orElseThrow(() -> new RuntimeException("WorkflowStep not found with id: " + entry.workflowStepId()));
 
-                WorkflowStepRate stepRate = resolvedScheme.getWorkflowStepRates().stream()
-                        .filter(r -> r.getWorkflowStep().getId().equals(entry.workflowStepId()))
-                        .findFirst()
-                        .orElseThrow(() -> new RuntimeException(
-                            "No rate defined in net rate scheme for workflow step id: " + entry.workflowStepId()));
-
-                long netWords = computeNetWords(resolvedAnalysis, stepRate);
-
+                long netWords = entry.netWords() != null ? entry.netWords() : 0L;
                 double unitPrice = entry.price() != null ? entry.price().doubleValue() : 0.0;
-                double computed = netWords * unitPrice;
                 double minPrice = languagePair.getMinPrice() != null ? languagePair.getMinPrice() : 0.0;
-                BigDecimal finalPrice = BigDecimal.valueOf(Math.max(computed, minPrice));
+                double effectiveUnitPrice = Math.max(unitPrice, minPrice);
+                BigDecimal finalPrice = BigDecimal.valueOf(netWords * effectiveUnitPrice);
 
-                log.info("[Quote] Step '{}' (id={}) | netWords={} | unitPrice={} | computed={} | minPrice={} | finalPrice={}",
+                log.info("[Quote] Step '{}' (id={}) | netWords={} | unitPrice={} | effectiveUnitPrice={} | minPrice={} | finalPrice={}",
                         workflowStep.getName(), workflowStep.getId(),
-                        netWords, unitPrice, computed, minPrice, finalPrice);
+                        netWords, unitPrice, effectiveUnitPrice, minPrice, finalPrice);
 
                 QuoteWorkflowStep step = new QuoteWorkflowStep();
                 step.setQuote(quote);
@@ -169,35 +152,6 @@ public class QuoteService {
 
         Quote saved = quoteRepository.save(quote);
         return QuoteResponseDTO.fromEntity(saved);
-    }
-
-    private long computeNetWords(JobAnalysis analysis, WorkflowStepRate stepRate) {
-        long total = 0;
-        log.debug("[NetWords] Computing net words for workflow step id={}", stepRate.getWorkflowStep().getId());
-        for (MatchTypeRate mtr : stepRate.getMatchTypeRates()) {
-            long words = getAnalysisWords(analysis, mtr.getMatchType());
-            long rate = mtr.getTransMemoryPercent() != null ? mtr.getTransMemoryPercent() : 0L;
-            long contribution = words * rate / 100;
-            log.debug("[NetWords]   {} | rawWords={} | rate={}% | contribution={}", mtr.getMatchType(), words, rate, contribution);
-            total += contribution;
-        }
-        log.debug("[NetWords]   total netWords={}", total);
-        return total;
-    }
-
-    private long getAnalysisWords(JobAnalysis analysis, MatchType matchType) {
-        if (matchType == null) return 0L;
-        Long words = switch (matchType) {
-            case REPETITIONS  -> analysis.getRepetitionWords();
-            case PERCENT_101  -> analysis.getContextMatchWords();
-            case PERCENT_100  -> analysis.getPerfect100Words();
-            case PERCENT_95   -> analysis.getFuzzy95Words();
-            case PERCENT_85   -> analysis.getFuzzy85Words();
-            case PERCENT_75   -> analysis.getFuzzy75Words();
-            case PERCENT_50   -> analysis.getFuzzy50Words();
-            case PERCENT_0    -> analysis.getNoMatchWords();
-        };
-        return words != null ? words : 0L;
     }
 
     @Transactional

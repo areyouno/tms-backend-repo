@@ -19,6 +19,7 @@ public record QuoteCreateDTO(
 ) {
     public record WorkflowStepEntry(
         Long workflowStepId,
+        Long netWords,
         BigDecimal price
     ) {}
 }
