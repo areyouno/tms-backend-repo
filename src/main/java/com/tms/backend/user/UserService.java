@@ -127,6 +127,10 @@ public class UserService {
         if (request.isProfileComplete() != null) {
             user.setProfileComplete(request.isProfileComplete());
         }
+
+        if (request.timeZone() != null) {
+            user.setTimeZone(request.timeZone());
+        }
     }
 
     private void updateUserFieldsInSettings(User user, UpdateUserByIdDTO request) {
@@ -290,6 +294,7 @@ public class UserService {
         
         // Verify user
         user.setVerified(true);
+        user.setActive(true);
         userRepo.save(user);
 
         // Mark token as used
