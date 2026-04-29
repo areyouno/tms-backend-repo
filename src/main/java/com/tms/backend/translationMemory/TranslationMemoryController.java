@@ -26,7 +26,7 @@ public class TranslationMemoryController {
     @PostMapping(value = "/{id}/import-tmx", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<String> importTmx(
             @PathVariable Long id,
-            @RequestPart("file") MultipartFile file,
+            @RequestPart("tmxFile") MultipartFile file,
             @RequestPart("metadata") ImportTmxRequestDTO metadata) throws IOException {
         return tmService.importTmx(id, file, metadata);
     }
