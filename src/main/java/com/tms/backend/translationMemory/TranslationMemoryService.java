@@ -1,59 +1,60 @@
 package com.tms.backend.translationMemory;
 
-import java.time.LocalDateTime;
+import java.io.IOException;
+import java.time.Duration;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.web.client.RestTemplateBuilder;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import com.tms.backend.dto.TranslationMemoryDTO;
-import com.tms.backend.user.User;
-import com.tms.backend.user.UserRepository;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class TranslationMemoryService {
-    private TranslationMemoryRepository tmRepo;
-    private UserRepository userRepo;
 
-    public TranslationMemoryService(TranslationMemoryRepository repo, UserRepository userRepo){
-        this.tmRepo = repo;
-        this.userRepo = userRepo;
+    private final RestTemplateBuilder restTemplateBuilder;
+
+    @Value("${tomato.api.url}")
+    private String tomatoBaseUrl;
+
+    public TranslationMemoryService(RestTemplateBuilder restTemplateBuilder) {
+        this.restTemplateBuilder = restTemplateBuilder;
     }
 
+    public ResponseEntity<String> importTmx(Long id, MultipartFile file) throws IOException {
+        String externalUrl = tomatoBaseUrl + "/api/TM/" + id + "/import-tmx";
 
-    public TranslationMemoryDTO save(String name, String createdBy,
-    LocalDateTime createDate, String sourceLang, String targetLang){
-        TranslationMemory tm = new TranslationMemory();
-        tm.setName(name);
-        tm.setCreateDate(createDate);
-        tm.setSourceLang(sourceLang);
-        tm.setTargetLang(targetLang);
+        Resource fileResource = new InputStreamResource(file.getInputStream()) {
+            @Override
+            public String getFilename() { return file.getOriginalFilename(); }
 
-        tm.setCreatedBy(createdBy);
+            @Override
+            public long contentLength() { return file.getSize(); }
+        };
 
-        User user = userRepo.findByUid(createdBy)   // or email/username
-        .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        tm.setOwner(user);
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("file", fileResource);
 
-        TranslationMemory saved = tmRepo.save(tm);
-        return convertToFullDTO(saved);
-    }
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
 
-    private TranslationMemoryDTO convertToFullDTO(TranslationMemory tm){
-        String ownerName = null;
-        if (tm.getOwner() != null){
-            String lastName = tm.getOwner().getLastName();
-            String firstName = tm.getOwner().getFirstName();
-            ownerName = ((firstName != null ? firstName : "") + " " + (lastName != null ? lastName : "")).trim();
-            if (ownerName.isEmpty()) {
-                ownerName = null;
-            }
-        }
+        RestTemplate restTemplate = restTemplateBuilder
+                .setConnectTimeout(Duration.ofSeconds(30))
+                .setReadTimeout(Duration.ofMinutes(10))
+                .build();
 
-        return new TranslationMemoryDTO(
-            tm.getName(),
-            tm.getCreatedBy(),
-            tm.getCreateDate(),
-            ownerName,
-            tm.getSourceLang(),
-            tm.getTargetLang(),
-            tm.getSegments()
+        return restTemplate.postForEntity(
+                externalUrl,
+                new HttpEntity<>(body, headers),
+                String.class
         );
     }
 }
