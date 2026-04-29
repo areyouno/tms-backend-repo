@@ -17,6 +17,8 @@ import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.tms.backend.dto.ImportTmxRequestDTO;
+
 @Service
 public class TranslationMemoryService {
 
@@ -29,7 +31,7 @@ public class TranslationMemoryService {
         this.restTemplateBuilder = restTemplateBuilder;
     }
 
-    public ResponseEntity<String> importTmx(Long id, MultipartFile file) throws IOException {
+    public ResponseEntity<String> importTmx(Long id, MultipartFile file, ImportTmxRequestDTO metadata) throws IOException {
         String externalUrl = tomatoBaseUrl + "/api/TM/" + id + "/import-tmx";
 
         ByteArrayResource fileResource = new ByteArrayResource(file.getBytes()) {
@@ -38,7 +40,10 @@ public class TranslationMemoryService {
         };
 
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", fileResource);
+        body.add("tmxFile", fileResource);
+        body.add("userName", metadata.userName());
+        body.add("overwrite", metadata.overwrite());
+        body.add("jobId", metadata.jobId());
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
