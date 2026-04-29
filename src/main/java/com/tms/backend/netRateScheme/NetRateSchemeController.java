@@ -31,14 +31,13 @@ public class NetRateSchemeController {
     private final NetRateSchemeService netRateSchemeService;
 
     @PostMapping("/create")
-    public ResponseEntity<NetRateScheme> createScheme(
+    public ResponseEntity<NetRateSchemeResponseDTO> createScheme(
                 @RequestBody NetRateSchemeCreateDTO dto,
                 Authentication authentication
     ) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         NetRateScheme savedScheme = netRateSchemeService.createScheme(dto, userDetails.getId());
-        // return ResponseEntity.status(HttpStatus.CREATED).build();
-        return ResponseEntity.ok(savedScheme);
+        return ResponseEntity.ok(toDTO(savedScheme));
     }
 
     // fetch all schemes
@@ -62,16 +61,13 @@ public class NetRateSchemeController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<NetRateScheme> updateScheme(
+    public ResponseEntity<NetRateSchemeResponseDTO> updateScheme(
             @PathVariable Long id,
             @RequestBody NetRateSchemeUpdateDTO dto,
             Authentication authentication) {
 
-        // Call the service to update the scheme
         NetRateScheme updatedScheme = netRateSchemeService.updateScheme(id, dto);
-
-        // Return the updated scheme (or just a 204 if you prefer no content)
-        return ResponseEntity.ok(updatedScheme);
+        return ResponseEntity.ok(toDTO(updatedScheme));
     }
 
     @DeleteMapping("/delete")
