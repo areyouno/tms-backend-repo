@@ -3,6 +3,7 @@ package com.tms.backend.jobAnalysis;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tms.backend.dto.JobAnalysisResponseDTO;
 import com.tms.backend.dto.MatchTypeRateResponseDTO;
 import com.tms.backend.dto.NetRateSchemeResponseDTO;
+import com.tms.backend.dto.SizingStatusDTO;
 import com.tms.backend.dto.TomatoSizingResponse;
 import com.tms.backend.dto.WorkflowStepRateResponseDTO;
 import com.tms.backend.job.Job;
@@ -27,6 +29,7 @@ import com.tms.backend.projectTmAssignment.ProjectTmAssignment;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignmentRepository;
 import com.tms.backend.settingAnalysis.AnalysisSetting;
 import com.tms.backend.settingAnalysis.AnalysisSettingService;
+import com.tms.backend.tomato.SizingPollService;
 import com.tms.backend.tomato.SizingService;
 import com.tms.backend.user.User;
 import com.tms.backend.workflowSteps.WorkflowStep;
@@ -43,9 +46,13 @@ public class JobAnalysisService {
     private final AnalysisSettingService analysisSettingService;
     private final JobRepository jobRepository;
     private final SizingService sizingService;
+    private final SizingPollService sizingPollService;
     private final NetRateSchemeService netRateSchemeService;
     private final JobWorkflowStepRepository jobWorkflowStepRepository;
     private final ProjectTmAssignmentRepository tmAssignmentRepo;
+
+    private record PendingSizingContext(List<Long> jobIds, Long workflowStepId, User user) {}
+    private final Map<String, PendingSizingContext> pendingContextMap = new ConcurrentHashMap<>();
 
     /**
      * Creates a new JobAnalysis using the user's default analysis settings.
@@ -56,6 +63,101 @@ public class JobAnalysisService {
      * @param languages The set of languages to analyze
      * @return The created JobAnalysis
      */
+    /**
+     * Resolves all context needed for sizing, submits files to Tomato, and starts background polling.
+     * Returns the Tomato jobId immediately so the caller can check status later.
+     */
+    public String initiateSizing(List<Long> jobIds, Long workflowStepId, User user) {
+        List<Job> jobs = jobIds.stream()
+                .map(id -> jobRepository.findById(id)
+                        .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
+                .collect(Collectors.toList());
+
+        Job primaryJob = jobs.get(0);
+
+        JobWorkflowStep jobWorkflowStep = jobWorkflowStepRepository.findById(workflowStepId)
+                .orElseThrow(() -> new RuntimeException("JobWorkflowStep not found with id: " + workflowStepId));
+        WorkflowStep workflowStep = jobWorkflowStep.getWorkflowStep();
+        Long actualWorkflowStepId = workflowStep.getId();
+
+        NetRateSchemeResponseDTO defaultScheme = netRateSchemeService.getDefaultScheme();
+        WorkflowStepRateResponseDTO stepRate = defaultScheme.workflowStepRates().stream()
+                .filter(wf -> wf.workflowStepId().equals(actualWorkflowStepId))
+                .findFirst()
+                .orElseThrow(() -> new RuntimeException("No rates found for workflowStepId: " + actualWorkflowStepId));
+
+        Long projectId = primaryJob.getProject().getId();
+        Long tmId = tmAssignmentRepo
+                .findByProjectIdAndWorkflowStepIdAndReadAccessTrue(projectId, actualWorkflowStepId)
+                .map(ProjectTmAssignment::getTmId)
+                .orElseThrow(() -> new RuntimeException(
+                        "No TM with read access for project " + projectId + " and workflow step " + actualWorkflowStepId));
+
+        String sizingRequestJson = buildSizingRequestJson(defaultScheme, projectId, stepRate.matchTypeRates());
+
+        List<String> filePaths = jobs.stream()
+                .map(Job::getOriginalFilePath)
+                .collect(Collectors.toList());
+
+        String tomatoJobId = sizingService.sendFilesToTomatoAPIByPath(filePaths, sizingRequestJson, tmId);
+
+        pendingContextMap.put(tomatoJobId, new PendingSizingContext(jobIds, workflowStepId, user));
+        sizingPollService.startPolling(tomatoJobId);
+
+        log.info("Sizing initiated for tomatoJobId: {}", tomatoJobId);
+        return tomatoJobId;
+    }
+
+    /**
+     * Called by the background polling thread when Tomato reports completion.
+     * Creates and persists the JobAnalysis using the stored context.
+     */
+    @Transactional
+    public void finalizeJobAnalysis(String tomatoJobId, TomatoSizingResponse sizingResponse) {
+        PendingSizingContext ctx = pendingContextMap.get(tomatoJobId);
+        if (ctx == null) {
+            log.warn("finalizeJobAnalysis called but no context found for jobId: {}", tomatoJobId);
+            return;
+        }
+
+        List<Job> jobs = ctx.jobIds().stream()
+                .map(id -> jobRepository.findById(id)
+                        .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
+                .collect(Collectors.toList());
+
+        createJobAnalysis(jobs, ctx.workflowStepId(), ctx.user(), sizingResponse);
+        pendingContextMap.remove(tomatoJobId);
+        log.info("JobAnalysis created and saved for tomatoJobId: {}", tomatoJobId);
+    }
+
+    /**
+     * Checks the current sizing status by calling Tomato directly.
+     * When completed, creates and persists the JobAnalysis.
+     */
+    @Transactional
+    public SizingStatusDTO getSizingStatus(String tomatoJobId) {
+        PendingSizingContext ctx = pendingContextMap.get(tomatoJobId);
+        if (ctx == null) {
+            throw new RuntimeException("No pending sizing job found for: " + tomatoJobId);
+        }
+
+        TomatoSizingResponse sizingResponse = sizingService.fetchSizingResultOnce(tomatoJobId);
+
+        if (sizingResponse == null) {
+            return new SizingStatusDTO("pending", null);
+        }
+
+        List<Job> jobs = ctx.jobIds().stream()
+                .map(id -> jobRepository.findById(id)
+                        .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
+                .collect(Collectors.toList());
+
+        JobAnalysis jobAnalysis = createJobAnalysis(jobs, ctx.workflowStepId(), ctx.user(), sizingResponse);
+        pendingContextMap.remove(tomatoJobId);
+
+        return new SizingStatusDTO("completed", JobAnalysisResponseDTO.fromEntity(jobAnalysis));
+    }
+
     @Transactional
     public JobAnalysis createJobAnalysis(List<Job> jobs, Long workflowStepId, User user, TomatoSizingResponse sizingResponse) {
         Job job = jobs.get(0);
@@ -255,11 +357,20 @@ public class JobAnalysisService {
         String sizingRequestJson = buildSizingRequestJson(defaultScheme, projectId, stepRate.matchTypeRates());
         log.info("sizingRequestJson: {}", sizingRequestJson);
 
-        // Send files to Tomato API
         List<String> filePaths = jobs.stream()
                 .map(Job::getOriginalFilePath)
                 .collect(Collectors.toList());
-        TomatoSizingResponse sizingResponse = sizingService.sendFilesToTomatoAPIByPath(filePaths, sizingRequestJson, tmId);
+        String tomatoJobId = sizingService.sendFilesToTomatoAPIByPath(filePaths, sizingRequestJson, tmId);
+
+        TomatoSizingResponse sizingResponse = null;
+        for (int attempt = 1; attempt <= 60 && sizingResponse == null; attempt++) {
+            try { Thread.sleep(5_000L); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
+            sizingResponse = sizingService.fetchSizingResultOnce(tomatoJobId);
+            log.info("Waiting for sizing result (attempt {}/60)", attempt);
+        }
+        if (sizingResponse == null) {
+            throw new RuntimeException("Sizing job " + tomatoJobId + " did not complete in time");
+        }
 
         JobAnalysis jobAnalysis = createJobAnalysis(jobs, workflowStepId, user, sizingResponse);
         JobAnalysisResponseDTO dto = JobAnalysisResponseDTO.fromEntity(jobAnalysis);
