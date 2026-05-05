@@ -10,6 +10,8 @@ import com.tms.backend.jobAnalysis.JobAnalysisType;
 
 public record JobAnalysisResponseDTO(
     Long id,
+    String tomatoJobId,
+    String status,
     String name,
     JobAnalysisType type,
     String sourceLang,
@@ -107,6 +109,8 @@ public record JobAnalysisResponseDTO(
 
         return new JobAnalysisResponseDTO(
             a.getId(),
+            null,
+            "completed",
             a.getName(),
             a.getType(),
             a.getSourceLang(),
@@ -148,6 +152,21 @@ public record JobAnalysisResponseDTO(
             a.getNoMatchTM_Weighted(), a.getNoMatchNT_Weighted(),
             a.getTotalWeighted(), a.getTotalWeightedPercentage(),
             files
+        );
+    }
+
+    public static JobAnalysisResponseDTO pending(String tomatoJobId) {
+        return new JobAnalysisResponseDTO(
+            null, tomatoJobId, "pending",
+            null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null, null, null,
+            null, null, null, null
         );
     }
 }

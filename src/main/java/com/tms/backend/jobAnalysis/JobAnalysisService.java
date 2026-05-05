@@ -1,9 +1,8 @@
 package com.tms.backend.jobAnalysis;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -50,9 +49,7 @@ public class JobAnalysisService {
     private final NetRateSchemeService netRateSchemeService;
     private final JobWorkflowStepRepository jobWorkflowStepRepository;
     private final ProjectTmAssignmentRepository tmAssignmentRepo;
-
-    private record PendingSizingContext(List<Long> jobIds, Long workflowStepId, User user) {}
-    private final Map<String, PendingSizingContext> pendingContextMap = new ConcurrentHashMap<>();
+    private final PendingSizingJobRepository pendingSizingJobRepository;
 
     /**
      * Creates a new JobAnalysis using the user's default analysis settings.
@@ -101,7 +98,7 @@ public class JobAnalysisService {
 
         String tomatoJobId = sizingService.sendFilesToTomatoAPIByPath(filePaths, sizingRequestJson, tmId);
 
-        pendingContextMap.put(tomatoJobId, new PendingSizingContext(jobIds, workflowStepId, user));
+        pendingSizingJobRepository.save(new PendingSizingJob(tomatoJobId, jobIds, workflowStepId, projectId, user));
         sizingPollService.startPolling(tomatoJobId);
 
         log.info("Sizing initiated for tomatoJobId: {}", tomatoJobId);
@@ -114,19 +111,19 @@ public class JobAnalysisService {
      */
     @Transactional
     public void finalizeJobAnalysis(String tomatoJobId, TomatoSizingResponse sizingResponse) {
-        PendingSizingContext ctx = pendingContextMap.get(tomatoJobId);
+        PendingSizingJob ctx = pendingSizingJobRepository.findById(tomatoJobId).orElse(null);
         if (ctx == null) {
             log.warn("finalizeJobAnalysis called but no context found for jobId: {}", tomatoJobId);
             return;
         }
 
-        List<Job> jobs = ctx.jobIds().stream()
+        List<Job> jobs = ctx.getJobIds().stream()
                 .map(id -> jobRepository.findById(id)
                         .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                 .collect(Collectors.toList());
 
-        createJobAnalysis(jobs, ctx.workflowStepId(), ctx.user(), sizingResponse);
-        pendingContextMap.remove(tomatoJobId);
+        createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), sizingResponse);
+        pendingSizingJobRepository.delete(ctx);
         log.info("JobAnalysis created and saved for tomatoJobId: {}", tomatoJobId);
     }
 
@@ -136,10 +133,8 @@ public class JobAnalysisService {
      */
     @Transactional
     public SizingStatusDTO getSizingStatus(String tomatoJobId) {
-        PendingSizingContext ctx = pendingContextMap.get(tomatoJobId);
-        if (ctx == null) {
-            throw new RuntimeException("No pending sizing job found for: " + tomatoJobId);
-        }
+        PendingSizingJob ctx = pendingSizingJobRepository.findById(tomatoJobId)
+                .orElseThrow(() -> new RuntimeException("No pending sizing job found for: " + tomatoJobId));
 
         TomatoSizingResponse sizingResponse = sizingService.fetchSizingResultOnce(tomatoJobId);
 
@@ -147,13 +142,13 @@ public class JobAnalysisService {
             return new SizingStatusDTO("pending", null);
         }
 
-        List<Job> jobs = ctx.jobIds().stream()
+        List<Job> jobs = ctx.getJobIds().stream()
                 .map(id -> jobRepository.findById(id)
                         .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                 .collect(Collectors.toList());
 
-        JobAnalysis jobAnalysis = createJobAnalysis(jobs, ctx.workflowStepId(), ctx.user(), sizingResponse);
-        pendingContextMap.remove(tomatoJobId);
+        JobAnalysis jobAnalysis = createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), sizingResponse);
+        pendingSizingJobRepository.delete(ctx);
 
         return new SizingStatusDTO("completed", JobAnalysisResponseDTO.fromEntity(jobAnalysis));
     }
@@ -245,8 +240,12 @@ public class JobAnalysisService {
 
         JobAnalysis saved = jobAnalysisRepository.save(jobAnalysis);
 
-        if (sizingResponse.files() != null) {
-            List<JobAnalysisFile> fileEntities = sizingResponse.files().stream().map(f -> {
+        List<TomatoSizingResponse> fileList = sizingResponse.files() != null
+                ? sizingResponse.files()
+                : (sizingResponse.fileName() != null ? List.of(sizingResponse) : List.of());
+
+        if (!fileList.isEmpty()) {
+            List<JobAnalysisFile> fileEntities = fileList.stream().map(f -> {
                 TomatoSizingResponse.Statistics s = f.statistics();
                 JobAnalysisFile file = new JobAnalysisFile();
                 file.setJobAnalysis(saved);
@@ -387,18 +386,78 @@ public class JobAnalysisService {
      * @param workflowStepId The JobWorkflowStep ID to resolve the provider's username
      * @return The resolved name with macros replaced
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public List<JobAnalysisResponseDTO> getAllJobAnalyses() {
-        return jobAnalysisRepository.findAll().stream()
-                .map(JobAnalysisResponseDTO::fromEntity)
-                .collect(Collectors.toList());
+        List<PendingSizingJob> stillPending = new ArrayList<>();
+
+        for (PendingSizingJob ctx : pendingSizingJobRepository.findAll()) {
+            try {
+                TomatoSizingResponse result = sizingService.fetchSizingResultOnce(ctx.getTomatoJobId());
+                if (result != null) {
+                    List<Job> jobs = ctx.getJobIds().stream()
+                            .map(id -> jobRepository.findById(id)
+                                    .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
+                            .collect(Collectors.toList());
+                    createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), result);
+                    pendingSizingJobRepository.delete(ctx);
+                    log.info("Resolved pending sizing job {} during getAllJobAnalyses", ctx.getTomatoJobId());
+                } else {
+                    stillPending.add(ctx);
+                }
+            } catch (Exception e) {
+                log.warn("Could not resolve pending sizing job {}: {}", ctx.getTomatoJobId(), e.getMessage());
+                stillPending.add(ctx);
+            }
+        }
+
+        List<JobAnalysisResponseDTO> result = new ArrayList<>(
+                jobAnalysisRepository.findAll().stream()
+                        .map(JobAnalysisResponseDTO::fromEntity)
+                        .collect(Collectors.toList())
+        );
+
+        stillPending.stream()
+                .map(ctx -> JobAnalysisResponseDTO.pending(ctx.getTomatoJobId()))
+                .forEach(result::add);
+
+        return result;
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<JobAnalysisResponseDTO> getJobAnalysesByProjectId(Long projectId) {
-        return jobAnalysisRepository.findByProjectId(projectId).stream()
-                .map(JobAnalysisResponseDTO::fromEntity)
-                .collect(Collectors.toList());
+        List<PendingSizingJob> stillPending = new ArrayList<>();
+
+        for (PendingSizingJob ctx : pendingSizingJobRepository.findByProjectId(projectId)) {
+            try {
+                TomatoSizingResponse result = sizingService.fetchSizingResultOnce(ctx.getTomatoJobId());
+                if (result != null) {
+                    List<Job> jobs = ctx.getJobIds().stream()
+                            .map(id -> jobRepository.findById(id)
+                                    .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
+                            .collect(Collectors.toList());
+                    createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), result);
+                    pendingSizingJobRepository.delete(ctx);
+                    log.info("Resolved pending sizing job {} during getJobAnalysesByProjectId", ctx.getTomatoJobId());
+                } else {
+                    stillPending.add(ctx);
+                }
+            } catch (Exception e) {
+                log.warn("Could not resolve pending sizing job {}: {}", ctx.getTomatoJobId(), e.getMessage());
+                stillPending.add(ctx);
+            }
+        }
+
+        List<JobAnalysisResponseDTO> result = new ArrayList<>(
+                jobAnalysisRepository.findByProjectId(projectId).stream()
+                        .map(JobAnalysisResponseDTO::fromEntity)
+                        .collect(Collectors.toList())
+        );
+
+        stillPending.stream()
+                .map(ctx -> JobAnalysisResponseDTO.pending(ctx.getTomatoJobId()))
+                .forEach(result::add);
+
+        return result;
     }
 
     @Transactional(readOnly = true)

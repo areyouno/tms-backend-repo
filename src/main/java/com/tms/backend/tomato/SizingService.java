@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tms.backend.dto.TomatoSizingResponse;
 import org.springframework.web.client.HttpClientErrorException;
 
@@ -161,7 +162,9 @@ public class SizingService {
             log.info("Sizing job {} status: {}", tomatoJobId, status);
 
             if ("completed".equalsIgnoreCase(status)) {
-                TomatoSizingResponse result = mapper.treeToValue(root.path("result"), TomatoSizingResponse.class);
+                ObjectNode resultNode = (ObjectNode) root.path("result").deepCopy();
+                resultNode.put("status", status);
+                TomatoSizingResponse result = mapper.treeToValue(resultNode, TomatoSizingResponse.class);
                 return result;
             }
             if ("failed".equalsIgnoreCase(status)) {

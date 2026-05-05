@@ -18,7 +18,9 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import com.tms.backend.dto.JobAnalysisCreateDTO;
 import com.tms.backend.dto.JobAnalysisResponseDTO;
 import com.tms.backend.dto.SizingStatusDTO;
+import com.tms.backend.dto.TomatoSizingResponse;
 import com.tms.backend.tomato.SizingPollService;
+import com.tms.backend.tomato.SizingService;
 import com.tms.backend.user.CustomUserDetails;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserService;
@@ -32,6 +34,7 @@ public class JobAnalysisController {
     private final JobAnalysisService jobAnalysisService;
     private final UserService userService;
     private final SizingPollService sizingPollService;
+    private final SizingService sizingService;
 
     /**
      * Submits files to Tomato for sizing and returns a Tomato jobId immediately.
@@ -60,6 +63,15 @@ public class JobAnalysisController {
      * Returns { "status": "pending" } while processing,
      * or { "status": "done", "result": {...} } when the JobAnalysis has been saved.
      */
+    @GetMapping("/sizing-result/{tomatoJobId}")
+    public ResponseEntity<TomatoSizingResponse> getSizingResult(@PathVariable String tomatoJobId) {
+        TomatoSizingResponse result = sizingService.fetchSizingResultOnce(tomatoJobId);
+        if (result == null) {
+            return ResponseEntity.accepted().build();
+        }
+        return ResponseEntity.ok(result);
+    }
+
     @GetMapping("/sizing-status/{tomatoJobId}")
     public ResponseEntity<SizingStatusDTO> getSizingStatus(@PathVariable String tomatoJobId) {
         SizingStatusDTO status = jobAnalysisService.getSizingStatus(tomatoJobId);
