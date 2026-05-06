@@ -112,6 +112,7 @@ public class NetRateSchemeController {
         return new NetRateSchemeResponseDTO(
                 scheme.getId(),
                 scheme.getName(),
+                scheme.isDefault(),
                 wfDtos
         );
     }
