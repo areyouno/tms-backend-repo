@@ -45,8 +45,10 @@ public class NetRateSchemeService {
             .orElseThrow(() -> new RuntimeException("User not found"));
         scheme.setCreatedBy(creator);
 
-        // set scheme to default if there is no default yet
-        if (!netRateSchemeRepository.existsByIsDefaultTrue()) {
+        if (dto.isDefault()) {
+            netRateSchemeRepository.clearCurrentDefault();
+            scheme.setDefault(true);
+        } else if (!netRateSchemeRepository.existsByIsDefaultTrue()) {
             scheme.setDefault(true);
         }
 

@@ -70,6 +70,12 @@ public class NetRateSchemeController {
         return ResponseEntity.ok(toDTO(updatedScheme));
     }
 
+    @PutMapping("/{id}/set-default")
+    public ResponseEntity<Void> setDefault(@PathVariable Long id) {
+        netRateSchemeService.setDefault(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/delete")
     public ResponseEntity<Void> deleteSchemes(@RequestBody NetRateSchemeDeleteRequestDTO request) {
         netRateSchemeService.deleteSchemes(request.ids());
