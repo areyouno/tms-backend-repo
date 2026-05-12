@@ -40,7 +40,7 @@ public class TranslationMemoryController {
 
     @GetMapping(value = "/import-tmx/jobs/{jobId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamImportStatus(@PathVariable String jobId) {
-        SseEmitter emitter = new SseEmitter(600_000L);
+        SseEmitter emitter = new SseEmitter(1_800_000L);
         pollService.registerEmitter(jobId, emitter);
         return emitter;
     }

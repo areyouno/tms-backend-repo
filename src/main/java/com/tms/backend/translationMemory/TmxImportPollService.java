@@ -16,7 +16,7 @@ import com.tms.backend.dto.TmxImportJobStatusDTO;
 public class TmxImportPollService {
 
     private static final Logger log = LoggerFactory.getLogger(TmxImportPollService.class);
-    private static final int MAX_POLL_ATTEMPTS = 120;
+    private static final int MAX_POLL_ATTEMPTS = 360;
     private static final long POLL_INTERVAL_MS = 5_000L;
 
     private final TranslationMemoryService tmService;
