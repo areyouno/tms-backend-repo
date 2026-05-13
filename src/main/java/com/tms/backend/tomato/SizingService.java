@@ -145,10 +145,11 @@ public class SizingService {
 
     /**
      * Polls GET /api/Sizing/sizing-result/{jobId} once.
-     * Returns the result if status is "completed", null if still queued/processing.
+     * Returns a SizingPollStatus with progressPercent always set.
+     * result() is non-null only when status is "completed".
      * Throws if status is "failed" or the job is not found (404).
      */
-    public TomatoSizingResponse fetchSizingResultOnce(String tomatoJobId) {
+    public SizingPollStatus fetchSizingResultOnce(String tomatoJobId) {
         try {
             ResponseEntity<String> response = restTemplate.getForEntity(
                     baseUrl + "/api/Sizing/sizing-result/" + tomatoJobId, String.class
@@ -159,20 +160,21 @@ public class SizingService {
             JsonNode root = mapper.readTree(response.getBody());
 
             String status = root.path("status").asText();
-            log.info("Sizing job {} status: {}", tomatoJobId, status);
+            int progressPercent = root.path("progressPercent").asInt(0);
+            log.info("Sizing job {} status: {}, progress: {}%", tomatoJobId, status, progressPercent);
 
             if ("completed".equalsIgnoreCase(status)) {
                 ObjectNode resultNode = (ObjectNode) root.path("result").deepCopy();
                 resultNode.put("status", status);
                 TomatoSizingResponse result = mapper.treeToValue(resultNode, TomatoSizingResponse.class);
-                return result;
+                return new SizingPollStatus(progressPercent, result);
             }
             if ("failed".equalsIgnoreCase(status)) {
                 throw new RuntimeException("Tomato sizing job " + tomatoJobId + " failed");
             }
 
-            log.info("Sizing job {} still processing, status: {}", tomatoJobId, status);
-            return null;
+            // queued or processing — still in progress
+            return new SizingPollStatus(progressPercent, null);
 
         } catch (HttpClientErrorException.NotFound e) {
             throw new RuntimeException("Tomato sizing job not found: " + tomatoJobId, e);

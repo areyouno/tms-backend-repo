@@ -1,3 +1,3 @@
 package com.tms.backend.dto;
 
-public record SizingStatusDTO(String status, JobAnalysisResponseDTO result) {}
+public record SizingStatusDTO(String status, int progressPercent, JobAnalysisResponseDTO result) {}

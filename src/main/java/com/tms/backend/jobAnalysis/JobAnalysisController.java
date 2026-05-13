@@ -20,6 +20,7 @@ import com.tms.backend.dto.JobAnalysisResponseDTO;
 import com.tms.backend.dto.SizingStatusDTO;
 import com.tms.backend.dto.TomatoSizingResponse;
 import com.tms.backend.tomato.SizingPollService;
+import com.tms.backend.tomato.SizingPollStatus;
 import com.tms.backend.tomato.SizingService;
 import com.tms.backend.user.CustomUserDetails;
 import com.tms.backend.user.User;
@@ -65,11 +66,11 @@ public class JobAnalysisController {
      */
     @GetMapping("/sizing-result/{tomatoJobId}")
     public ResponseEntity<TomatoSizingResponse> getSizingResult(@PathVariable String tomatoJobId) {
-        TomatoSizingResponse result = sizingService.fetchSizingResultOnce(tomatoJobId);
-        if (result == null) {
+        SizingPollStatus pollStatus = sizingService.fetchSizingResultOnce(tomatoJobId);
+        if (!pollStatus.isCompleted()) {
             return ResponseEntity.accepted().build();
         }
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(pollStatus.result());
     }
 
     @GetMapping("/sizing-status/{tomatoJobId}")

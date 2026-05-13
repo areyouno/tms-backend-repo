@@ -18,6 +18,7 @@ import com.tms.backend.dto.MatchTypeRateResponseDTO;
 import com.tms.backend.dto.NetRateSchemeResponseDTO;
 import com.tms.backend.dto.SizingStatusDTO;
 import com.tms.backend.dto.TomatoSizingResponse;
+import com.tms.backend.tomato.SizingPollStatus;
 import com.tms.backend.dto.WorkflowStepRateResponseDTO;
 import com.tms.backend.job.Job;
 import com.tms.backend.job.JobRepository;
@@ -136,10 +137,10 @@ public class JobAnalysisService {
         PendingSizingJob ctx = pendingSizingJobRepository.findById(tomatoJobId)
                 .orElseThrow(() -> new RuntimeException("No pending sizing job found for: " + tomatoJobId));
 
-        TomatoSizingResponse sizingResponse = sizingService.fetchSizingResultOnce(tomatoJobId);
+        SizingPollStatus pollStatus = sizingService.fetchSizingResultOnce(tomatoJobId);
 
-        if (sizingResponse == null) {
-            return new SizingStatusDTO("pending", null);
+        if (!pollStatus.isCompleted()) {
+            return new SizingStatusDTO("pending", pollStatus.progressPercent(), null);
         }
 
         List<Job> jobs = ctx.getJobIds().stream()
@@ -147,10 +148,10 @@ public class JobAnalysisService {
                         .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                 .collect(Collectors.toList());
 
-        JobAnalysis jobAnalysis = createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), sizingResponse);
+        JobAnalysis jobAnalysis = createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), pollStatus.result());
         pendingSizingJobRepository.delete(ctx);
 
-        return new SizingStatusDTO("completed", JobAnalysisResponseDTO.fromEntity(jobAnalysis));
+        return new SizingStatusDTO("completed", 100, JobAnalysisResponseDTO.fromEntity(jobAnalysis));
     }
 
     @Transactional
@@ -364,7 +365,8 @@ public class JobAnalysisService {
         TomatoSizingResponse sizingResponse = null;
         for (int attempt = 1; attempt <= 60 && sizingResponse == null; attempt++) {
             try { Thread.sleep(5_000L); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
-            sizingResponse = sizingService.fetchSizingResultOnce(tomatoJobId);
+            SizingPollStatus pollStatus = sizingService.fetchSizingResultOnce(tomatoJobId);
+            sizingResponse = pollStatus.result();
             log.info("Waiting for sizing result (attempt {}/60)", attempt);
         }
         if (sizingResponse == null) {
@@ -392,13 +394,13 @@ public class JobAnalysisService {
 
         for (PendingSizingJob ctx : pendingSizingJobRepository.findAll()) {
             try {
-                TomatoSizingResponse result = sizingService.fetchSizingResultOnce(ctx.getTomatoJobId());
-                if (result != null) {
+                SizingPollStatus pollStatus = sizingService.fetchSizingResultOnce(ctx.getTomatoJobId());
+                if (pollStatus.isCompleted()) {
                     List<Job> jobs = ctx.getJobIds().stream()
                             .map(id -> jobRepository.findById(id)
                                     .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                             .collect(Collectors.toList());
-                    createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), result);
+                    createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), pollStatus.result());
                     pendingSizingJobRepository.delete(ctx);
                     log.info("Resolved pending sizing job {} during getAllJobAnalyses", ctx.getTomatoJobId());
                 } else {
@@ -429,13 +431,13 @@ public class JobAnalysisService {
 
         for (PendingSizingJob ctx : pendingSizingJobRepository.findByProjectId(projectId)) {
             try {
-                TomatoSizingResponse result = sizingService.fetchSizingResultOnce(ctx.getTomatoJobId());
-                if (result != null) {
+                SizingPollStatus pollStatus = sizingService.fetchSizingResultOnce(ctx.getTomatoJobId());
+                if (pollStatus.isCompleted()) {
                     List<Job> jobs = ctx.getJobIds().stream()
                             .map(id -> jobRepository.findById(id)
                                     .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                             .collect(Collectors.toList());
-                    createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), result);
+                    createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), pollStatus.result());
                     pendingSizingJobRepository.delete(ctx);
                     log.info("Resolved pending sizing job {} during getJobAnalysesByProjectId", ctx.getTomatoJobId());
                 } else {

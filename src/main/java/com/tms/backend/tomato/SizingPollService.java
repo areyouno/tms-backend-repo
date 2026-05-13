@@ -12,7 +12,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-import com.tms.backend.dto.TomatoSizingResponse;
 import com.tms.backend.jobAnalysis.JobAnalysisService;
 
 import lombok.RequiredArgsConstructor;
@@ -47,11 +46,11 @@ public class SizingPollService {
             for (int attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt++) {
                 Thread.sleep(POLL_INTERVAL_MS);
 
-                TomatoSizingResponse result = sizingService.fetchSizingResultOnce(tomatoJobId);
+                SizingPollStatus pollStatus = sizingService.fetchSizingResultOnce(tomatoJobId);
 
-                if (result != null) {
+                if (pollStatus.isCompleted()) {
                     log.info("Sizing job {} completed on attempt {}", tomatoJobId, attempt);
-                    jobAnalysisService.finalizeJobAnalysis(tomatoJobId, result);
+                    jobAnalysisService.finalizeJobAnalysis(tomatoJobId, pollStatus.result());
                     statusMap.put(tomatoJobId, "completed");
                     sendSseEvent(tomatoJobId, "completed");
                     return;
