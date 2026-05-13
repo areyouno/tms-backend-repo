@@ -22,10 +22,12 @@ public class TranslationMemoryController {
 
     private final TranslationMemoryService tmService;
     private final TmxImportPollService pollService;
+    private final TmxImportJobRepository jobRepo;
 
-    public TranslationMemoryController(TranslationMemoryService tmService, TmxImportPollService pollService) {
+    public TranslationMemoryController(TranslationMemoryService tmService, TmxImportPollService pollService, TmxImportJobRepository jobRepo) {
         this.tmService = tmService;
         this.pollService = pollService;
+        this.jobRepo = jobRepo;
     }
 
     @PostMapping(value = "/{id}/import-tmx", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -34,7 +36,7 @@ public class TranslationMemoryController {
             @RequestPart("tmxFile") MultipartFile file,
             @RequestPart("metadata") ImportTmxRequestDTO metadata) throws IOException {
         String jobId = tmService.submitImportTmx(id, file, metadata);
-        pollService.startPolling(jobId);
+        pollService.startPolling(jobId, id, metadata.userName());
         return ResponseEntity.accepted().body(Map.of("jobId", jobId));
     }
 
@@ -43,5 +45,12 @@ public class TranslationMemoryController {
         SseEmitter emitter = new SseEmitter(1_800_000L);
         pollService.registerEmitter(jobId, emitter);
         return emitter;
+    }
+
+    @GetMapping("/import-tmx/jobs/{jobId}")
+    public ResponseEntity<TmxImportJob> getImportJobStatus(@PathVariable String jobId) {
+        return jobRepo.findById(jobId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 }

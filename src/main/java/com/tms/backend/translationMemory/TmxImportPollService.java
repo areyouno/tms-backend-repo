@@ -1,6 +1,7 @@
 package com.tms.backend.translationMemory;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -20,17 +21,22 @@ public class TmxImportPollService {
     private static final long POLL_INTERVAL_MS = 5_000L;
 
     private final TranslationMemoryService tmService;
-
-    private final Map<String, String> statusMap = new ConcurrentHashMap<>();
+    private final TmxImportJobRepository jobRepo;
     private final Map<String, SseEmitter> emitterMap = new ConcurrentHashMap<>();
 
-    public TmxImportPollService(TranslationMemoryService tmService) {
+    public TmxImportPollService(TranslationMemoryService tmService, TmxImportJobRepository jobRepo) {
         this.tmService = tmService;
+        this.jobRepo = jobRepo;
     }
 
     @Async
-    public void startPolling(String jobId) {
-        statusMap.put(jobId, "pending");
+    public void startPolling(String jobId, Long tmId, String userName) {
+        TmxImportJob job = jobRepo.findById(jobId).orElseGet(() ->
+                jobRepo.save(TmxImportJob.pending(jobId, tmId, userName)));
+        job.setStatus("in_progress");
+        job.setUpdatedAt(LocalDateTime.now());
+        jobRepo.save(job);
+
         try {
             for (int attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt++) {
                 Thread.sleep(POLL_INTERVAL_MS);
@@ -38,11 +44,14 @@ public class TmxImportPollService {
                 TmxImportJobStatusDTO status = tmService.fetchImportStatusOnce(jobId);
                 if (status == null) continue;
 
+                updateJobProgress(job, status);
                 sendProgressEvent(jobId, status);
 
                 if (status.isCompleted()) {
                     String finalStatus = status.errorMessage() != null ? "failed" : "completed";
-                    statusMap.put(jobId, finalStatus);
+                    job.setStatus(finalStatus);
+                    job.setUpdatedAt(LocalDateTime.now());
+                    jobRepo.save(job);
                     sendFinalEvent(jobId, finalStatus);
                     log.info("TMX import job {} {}", jobId, finalStatus);
                     return;
@@ -51,23 +60,44 @@ public class TmxImportPollService {
                 log.info("TMX import job {} progress: {}%", jobId, status.progressPercent());
             }
 
-            statusMap.put(jobId, "failed");
+            job.setStatus("failed");
+            job.setUpdatedAt(LocalDateTime.now());
+            jobRepo.save(job);
             sendFinalEvent(jobId, "failed");
             log.warn("TMX import job {} timed out", jobId);
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            statusMap.put(jobId, "failed");
+            markFailed(job);
             sendFinalEvent(jobId, "failed");
         } catch (Exception e) {
-            statusMap.put(jobId, "failed");
+            markFailed(job);
             sendFinalEvent(jobId, "failed");
             log.error("TMX import job {} failed during polling: {}", jobId, e.getMessage());
         }
     }
 
+    private void updateJobProgress(TmxImportJob job, TmxImportJobStatusDTO status) {
+        job.setProgressPercent(status.progressPercent());
+        job.setProcessedCount(status.processedCount());
+        job.setTotalCount(status.totalCount());
+        job.setImportedCount(status.importedCount());
+        job.setSkippedCount(status.skippedCount());
+        job.setOverwrittenCount(status.overwrittenCount());
+        job.setUpdatedAt(LocalDateTime.now());
+        jobRepo.save(job);
+    }
+
+    private void markFailed(TmxImportJob job) {
+        job.setStatus("failed");
+        job.setUpdatedAt(LocalDateTime.now());
+        jobRepo.save(job);
+    }
+
     public void registerEmitter(String jobId, SseEmitter emitter) {
-        String currentStatus = statusMap.getOrDefault(jobId, "pending");
+        String currentStatus = jobRepo.findById(jobId)
+                .map(TmxImportJob::getStatus)
+                .orElse("pending");
         if ("completed".equals(currentStatus) || "failed".equals(currentStatus)) {
             sendAndComplete(emitter, currentStatus);
             return;
@@ -82,12 +112,13 @@ public class TmxImportPollService {
         if (emitter == null) return;
         try {
             String data = String.format(
-                    "{\"progressPercent\":%.2f,\"processedCount\":%d,\"totalCount\":%d,\"importedCount\":%d,\"skippedCount\":%d}",
+                    "{\"progressPercent\":%.2f,\"processedCount\":%d,\"totalCount\":%d,\"importedCount\":%d,\"skippedCount\":%d,\"overwrittenCount\":%d}",
                     status.progressPercent() != null ? status.progressPercent() : 0.0,
                     status.processedCount() != null ? status.processedCount() : 0,
                     status.totalCount() != null ? status.totalCount() : 0,
                     status.importedCount() != null ? status.importedCount() : 0,
-                    status.skippedCount() != null ? status.skippedCount() : 0
+                    status.skippedCount() != null ? status.skippedCount() : 0,
+                    status.overwrittenCount() != null ? status.overwrittenCount() : 0
             );
             emitter.send(SseEmitter.event().name("import-progress").data(data));
         } catch (IOException e) {
@@ -114,11 +145,12 @@ public class TmxImportPollService {
     }
 
     public String getStatus(String jobId) {
-        return statusMap.getOrDefault(jobId, "unknown");
+        return jobRepo.findById(jobId)
+                .map(TmxImportJob::getStatus)
+                .orElse("unknown");
     }
 
     public void cleanup(String jobId) {
-        statusMap.remove(jobId);
         emitterMap.remove(jobId);
     }
 }
