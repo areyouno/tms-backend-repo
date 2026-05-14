@@ -54,6 +54,7 @@ public class UserService {
         User user = new User();
         user.setEmail(email);
         user.setPassword(hashedPassword);
+        user.setUsername(email.substring(0, email.indexOf('@')));
         //set role to "user"
         Role role = new Role();
         role.setId(5L);
