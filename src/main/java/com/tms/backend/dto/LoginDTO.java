@@ -12,5 +12,6 @@ public record LoginDTO(
     Long roleId,
     String roleName,
     String token,
-    Boolean isActive
+    Boolean isActive,
+    String username
 ) {}
