@@ -25,18 +25,18 @@ public class AuthService {
         this.jwtService = jwtService;
     }
 
-    public LoginDTO login(String email, String password) {
+    public LoginDTO login(String identifier, String password) {
         try {
-            // Authenticate with Spring Security
             authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(email, password)
+                new UsernamePasswordAuthenticationToken(identifier, password)
             );
         } catch (AuthenticationException e) {
-            throw new RuntimeException("Invalid email or password");
+            throw new RuntimeException("Invalid credentials");
         }
 
-        // Load user from DB
-        User user = userRepository.findByEmail(email)
+        // Resolve user by email or username
+        User user = userRepository.findByEmail(identifier)
+                .or(() -> userRepository.findByUsername(identifier))
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
         // Generate JWT
