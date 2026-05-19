@@ -48,11 +48,13 @@ public class SizingPollService {
 
                 SizingPollStatus pollStatus = sizingService.fetchSizingResultOnce(tomatoJobId);
 
+                sendProgressEvent(tomatoJobId, pollStatus);
+
                 if (pollStatus.isCompleted()) {
                     log.info("Sizing job {} completed on attempt {}", tomatoJobId, attempt);
                     jobAnalysisService.finalizeJobAnalysis(tomatoJobId, pollStatus.result());
                     statusMap.put(tomatoJobId, "completed");
-                    sendSseEvent(tomatoJobId, "completed");
+                    sendFinalEvent(tomatoJobId, "completed");
                     return;
                 }
 
@@ -61,18 +63,18 @@ public class SizingPollService {
 
             statusMap.put(tomatoJobId, "failed");
             errorMap.put(tomatoJobId, "Timed out after " + MAX_POLL_ATTEMPTS + " attempts");
-            sendSseEvent(tomatoJobId, "failed");
+            sendFinalEvent(tomatoJobId, "failed");
             log.warn("Sizing job {} timed out", tomatoJobId);
 
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             statusMap.put(tomatoJobId, "failed");
             errorMap.put(tomatoJobId, "Polling interrupted");
-            sendSseEvent(tomatoJobId, "failed");
+            sendFinalEvent(tomatoJobId, "failed");
         } catch (Exception e) {
             statusMap.put(tomatoJobId, "failed");
             errorMap.put(tomatoJobId, e.getMessage());
-            sendSseEvent(tomatoJobId, "failed");
+            sendFinalEvent(tomatoJobId, "failed");
             log.error("Sizing job {} failed during polling: {}", tomatoJobId, e.getMessage());
         }
     }
@@ -94,7 +96,26 @@ public class SizingPollService {
         emitter.onTimeout(() -> emitterMap.remove(tomatoJobId));
     }
 
-    private void sendSseEvent(String tomatoJobId, String status) {
+    private void sendProgressEvent(String tomatoJobId, SizingPollStatus pollStatus) {
+        SseEmitter emitter = emitterMap.get(tomatoJobId);
+        if (emitter == null) return;
+        try {
+            String data = String.format(
+                    "{\"progressPercent\":%.2f,\"currentStage\":\"%s\",\"totalFiles\":%d,\"processedFiles\":%d,\"totalSegments\":%d,\"processedSegments\":%d}",
+                    pollStatus.progressPercent(),
+                    pollStatus.currentStage() != null ? pollStatus.currentStage() : "",
+                    pollStatus.totalFiles(),
+                    pollStatus.processedFiles(),
+                    pollStatus.totalSegments(),
+                    pollStatus.processedSegments()
+            );
+            emitter.send(SseEmitter.event().name("sizing-progress").data(data != null ? data : ""));
+        } catch (IOException e) {
+            emitterMap.remove(tomatoJobId);
+        }
+    }
+
+    private void sendFinalEvent(String tomatoJobId, String status) {
         SseEmitter emitter = emitterMap.remove(tomatoJobId);
         if (emitter != null) {
             sendAndComplete(emitter, status);

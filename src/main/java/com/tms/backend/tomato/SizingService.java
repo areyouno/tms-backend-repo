@@ -162,6 +162,11 @@ public class SizingService {
 
             String status = progressRoot.path("status").asText();
             double progressPercent = progressRoot.path("progressPercent").asDouble(0.0);
+            String currentStage = progressRoot.path("currentStage").asText(null);
+            int totalFiles = progressRoot.path("totalFiles").asInt(0);
+            int processedFiles = progressRoot.path("processedFiles").asInt(0);
+            int totalSegments = progressRoot.path("totalSegments").asInt(0);
+            int processedSegments = progressRoot.path("processedSegments").asInt(0);
             log.info("Sizing job {} status: {}, progress: {}%", tomatoJobId, status, progressPercent);
 
             if ("failed".equalsIgnoreCase(status)) {
@@ -169,7 +174,7 @@ public class SizingService {
             }
 
             if (progressPercent < 100.0) {
-                return new SizingPollStatus(progressPercent, null);
+                return new SizingPollStatus(progressPercent, currentStage, totalFiles, processedFiles, totalSegments, processedSegments, null);
             }
 
             // Progress is 100%, fetch the full result
@@ -181,7 +186,7 @@ public class SizingService {
             ObjectNode resultNode = (ObjectNode) resultRoot.path("result").deepCopy();
             resultNode.put("status", "completed");
             TomatoSizingResponse result = mapper.treeToValue(resultNode, TomatoSizingResponse.class);
-            return new SizingPollStatus(progressPercent, result);
+            return new SizingPollStatus(progressPercent, currentStage, totalFiles, processedFiles, totalSegments, processedSegments, result);
 
         } catch (HttpClientErrorException.NotFound e) {
             throw new RuntimeException("Tomato sizing job not found: " + tomatoJobId, e);
