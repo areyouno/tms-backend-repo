@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,12 +13,12 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -26,7 +27,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tms.backend.dto.TomatoSizingResponse;
-import org.springframework.web.client.HttpClientErrorException;
 
 
 @Service
@@ -144,37 +144,44 @@ public class SizingService {
     }
 
     /**
-     * Polls GET /api/Sizing/sizing-result/{jobId} once.
+     * Polls GET /api/Sizing/sizing-progress/{jobId} once.
      * Returns a SizingPollStatus with progressPercent always set.
-     * result() is non-null only when status is "completed".
+     * When progressPercent reaches 100, fetches the full result from GET /api/Sizing/sizing-result/{jobId}.
+     * result() is non-null only when progress is complete.
      * Throws if status is "failed" or the job is not found (404).
      */
     public SizingPollStatus fetchSizingResultOnce(String tomatoJobId) {
         try {
-            ResponseEntity<String> response = restTemplate.getForEntity(
-                    baseUrl + "/api/Sizing/sizing-result/" + tomatoJobId, String.class
+            ResponseEntity<String> progressResponse = restTemplate.getForEntity(
+                    baseUrl + "/api/Sizing/sizing-progress/" + tomatoJobId, String.class
             );
 
             ObjectMapper mapper = new ObjectMapper();
             mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            JsonNode root = mapper.readTree(response.getBody());
+            JsonNode progressRoot = mapper.readTree(progressResponse.getBody());
 
-            String status = root.path("status").asText();
-            int progressPercent = root.path("progressPercent").asInt(0);
+            String status = progressRoot.path("status").asText();
+            double progressPercent = progressRoot.path("progressPercent").asDouble(0.0);
             log.info("Sizing job {} status: {}, progress: {}%", tomatoJobId, status, progressPercent);
 
-            if ("completed".equalsIgnoreCase(status)) {
-                ObjectNode resultNode = (ObjectNode) root.path("result").deepCopy();
-                resultNode.put("status", status);
-                TomatoSizingResponse result = mapper.treeToValue(resultNode, TomatoSizingResponse.class);
-                return new SizingPollStatus(progressPercent, result);
-            }
             if ("failed".equalsIgnoreCase(status)) {
                 throw new RuntimeException("Tomato sizing job " + tomatoJobId + " failed");
             }
 
-            // queued or processing — still in progress
-            return new SizingPollStatus(progressPercent, null);
+            if (progressPercent < 100.0) {
+                return new SizingPollStatus(progressPercent, null);
+            }
+
+            // Progress is 100%, fetch the full result
+            ResponseEntity<String> resultResponse = restTemplate.getForEntity(
+                    baseUrl + "/api/Sizing/sizing-result/" + tomatoJobId, String.class
+            );
+
+            JsonNode resultRoot = mapper.readTree(resultResponse.getBody());
+            ObjectNode resultNode = (ObjectNode) resultRoot.path("result").deepCopy();
+            resultNode.put("status", "completed");
+            TomatoSizingResponse result = mapper.treeToValue(resultNode, TomatoSizingResponse.class);
+            return new SizingPollStatus(progressPercent, result);
 
         } catch (HttpClientErrorException.NotFound e) {
             throw new RuntimeException("Tomato sizing job not found: " + tomatoJobId, e);

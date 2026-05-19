@@ -151,7 +151,7 @@ public class JobAnalysisService {
         JobAnalysis jobAnalysis = createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), pollStatus.result());
         pendingSizingJobRepository.delete(ctx);
 
-        return new SizingStatusDTO("completed", 100, JobAnalysisResponseDTO.fromEntity(jobAnalysis));
+        return new SizingStatusDTO("completed", 100.0, JobAnalysisResponseDTO.fromEntity(jobAnalysis));
     }
 
     @Transactional
