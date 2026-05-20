@@ -472,9 +472,9 @@ public class ProjectService {
         }
 
         if (updatedData.workflowStepIds() != null) {
-            if (!project.getWorkflowSteps().isEmpty()) {
-                throw new IllegalStateException("Workflow steps have already been set and cannot be modified");
-            }
+            // if (!project.getWorkflowSteps().isEmpty()) {
+            //     throw new IllegalStateException("Workflow steps have already been set and cannot be modified");
+            // }
 
             Set<WorkflowStep> steps = updatedData.workflowStepIds().stream()
                 .map(stepId -> wfRepo.findById(stepId)
