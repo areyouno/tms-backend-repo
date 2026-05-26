@@ -9,6 +9,8 @@ import com.tms.backend.dto.MatchTypeRateResponseDTO;
 import com.tms.backend.dto.NetRateSchemeCreateDTO;
 import com.tms.backend.dto.NetRateSchemeResponseDTO;
 import com.tms.backend.dto.NetRateSchemeUpdateDTO;
+import com.tms.backend.client.Client;
+import com.tms.backend.client.ClientRepository;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
 
@@ -18,13 +20,16 @@ import jakarta.transaction.Transactional;
 public class NetRateSchemeService {
     private final NetRateSchemeRepository netRateSchemeRepository;
     private final UserRepository userRepository;
+    private final ClientRepository clientRepository;
 
     public NetRateSchemeService(
         NetRateSchemeRepository netRateSchemeRepository,
-        UserRepository userRepository
+        UserRepository userRepository,
+        ClientRepository clientRepository
     ) {
         this.netRateSchemeRepository = netRateSchemeRepository;
         this.userRepository = userRepository;
+        this.clientRepository = clientRepository;
     }
 
     @Transactional
@@ -51,7 +56,16 @@ public class NetRateSchemeService {
             }
         }
 
-        return netRateSchemeRepository.save(scheme);
+        NetRateScheme savedScheme = netRateSchemeRepository.save(scheme);
+
+        if (dto.clientId() != null) {
+            Client client = clientRepository.findById(dto.clientId())
+                    .orElseThrow(() -> new RuntimeException("Client not found"));
+            client.setNetRateScheme(savedScheme);
+            clientRepository.save(client);
+        }
+
+        return savedScheme;
     }
 
     public List<NetRateSchemeResponseDTO> getAllSchemes() {
@@ -88,6 +102,17 @@ public class NetRateSchemeService {
     public NetRateSchemeResponseDTO getDefaultScheme() {
         NetRateScheme scheme = netRateSchemeRepository.findByIsDefaultTrue()
                 .orElseThrow(() -> new RuntimeException("No default NetRateScheme set"));
+        return toDTO(scheme);
+    }
+
+    public NetRateSchemeResponseDTO getSchemeByClientId(long clientId) {
+        Client client = clientRepository.findById(clientId)
+                .orElseThrow(() -> new RuntimeException("Client not found"));
+        NetRateScheme scheme = client.getNetRateScheme();
+        if (scheme == null) {
+            scheme = netRateSchemeRepository.findByIsDefaultTrue()
+                    .orElseThrow(() -> new RuntimeException("No default NetRateScheme set"));
+        }
         return toDTO(scheme);
     }
 

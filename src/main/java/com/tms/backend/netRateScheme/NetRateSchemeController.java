@@ -53,6 +53,11 @@ public class NetRateSchemeController {
         return ResponseEntity.ok(netRateSchemeService.getDefaultScheme());
     }
 
+    @GetMapping("/client/{clientId}")
+    public ResponseEntity<NetRateSchemeResponseDTO> getSchemeByClient(@PathVariable long clientId) {
+        return ResponseEntity.ok(netRateSchemeService.getSchemeByClientId(clientId));
+    }
+
     @PutMapping("/{id}")
     public ResponseEntity<NetRateSchemeResponseDTO> updateScheme(
             @PathVariable Long id,
