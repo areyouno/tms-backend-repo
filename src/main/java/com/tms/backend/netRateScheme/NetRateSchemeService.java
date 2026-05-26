@@ -91,11 +91,15 @@ public class NetRateSchemeService {
                 ))
                 .toList();
 
+        Client client = clientRepository.findByNetRateScheme(scheme).orElse(null);
+
         return new NetRateSchemeResponseDTO(
                 scheme.getId(),
                 scheme.getName(),
                 scheme.isDefault(),
-                rates
+                rates,
+                client != null ? client.getId() : null,
+                client != null ? client.getName() : null
         );
     }
 

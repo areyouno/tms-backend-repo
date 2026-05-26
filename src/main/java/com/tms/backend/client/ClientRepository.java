@@ -2,18 +2,23 @@ package com.tms.backend.client;
 
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import com.tms.backend.netRateScheme.NetRateScheme;
+
 
 @Repository
 public interface ClientRepository extends JpaRepository<Client, Long>{
-    List<Client> findByActiveTrue(); // find all active
+    List<Client> findByActiveTrue();
 
-    List<Client> findByActive(boolean active); // find active/inactive status
+    List<Client> findByActive(boolean active);
 
     @Query("SELECT cl FROM Client cl WHERE cl.active = true ORDER BY cl.name")
     List<Client> findActiveClientOrderByName();
+
+    Optional<Client> findByNetRateScheme(NetRateScheme netRateScheme);
 }

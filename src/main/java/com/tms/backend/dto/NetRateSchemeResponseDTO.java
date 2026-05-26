@@ -6,5 +6,7 @@ public record NetRateSchemeResponseDTO(
     Long id,
     String name,
     boolean isDefault,
-    List<MatchTypeRateResponseDTO> matchTypeRates
+    List<MatchTypeRateResponseDTO> matchTypeRates,
+    Long clientId,
+    String clientName
 ) {}
