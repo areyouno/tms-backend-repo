@@ -4,5 +4,5 @@ import java.util.List;
 
 public record NetRateSchemeUpdateDTO(
     String name,
-    List<NetRateSchemeWfDTO> netRateSchemeWfList
+    List<MatchTypeRateDTO> matchTypeRates
 ) {}

@@ -23,7 +23,7 @@ import jakarta.persistence.Table;
 @Entity
 @Table(name = "net_rate_scheme")
 public class NetRateScheme {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -36,8 +36,7 @@ public class NetRateScheme {
         orphanRemoval = true,
         fetch = FetchType.EAGER
     )
-    private List<WorkflowStepRate> workflowStepRates = new ArrayList<>();
-
+    private List<MatchTypeRate> matchTypeRates = new ArrayList<>();
 
     @Column(name = "create_date", updatable = false)
     @CreationTimestamp
@@ -54,9 +53,9 @@ public class NetRateScheme {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
-    
-    public List<WorkflowStepRate> getWorkflowStepRates() { return workflowStepRates; }
-    public void setWorkflowStepRates(List<WorkflowStepRate> workflowStepRates) { this.workflowStepRates = workflowStepRates; }
+
+    public List<MatchTypeRate> getMatchTypeRates() { return matchTypeRates; }
+    public void setMatchTypeRates(List<MatchTypeRate> matchTypeRates) { this.matchTypeRates = matchTypeRates; }
 
     public LocalDateTime getCreateDate() { return createDate; }
     public void setCreateDate(LocalDateTime createDate) { this.createDate = createDate; }

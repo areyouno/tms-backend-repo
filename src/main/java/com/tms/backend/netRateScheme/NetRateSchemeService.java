@@ -1,21 +1,16 @@
 package com.tms.backend.netRateScheme;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import com.tms.backend.dto.MatchTypeRateDTO;
 import com.tms.backend.dto.MatchTypeRateResponseDTO;
 import com.tms.backend.dto.NetRateSchemeCreateDTO;
 import com.tms.backend.dto.NetRateSchemeResponseDTO;
 import com.tms.backend.dto.NetRateSchemeUpdateDTO;
-import com.tms.backend.dto.NetRateSchemeWfDTO;
-import com.tms.backend.dto.WorkflowStepRateResponseDTO;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
-import com.tms.backend.workflowSteps.WorkflowStep;
-import com.tms.backend.workflowSteps.WorkflowStepRepository;
 
 import jakarta.transaction.Transactional;
 
@@ -23,24 +18,20 @@ import jakarta.transaction.Transactional;
 public class NetRateSchemeService {
     private final NetRateSchemeRepository netRateSchemeRepository;
     private final UserRepository userRepository;
-    private final WorkflowStepRepository workflowStepRepo;
 
     public NetRateSchemeService(
         NetRateSchemeRepository netRateSchemeRepository,
-        UserRepository userRepository,
-        WorkflowStepRepository workflowStepRepo
-    )
-    {
+        UserRepository userRepository
+    ) {
         this.netRateSchemeRepository = netRateSchemeRepository;
         this.userRepository = userRepository;
-        this.workflowStepRepo = workflowStepRepo;
     }
 
     @Transactional
     public NetRateScheme createScheme(NetRateSchemeCreateDTO dto, Long userId) {
         NetRateScheme scheme = new NetRateScheme();
         scheme.setName(dto.name());
-        // set creator
+
         User creator = userRepository.findById(userId)
             .orElseThrow(() -> new RuntimeException("User not found"));
         scheme.setCreatedBy(creator);
@@ -52,33 +43,11 @@ public class NetRateSchemeService {
             scheme.setDefault(true);
         }
 
-        if (dto.workflowSteps() != null) {
-            for (NetRateSchemeWfDTO wfDto : dto.workflowSteps()) {
-
-                WorkflowStep workflowStep = workflowStepRepo
-                    .findById(wfDto.workflowStepId())
-                    .orElseThrow(() -> new RuntimeException(
-                            "WorkflowStep not found: " + wfDto.workflowStepId()
-                    ));
-
-                WorkflowStepRate wfRate = new WorkflowStepRate();
-                wfRate.setWorkflowStep(workflowStep); // entity reference
-                wfRate.setNetRateScheme(scheme); // back-reference
-
-                List<MatchTypeRate> rates = wfDto.matchTypeRates().stream()
-                        .map(m -> {
-                            MatchTypeRate rate = new MatchTypeRate();
-                            rate.setMatchType(m.matchType());
-                            rate.setTransMemoryPercent(m.transMemoryPercent());
-                            rate.setMachineTransPercent(m.machineTransPercent());
-                            rate.setNonTranslatablePercent(m.nonTranslatablePercent());
-                            rate.setInternalFuzziesPercent(m.internalFuzziesPercent());
-                            return rate;
-                        })
-                        .toList();
-
-                wfRate.setMatchTypeRates(rates);
-                scheme.getWorkflowStepRates().add(wfRate);
+        if (dto.matchTypeRates() != null) {
+            for (MatchTypeRateDTO rateDto : dto.matchTypeRates()) {
+                MatchTypeRate rate = toMatchTypeRate(rateDto);
+                rate.setNetRateScheme(scheme);
+                scheme.getMatchTypeRates().add(rate);
             }
         }
 
@@ -97,19 +66,14 @@ public class NetRateSchemeService {
         return toDTO(scheme);
     }
 
-    private NetRateSchemeResponseDTO toDTO(NetRateScheme scheme) {
-        List<WorkflowStepRateResponseDTO> wfDtos = scheme.getWorkflowStepRates().stream()
-                .map(wf -> new WorkflowStepRateResponseDTO(
-                        wf.getWorkflowStep().getId(),
-                        wf.getMatchTypeRates().stream()
-                                .map(m -> new MatchTypeRateResponseDTO(
-                                        m.getMatchType(),
-                                        m.getTransMemoryPercent(),
-                                        m.getMachineTransPercent(),
-                                        m.getNonTranslatablePercent(),
-                                        m.getInternalFuzziesPercent()
-                                ))
-                                .toList()
+    public NetRateSchemeResponseDTO toDTO(NetRateScheme scheme) {
+        List<MatchTypeRateResponseDTO> rates = scheme.getMatchTypeRates().stream()
+                .map(m -> new MatchTypeRateResponseDTO(
+                        m.getMatchType(),
+                        m.getTransMemoryPercent(),
+                        m.getMachineTransPercent(),
+                        m.getNonTranslatablePercent(),
+                        m.getInternalFuzziesPercent()
                 ))
                 .toList();
 
@@ -117,80 +81,47 @@ public class NetRateSchemeService {
                 scheme.getId(),
                 scheme.getName(),
                 scheme.isDefault(),
-                wfDtos
+                rates
         );
     }
 
     public NetRateSchemeResponseDTO getDefaultScheme() {
         NetRateScheme scheme = netRateSchemeRepository.findByIsDefaultTrue()
                 .orElseThrow(() -> new RuntimeException("No default NetRateScheme set"));
-
         return toDTO(scheme);
     }
 
     @Transactional
     public NetRateScheme updateScheme(Long schemeId, NetRateSchemeUpdateDTO dto) {
-        // fetch existing scheme
         NetRateScheme scheme = netRateSchemeRepository.findById(schemeId)
                 .orElseThrow(() -> new RuntimeException("NetRateScheme not found"));
 
-        // update fields
         if (dto.name() != null) {
             scheme.setName(dto.name());
         }
 
-        // Clear existing workflow steps (orphanRemoval will delete child records)
-        scheme.getWorkflowStepRates().clear();
+        scheme.getMatchTypeRates().clear();
 
-        // Add new workflow steps from DTO
-        if (dto.netRateSchemeWfList() != null) {
-            for (NetRateSchemeWfDTO wfDto : dto.netRateSchemeWfList()) {
-                WorkflowStep workflowStep = workflowStepRepo
-                    .findById(wfDto.workflowStepId())
-                    .orElseThrow(() -> new RuntimeException(
-                            "WorkflowStep not found: " + wfDto.workflowStepId()
-                    ));
-
-                WorkflowStepRate wf = new WorkflowStepRate();
-                wf.setWorkflowStep(workflowStep);
-                wf.setNetRateScheme(scheme); // back-reference
-
-                List<MatchTypeRate> rates = wfDto.matchTypeRates().stream()
-                        .map(m -> {
-                            MatchTypeRate rate = new MatchTypeRate();
-                            rate.setMatchType(m.matchType());
-                            rate.setTransMemoryPercent(m.transMemoryPercent());
-                            rate.setMachineTransPercent(m.machineTransPercent());
-                            rate.setNonTranslatablePercent(m.nonTranslatablePercent());
-                            rate.setInternalFuzziesPercent(m.internalFuzziesPercent());
-                            return rate;
-                        })
-                        .toList();
-
-                wf.setMatchTypeRates(rates);
-                scheme.getWorkflowStepRates().add(wf);
+        if (dto.matchTypeRates() != null) {
+            for (MatchTypeRateDTO rateDto : dto.matchTypeRates()) {
+                MatchTypeRate rate = toMatchTypeRate(rateDto);
+                rate.setNetRateScheme(scheme);
+                scheme.getMatchTypeRates().add(rate);
             }
         }
 
-        // save the scheme (cascade will persist workflow steps and match type rates)
         return netRateSchemeRepository.save(scheme);
     }
 
     @Transactional
     public void setDefault(Long schemeId) {
-
         NetRateScheme scheme = netRateSchemeRepository.findById(schemeId)
                 .orElseThrow(() -> new RuntimeException("Scheme not found"));
 
-        // Step 1: clear old default
         netRateSchemeRepository.clearCurrentDefault();
-
-        // Step 2: set new default
         scheme.setDefault(true);
-
         netRateSchemeRepository.save(scheme);
     }
-
 
     public void deleteSchemes(List<Long> ids) {
         List<NetRateScheme> schemes = netRateSchemeRepository.findAllById(ids);
@@ -204,43 +135,28 @@ public class NetRateSchemeService {
 
     @Transactional
     public NetRateScheme duplicateScheme(Long sourceSchemeId, Long userId) {
-        // fetch source scheme
         NetRateScheme original = netRateSchemeRepository.findById(sourceSchemeId)
                 .orElseThrow(() -> new RuntimeException("NetRateScheme not found"));
 
-        // fetch creator
         User creator = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
-        // create new scheme
         NetRateScheme copy = new NetRateScheme();
         copy.setName(original.getName() + " (Copy)");
         copy.setCreatedBy(creator);
 
-        for (WorkflowStepRate originalWf : original.getWorkflowStepRates()) {
-
-            WorkflowStepRate wfCopy = new WorkflowStepRate();
-            wfCopy.setWorkflowStep(originalWf.getWorkflowStep());
-            wfCopy.setNetRateScheme(copy); // important: back-reference
-
-            // duplicate match type rates
-            List<MatchTypeRate> rateCopies = originalWf.getMatchTypeRates().stream()
-                    .map(rate -> {
-                        MatchTypeRate r = new MatchTypeRate();
-                        r.setMatchType(rate.getMatchType());
-                        r.setTransMemoryPercent(rate.getTransMemoryPercent());
-                        r.setMachineTransPercent(rate.getMachineTransPercent());
-                        r.setNonTranslatablePercent(rate.getNonTranslatablePercent());
-                        r.setInternalFuzziesPercent(rate.getInternalFuzziesPercent());
-                        return r;
-                    })
-                    .toList();
-
-            wfCopy.setMatchTypeRates(rateCopies);
-            copy.getWorkflowStepRates().add(wfCopy);
+        for (MatchTypeRate original_rate : original.getMatchTypeRates()) {
+            MatchTypeRate rateCopy = new MatchTypeRate(
+                original_rate.getMatchType(),
+                original_rate.getTransMemoryPercent(),
+                original_rate.getMachineTransPercent(),
+                original_rate.getNonTranslatablePercent(),
+                original_rate.getInternalFuzziesPercent()
+            );
+            rateCopy.setNetRateScheme(copy);
+            copy.getMatchTypeRates().add(rateCopy);
         }
 
-        // save
         return netRateSchemeRepository.save(copy);
     }
 
@@ -252,14 +168,9 @@ public class NetRateSchemeService {
         scheme.setName("Default");
         scheme.setDefault(true);
 
-        // create default with default match type rates for each existing workflow step
-        List<WorkflowStep> allSteps = workflowStepRepo.findAll();
-        for (WorkflowStep step : allSteps) {
-            WorkflowStepRate wfRate = new WorkflowStepRate();
-            wfRate.setWorkflowStep(step);
-            wfRate.setNetRateScheme(scheme);
-            wfRate.setMatchTypeRates(createDefaultMatchTypeRates());
-            scheme.getWorkflowStepRates().add(wfRate);
+        for (MatchTypeRate rate : createDefaultMatchTypeRates()) {
+            rate.setNetRateScheme(scheme);
+            scheme.getMatchTypeRates().add(rate);
         }
 
         netRateSchemeRepository.save(scheme);
@@ -278,60 +189,13 @@ public class NetRateSchemeService {
         );
     }
 
-    // adds workflow step to all existing schemes
-    @Transactional
-    public void addStepToAllSchemes(Long workflowStepId) {
-        // define default percentages for each match type
-        Map<MatchType, MatchTypeRate> defaultMatchTypeRates = Map.of(
-            MatchType.REPETITIONS, new MatchTypeRate(MatchType.REPETITIONS, 10L, 0L, 0L, 0L),
-            MatchType.PERCENT_101, new MatchTypeRate(MatchType.PERCENT_101, 10L, 0L, 0L, 0L),
-            MatchType.PERCENT_100, new MatchTypeRate(MatchType.PERCENT_100, 10L, 30L, 10L, 10L),
-            MatchType.PERCENT_95, new MatchTypeRate(MatchType.PERCENT_95, 33L, 40L, 33L, 33L),
-            MatchType.PERCENT_85, new MatchTypeRate(MatchType.PERCENT_85, 66L, 70L, 66L, 66L),
-            MatchType.PERCENT_75, new MatchTypeRate(MatchType.PERCENT_75, 100L, 100L, 100L, 100L),
-            MatchType.PERCENT_50, new MatchTypeRate(MatchType.PERCENT_50, 100L, 100L, 100L, 100L),
-            MatchType.PERCENT_0, new MatchTypeRate(MatchType.PERCENT_0, 100L, 100L, 100L, 100L)
-        );
-
-        // fetch workflow step once
-        WorkflowStep workflowStep = workflowStepRepo.findById(workflowStepId)
-                .orElseThrow(() -> new RuntimeException(
-                        "WorkflowStep not found: " + workflowStepId));
-
-        // fetch all schemes
-        List<NetRateScheme> schemes = netRateSchemeRepository.findAll();
-
-        // track only modified schemes
-        List<NetRateScheme> modifiedSchemes = new ArrayList<>();
-
-        for (NetRateScheme scheme : schemes) {
-
-            boolean exists = scheme.getWorkflowStepRates().stream()
-                    .anyMatch(ws -> ws.getWorkflowStep().getId().equals(workflowStepId));
-
-            if (!exists) {
-                WorkflowStepRate newStep = new WorkflowStepRate();
-                newStep.setWorkflowStep(workflowStep);
-                newStep.setNetRateScheme(scheme);
-
-                for (MatchTypeRate mt : defaultMatchTypeRates.values()) {
-                    MatchTypeRate copy = new MatchTypeRate();
-                    copy.setMatchType(mt.getMatchType());
-                    copy.setTransMemoryPercent(mt.getTransMemoryPercent());
-                    copy.setMachineTransPercent(mt.getMachineTransPercent());
-                    copy.setNonTranslatablePercent(mt.getNonTranslatablePercent());
-                    copy.setInternalFuzziesPercent(mt.getInternalFuzziesPercent());
-                    newStep.getMatchTypeRates().add(copy);
-                }
-
-                scheme.getWorkflowStepRates().add(newStep);
-                modifiedSchemes.add(scheme); // track change
-            }
-        }
-
-        // save only modified schemes
-        if (!modifiedSchemes.isEmpty()) {
-            netRateSchemeRepository.saveAll(modifiedSchemes);
-        }
+    private MatchTypeRate toMatchTypeRate(MatchTypeRateDTO dto) {
+        MatchTypeRate rate = new MatchTypeRate();
+        rate.setMatchType(dto.matchType());
+        rate.setTransMemoryPercent(dto.transMemoryPercent());
+        rate.setMachineTransPercent(dto.machineTransPercent());
+        rate.setNonTranslatablePercent(dto.nonTranslatablePercent());
+        rate.setInternalFuzziesPercent(dto.internalFuzziesPercent());
+        return rate;
     }
 }

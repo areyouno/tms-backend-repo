@@ -6,5 +6,5 @@ public record NetRateSchemeResponseDTO(
     Long id,
     String name,
     boolean isDefault,
-    List<WorkflowStepRateResponseDTO> workflowStepRates
+    List<MatchTypeRateResponseDTO> matchTypeRates
 ) {}

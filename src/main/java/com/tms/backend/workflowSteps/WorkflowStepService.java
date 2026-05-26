@@ -8,20 +8,15 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.tms.backend.dto.WorkflowStepCreateDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
-import com.tms.backend.netRateScheme.NetRateSchemeService;
 
 import jakarta.transaction.Transactional;
 
 @Service
 public class WorkflowStepService {
     private final WorkflowStepRepository wfRepo;
-    private final NetRateSchemeService netRateSchemeService;
 
-    public WorkflowStepService(
-        WorkflowStepRepository wfRepo,
-        NetRateSchemeService netRateSchemeService) {
+    public WorkflowStepService(WorkflowStepRepository wfRepo) {
         this.wfRepo = wfRepo;
-        this.netRateSchemeService = netRateSchemeService;
     }
 
     public List<WorkflowStep> getAllSteps() {
@@ -30,21 +25,18 @@ public class WorkflowStepService {
 
     @Transactional
     public WorkflowStep createWorkflowStep(WorkflowStepCreateDTO createDTO) {
-        // Validate if name already exists
         if (wfRepo.existsByName(createDTO.name())) {
             throw new ResponseStatusException(
-                    HttpStatus.CONFLICT, // Use 409 Conflict for resource existence check
+                    HttpStatus.CONFLICT,
                     "Workflow step with name '" + createDTO.name() + "' already exists");
         }
 
-        // Validate if abbreviation already exists
         if (wfRepo.existsByAbbreviation(createDTO.abbreviation())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
                     "Workflow step with abbreviation '" + createDTO.abbreviation() + "' already exists");
         }
 
-        // Validate if display order already exists
         if (wfRepo.existsByDisplayOrder(createDTO.displayOrder())) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT,
@@ -57,16 +49,13 @@ public class WorkflowStepService {
         workflowStep.setDisplayOrder(createDTO.displayOrder());
         workflowStep.setIsLQA(createDTO.isLQA() != null ? createDTO.isLQA() : false);
 
-         WorkflowStep savedStep = wfRepo.save(workflowStep);
-         netRateSchemeService.addStepToAllSchemes(savedStep.getId()); // when a new workflow step is created, automatically add it to all existing net rate schemes
-         return savedStep;
+        return wfRepo.save(workflowStep);
     }
 
     public WorkflowStep updateWorkflowStep(Long id, WorkflowStepCreateDTO updateDTO) {
         WorkflowStep existingStep = wfRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Workflow step not found with id: " + id));
 
-        // Update fields
         existingStep.setName(updateDTO.name());
         existingStep.setDisplayOrder(updateDTO.displayOrder());
         existingStep.setAbbreviation(updateDTO.abbreviation());
@@ -77,29 +66,24 @@ public class WorkflowStepService {
 
     @Transactional
     public String deleteWorkflowStep(Long id) {
-        // get workflow step
         WorkflowStep step = wfRepo.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
                         "Workflow step with ID " + id + " not found"));
 
-        // get the name before deletion
         String stepName = step.getName();
         wfRepo.deleteById(id);
-        
         return stepName;
     }
 
     @Transactional
     public void deleteWorkflowSteps(List<Long> id) {
-        // get workflow steps
         List<WorkflowStep> steps = wfRepo.findAllById(id);
 
         if (steps.isEmpty()) {
             throw new RuntimeException("No steps found for the given IDs");
         }
 
-        // get the name before deletion
         wfRepo.deleteAll(steps);
     }
 }

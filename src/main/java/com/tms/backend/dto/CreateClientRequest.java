@@ -4,5 +4,6 @@ import jakarta.validation.constraints.NotBlank;
 
 public record CreateClientRequest(
     @NotBlank String name,
-    String externalId
+    String externalId,
+    Long netRateSchemeId
 ) {}

@@ -3,16 +3,23 @@ package com.tms.backend.netRateScheme;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 
 @Entity
 public class MatchTypeRate {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "net_rate_scheme_id")
+    private NetRateScheme netRateScheme;
+
     @Enumerated(EnumType.STRING)
     private MatchType matchType;
 
@@ -32,7 +39,9 @@ public class MatchTypeRate {
         this.internalFuzziesPercent = internalFuzziesPercent;
     }
 
-    // Getters and setters
+    public NetRateScheme getNetRateScheme() { return netRateScheme; }
+    public void setNetRateScheme(NetRateScheme netRateScheme) { this.netRateScheme = netRateScheme; }
+
     public MatchType getMatchType() { return matchType; }
     public void setMatchType(MatchType matchType) { this.matchType = matchType; }
 

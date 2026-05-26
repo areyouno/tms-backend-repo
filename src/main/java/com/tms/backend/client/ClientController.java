@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tms.backend.dto.ClientResponseDTO;
 import com.tms.backend.dto.CreateClientRequest;
 import com.tms.backend.dto.UpdateClientRequest;
 
@@ -29,33 +30,31 @@ public class ClientController {
     private ClientService clientService;
 
     @PostMapping("/create")
-    public ResponseEntity<Client> createClient(@Valid @RequestBody CreateClientRequest request) {
-        Client created = clientService.createClient(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    public ResponseEntity<ClientResponseDTO> createClient(@Valid @RequestBody CreateClientRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(clientService.createClient(request));
     }
-    
+
     @GetMapping
-    public List<Client> getActiveClients() {
+    public List<ClientResponseDTO> getActiveClients() {
         return clientService.getActiveClients();
     }
 
     @GetMapping("/ordered")
-    public List<Client> getActiveOrdered() {
+    public List<ClientResponseDTO> getActiveOrdered() {
         return clientService.getActiveCLOrdered();
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Client> getClientById(@PathVariable Long id) {
+    public ResponseEntity<ClientResponseDTO> getClientById(@PathVariable Long id) {
         return ResponseEntity.ok(clientService.getClientById(id));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Client> updateClient(
+    public ResponseEntity<ClientResponseDTO> updateClient(
             @PathVariable Long id,
             @Valid @RequestBody UpdateClientRequest request) {
 
-        Client updated = clientService.updateClient(id, request);
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(clientService.updateClient(id, request));
     }
 
     @DeleteMapping("/{id}")

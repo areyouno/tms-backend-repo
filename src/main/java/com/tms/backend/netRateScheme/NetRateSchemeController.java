@@ -14,12 +14,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.tms.backend.dto.MatchTypeRateResponseDTO;
 import com.tms.backend.dto.NetRateSchemeCreateDTO;
 import com.tms.backend.dto.NetRateSchemeDeleteRequestDTO;
 import com.tms.backend.dto.NetRateSchemeResponseDTO;
 import com.tms.backend.dto.NetRateSchemeUpdateDTO;
-import com.tms.backend.dto.WorkflowStepRateResponseDTO;
 import com.tms.backend.user.CustomUserDetails;
 
 import lombok.RequiredArgsConstructor;
@@ -37,27 +35,22 @@ public class NetRateSchemeController {
     ) {
         CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
         NetRateScheme savedScheme = netRateSchemeService.createScheme(dto, userDetails.getId());
-        return ResponseEntity.ok(toDTO(savedScheme));
+        return ResponseEntity.ok(netRateSchemeService.toDTO(savedScheme));
     }
 
-    // fetch all schemes
     @GetMapping("/all")
     public ResponseEntity<List<NetRateSchemeResponseDTO>> getAllSchemes() {
-        List<NetRateSchemeResponseDTO> dtos = netRateSchemeService.getAllSchemes();
-        return ResponseEntity.ok(dtos);
+        return ResponseEntity.ok(netRateSchemeService.getAllSchemes());
     }
 
-    // fetch scheme by ID
     @GetMapping("/{id}")
     public ResponseEntity<NetRateSchemeResponseDTO> getSchemeById(@PathVariable Long id) {
-        NetRateSchemeResponseDTO dto = netRateSchemeService.getSchemeById(id);
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(netRateSchemeService.getSchemeById(id));
     }
 
     @GetMapping("/default")
     public ResponseEntity<NetRateSchemeResponseDTO> getDefaultScheme() {
-        NetRateSchemeResponseDTO dto = netRateSchemeService.getDefaultScheme();
-        return ResponseEntity.ok(dto);
+        return ResponseEntity.ok(netRateSchemeService.getDefaultScheme());
     }
 
     @PutMapping("/{id}")
@@ -67,7 +60,7 @@ public class NetRateSchemeController {
             Authentication authentication) {
 
         NetRateScheme updatedScheme = netRateSchemeService.updateScheme(id, dto);
-        return ResponseEntity.ok(toDTO(updatedScheme));
+        return ResponseEntity.ok(netRateSchemeService.toDTO(updatedScheme));
     }
 
     @PutMapping("/{id}/set-default")
@@ -87,40 +80,8 @@ public class NetRateSchemeController {
             @PathVariable Long schemeId,
             Authentication authentication
     ) {
-        CustomUserDetails userDetails =
-                (CustomUserDetails) authentication.getPrincipal();
-
-        NetRateScheme duplicated = netRateSchemeService
-                .duplicateScheme(schemeId, userDetails.getId());
-
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(toDTO(duplicated));
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        NetRateScheme duplicated = netRateSchemeService.duplicateScheme(schemeId, userDetails.getId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(netRateSchemeService.toDTO(duplicated));
     }
-
-    private NetRateSchemeResponseDTO toDTO(NetRateScheme scheme) {
-        List<WorkflowStepRateResponseDTO> wfDtos =
-                scheme.getWorkflowStepRates().stream()
-                        .map(wf -> new WorkflowStepRateResponseDTO(
-                                wf.getWorkflowStep().getId(),
-                                wf.getMatchTypeRates().stream()
-                                        .map(m -> new MatchTypeRateResponseDTO(
-                                                m.getMatchType(),
-                                                m.getTransMemoryPercent(),
-                                                m.getMachineTransPercent(),
-                                                m.getNonTranslatablePercent(),
-                                                m.getInternalFuzziesPercent()
-                                        ))
-                                        .toList()
-                        ))
-                        .toList();
-
-        return new NetRateSchemeResponseDTO(
-                scheme.getId(),
-                scheme.getName(),
-                scheme.isDefault(),
-                wfDtos
-        );
-    }
-
 }
