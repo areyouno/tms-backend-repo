@@ -684,23 +684,6 @@ public class JobController {
         }
     }
 
-    @PostMapping("/{jobId}/save-xliff-from-sizing")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<?> saveXliffFromSizing(
-            @PathVariable Long jobId,
-            @RequestParam String tomatoJobId) {
-        try {
-            JobDTO updated = jobService.saveXliffFromSizing(jobId, tomatoJobId);
-            return ResponseEntity.ok(updated);
-        } catch (ResourceNotFoundException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
-        } catch (Exception e) {
-            logger.error("Failed to save XLIFF for job {}: {}", jobId, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Failed to save XLIFF: " + e.getMessage());
-        }
-    }
-
     @DeleteMapping("/{id}/hard")
     public ResponseEntity<String> deleteJob(@PathVariable Long id){
         try {

@@ -50,6 +50,7 @@ public class TmxImportPollService {
                 if (status.isCompleted()) {
                     String finalStatus = status.errorMessage() != null ? "failed" : "completed";
                     job.setStatus(finalStatus);
+                    job.setErrorMessage(status.errorMessage());
                     job.setUpdatedAt(LocalDateTime.now());
                     jobRepo.save(job);
                     sendFinalEvent(jobId, finalStatus);

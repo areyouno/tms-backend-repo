@@ -19,6 +19,7 @@ public class TmxImportJob {
     private Integer importedCount;
     private Integer skippedCount;
     private Integer overwrittenCount;
+    private String errorMessage;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -53,6 +54,8 @@ public class TmxImportJob {
     public void setSkippedCount(Integer skippedCount) { this.skippedCount = skippedCount; }
     public Integer getOverwrittenCount() { return overwrittenCount; }
     public void setOverwrittenCount(Integer overwrittenCount) { this.overwrittenCount = overwrittenCount; }
+    public String getErrorMessage() { return errorMessage; }
+    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
