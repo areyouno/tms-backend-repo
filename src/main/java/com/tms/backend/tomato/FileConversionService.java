@@ -202,6 +202,87 @@ public class FileConversionService {
         return outputPath;
     }
 
+    /**
+     * Saves only the original DITA file to disk and updates the job's original-file fields.
+     * Call this during sizing-during-creation so the file is persisted while the XLIFF
+     * is deferred until the user explicitly requests it.
+     */
+    public Path saveOriginalFileOnly(
+            MultipartFile originalFile,
+            String projectFolderName,
+            String jobFolderName,
+            Job job) throws IOException {
+
+        String originalName = originalFile.getOriginalFilename();
+        Path baseDir = Paths.get(uploadDir);
+
+        Path outputDir = baseDir
+                .resolve("projects")
+                .resolve(projectFolderName)
+                .resolve("jobs")
+                .resolve(jobFolderName);
+
+        Path originalDir = outputDir.resolve("original");
+        Files.createDirectories(originalDir);
+
+        Path originalFilePath = originalDir.resolve(originalName);
+        originalFile.transferTo(originalFilePath.toFile());
+        logger.info("Saved original file: {}", originalFilePath.toAbsolutePath());
+
+        Path relativeOriginalPath = baseDir.relativize(originalFilePath);
+
+        job.setOriginalFileName(originalName);
+        job.setOriginalFilePath(relativeOriginalPath.toString().replace("\\", "/"));
+        job.setFileUploadDate(LocalDateTime.now());
+        job.setFileSize(originalFile.getSize());
+        job.setContentType(originalFile.getContentType());
+        job.setOriginalFileFormat(OriginalFileFormat.XML);
+
+        logger.info("Updated job with original file fields. Path: {}", job.getOriginalFilePath());
+        return originalFilePath;
+    }
+
+    /**
+     * Saves the XLIFF bytes (produced by the sizing API) to the job's converted directory
+     * and updates the job's converted-file fields.
+     * Call this when the user explicitly triggers XLIFF retrieval after sizing.
+     */
+    public Path saveXliffToConvertedDir(
+            byte[] xliffBytes,
+            String projectFolderName,
+            String jobFolderName,
+            Job job) throws IOException {
+
+        String originalName = job.getOriginalFileName();
+        if (originalName == null) {
+            throw new IllegalStateException("Job original file name is not set for job " + job.getId());
+        }
+
+        Path baseDir = Paths.get(uploadDir);
+
+        Path convertedDir = baseDir
+                .resolve("projects")
+                .resolve(projectFolderName)
+                .resolve("jobs")
+                .resolve(jobFolderName)
+                .resolve("converted");
+
+        Files.createDirectories(convertedDir);
+
+        String xliffFileName = originalName.replaceFirst("\\.[^.]+$", ".xliff");
+        Path outputPath = convertedDir.resolve(xliffFileName);
+        Files.write(outputPath, xliffBytes);
+        logger.info("Saved XLIFF from sizing result: {}", outputPath.toAbsolutePath());
+
+        Path relativeConvertedPath = baseDir.relativize(outputPath);
+
+        job.setConvertedFileName(xliffFileName);
+        job.setConvertedFilePath(relativeConvertedPath.toString().replace("\\", "/"));
+
+        logger.info("Updated job with converted file fields. Path: {}", job.getConvertedFilePath());
+        return outputPath;
+    }
+
     public Path convertXliffBackToOriginalFormat(
         Job job,
         String projectFolderName,

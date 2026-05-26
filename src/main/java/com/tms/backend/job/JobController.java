@@ -91,17 +91,18 @@ public class JobController {
     public ResponseEntity<Map<String, Object>> createJob(
         @RequestPart("file") MultipartFile file,
         @RequestPart("job") JobDTO jobDTO,
-        Authentication authentication) 
+        @RequestParam(required = false, defaultValue = "false") Boolean performSizingDuringCreation,
+        Authentication authentication)
     {
             try {
                 CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
                 String uid = userDetails.getUid();
 
-                JobDTO savedJob = jobService.createJob(file, jobDTO, uid);
+                JobDTO savedJob = jobService.createJob(file, jobDTO, uid, null, false, performSizingDuringCreation);
                 Map<String, Object> response = new HashMap<>();
                 response.put("message", "File uploaded successfully");
                 response.put("job", savedJob);
-                
+
                 return ResponseEntity.ok(response);
             } catch (IOException e) {
                 Map<String, Object> errorResponse = new HashMap<>();
@@ -116,13 +117,14 @@ public class JobController {
             @RequestPart("files") List<MultipartFile> files,
             @RequestPart("job") JobDTO jobDTO,
             @RequestPart(value = "note", required = false) String note,
+            @RequestParam(required = false, defaultValue = "false") Boolean performSizingDuringCreation,
             @AuthenticationPrincipal CustomUserDetails userDetails) throws IOException {
 
         String uid = userDetails.getUid();
 
         if (jobDTO.projectId() != null) {
             // Jobs under an existing project
-            List<JobDTO> jobs = jobService.createJobs(files, jobDTO, uid);
+            List<JobDTO> jobs = jobService.createJobs(files, jobDTO, uid, null, false, performSizingDuringCreation);
             return ResponseEntity.ok(jobs);
         } else {
             // No project provided, auto-create one and attach the jobs to it
@@ -366,6 +368,23 @@ public class JobController {
         result = result.replaceAll("-{2,}", "-").replaceAll("^[-_]+|[-_]+$", "");
 
         return result + extension;
+    }
+
+    @PostMapping("/{jobId}/save-xliff-from-sizing")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> saveXliffFromSizing(
+            @PathVariable Long jobId,
+            @RequestParam String tomatoJobId) {
+        try {
+            JobDTO updated = jobService.saveXliffFromSizing(jobId, tomatoJobId);
+            return ResponseEntity.ok(updated);
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Failed to save XLIFF from sizing for job {}: {}", jobId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to save XLIFF: " + e.getMessage());
+        }
     }
 
     @PostMapping("/{jobId}/download/target")
@@ -662,6 +681,23 @@ public class JobController {
             logger.error("Unexpected error: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("An unexpected error occurred");
+        }
+    }
+
+    @PostMapping("/{jobId}/save-xliff-from-sizing")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<?> saveXliffFromSizing(
+            @PathVariable Long jobId,
+            @RequestParam String tomatoJobId) {
+        try {
+            JobDTO updated = jobService.saveXliffFromSizing(jobId, tomatoJobId);
+            return ResponseEntity.ok(updated);
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+        } catch (Exception e) {
+            logger.error("Failed to save XLIFF for job {}: {}", jobId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Failed to save XLIFF: " + e.getMessage());
         }
     }
 

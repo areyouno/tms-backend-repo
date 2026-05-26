@@ -24,6 +24,7 @@ public record JobDTO(
     Long wordCount,
     Long characterCount,
     Long progress,
-    LocalDateTime createDate
-) 
+    LocalDateTime createDate,
+    String tomatoSizingJobId
+)
 {}
