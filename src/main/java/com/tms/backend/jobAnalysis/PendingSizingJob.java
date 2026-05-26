@@ -30,9 +30,6 @@ public class PendingSizingJob {
     @Column(name = "job_id")
     private List<Long> jobIds;
 
-    @Column(name = "workflow_step_id")
-    private Long workflowStepId;
-
     @Column(name = "project_id")
     private Long projectId;
 
@@ -46,17 +43,15 @@ public class PendingSizingJob {
 
     public PendingSizingJob() {}
 
-    public PendingSizingJob(String tomatoJobId, List<Long> jobIds, Long workflowStepId, Long projectId, User user) {
+    public PendingSizingJob(String tomatoJobId, List<Long> jobIds, Long projectId, User user) {
         this.tomatoJobId = tomatoJobId;
         this.jobIds = jobIds;
-        this.workflowStepId = workflowStepId;
         this.projectId = projectId;
         this.user = user;
     }
 
     public String getTomatoJobId() { return tomatoJobId; }
     public List<Long> getJobIds() { return jobIds; }
-    public Long getWorkflowStepId() { return workflowStepId; }
     public Long getProjectId() { return projectId; }
     public User getUser() { return user; }
 }

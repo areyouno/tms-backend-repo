@@ -52,7 +52,6 @@ public class JobAnalysisController {
 
         String tomatoJobId = jobAnalysisService.initiateSizing(
                 request.jobIds(),
-                request.workflowStepId(),
                 currentUser
         );
 

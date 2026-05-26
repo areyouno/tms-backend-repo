@@ -19,12 +19,11 @@ import com.tms.backend.dto.NetRateSchemeResponseDTO;
 import com.tms.backend.dto.SizingStatusDTO;
 import com.tms.backend.dto.TomatoSizingResponse;
 import com.tms.backend.tomato.SizingPollStatus;
-import com.tms.backend.dto.WorkflowStepRateResponseDTO;
 import com.tms.backend.job.Job;
 import com.tms.backend.job.JobRepository;
-import com.tms.backend.job.JobWorkflowStep;
-import com.tms.backend.job.JobWorkflowStepRepository;
+import com.tms.backend.netRateScheme.NetRateScheme;
 import com.tms.backend.netRateScheme.NetRateSchemeService;
+import com.tms.backend.project.Project;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignment;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignmentRepository;
 import com.tms.backend.settingAnalysis.AnalysisSetting;
@@ -32,7 +31,6 @@ import com.tms.backend.settingAnalysis.AnalysisSettingService;
 import com.tms.backend.tomato.SizingPollService;
 import com.tms.backend.tomato.SizingService;
 import com.tms.backend.user.User;
-import com.tms.backend.workflowSteps.WorkflowStep;
 
 import lombok.RequiredArgsConstructor;
 
@@ -48,50 +46,33 @@ public class JobAnalysisService {
     private final SizingService sizingService;
     private final SizingPollService sizingPollService;
     private final NetRateSchemeService netRateSchemeService;
-    private final JobWorkflowStepRepository jobWorkflowStepRepository;
     private final ProjectTmAssignmentRepository tmAssignmentRepo;
     private final PendingSizingJobRepository pendingSizingJobRepository;
 
     /**
-     * Creates a new JobAnalysis using the user's default analysis settings.
-     * Replaces macros in the name template (e.g., {projectName}) with actual values.
-     *
-     * @param job The job for which the analysis is being created
-     * @param user The user creating the analysis
-     * @param languages The set of languages to analyze
-     * @return The created JobAnalysis
-     */
-    /**
      * Resolves all context needed for sizing, submits files to Tomato, and starts background polling.
      * Returns the Tomato jobId immediately so the caller can check status later.
      */
-    public String initiateSizing(List<Long> jobIds, Long workflowStepId, User user) {
+    @Transactional
+    public String initiateSizing(List<Long> jobIds, User user) {
         List<Job> jobs = jobIds.stream()
                 .map(id -> jobRepository.findById(id)
                         .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                 .collect(Collectors.toList());
 
         Job primaryJob = jobs.get(0);
+        Project project = primaryJob.getProject();
+        Long projectId = project.getId();
 
-        JobWorkflowStep jobWorkflowStep = jobWorkflowStepRepository.findById(workflowStepId)
-                .orElseThrow(() -> new RuntimeException("JobWorkflowStep not found with id: " + workflowStepId));
-        WorkflowStep workflowStep = jobWorkflowStep.getWorkflowStep();
-        Long actualWorkflowStepId = workflowStep.getId();
+        NetRateSchemeResponseDTO scheme = resolveSchemeForProject(project);
 
-        NetRateSchemeResponseDTO defaultScheme = netRateSchemeService.getDefaultScheme();
-        WorkflowStepRateResponseDTO stepRate = defaultScheme.workflowStepRates().stream()
-                .filter(wf -> wf.workflowStepId().equals(actualWorkflowStepId))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("No rates found for workflowStepId: " + actualWorkflowStepId));
-
-        Long projectId = primaryJob.getProject().getId();
         Long tmId = tmAssignmentRepo
-                .findByProjectIdAndWorkflowStepIdAndReadAccessTrue(projectId, actualWorkflowStepId)
+                .findFirstByProjectIdAndReadAccessTrue(projectId)
                 .map(ProjectTmAssignment::getTmId)
                 .orElseThrow(() -> new RuntimeException(
-                        "No TM with read access for project " + projectId + " and workflow step " + actualWorkflowStepId));
+                        "No TM with read access found for project " + projectId));
 
-        String sizingRequestJson = buildSizingRequestJson(defaultScheme, projectId, stepRate.matchTypeRates());
+        String sizingRequestJson = buildSizingRequestJson(scheme, projectId);
 
         List<String> filePaths = jobs.stream()
                 .map(Job::getOriginalFilePath)
@@ -99,7 +80,7 @@ public class JobAnalysisService {
 
         String tomatoJobId = sizingService.sendFilesToTomatoAPIByPath(filePaths, sizingRequestJson, tmId);
 
-        pendingSizingJobRepository.save(new PendingSizingJob(tomatoJobId, jobIds, workflowStepId, projectId, user));
+        pendingSizingJobRepository.save(new PendingSizingJob(tomatoJobId, jobIds, projectId, user));
         sizingPollService.startPolling(tomatoJobId);
 
         log.info("Sizing initiated for tomatoJobId: {}", tomatoJobId);
@@ -123,7 +104,7 @@ public class JobAnalysisService {
                         .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                 .collect(Collectors.toList());
 
-        createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), sizingResponse);
+        createJobAnalysis(jobs, ctx.getUser(), sizingResponse);
         pendingSizingJobRepository.delete(ctx);
         log.info("JobAnalysis created and saved for tomatoJobId: {}", tomatoJobId);
     }
@@ -148,24 +129,21 @@ public class JobAnalysisService {
                         .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                 .collect(Collectors.toList());
 
-        JobAnalysis jobAnalysis = createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), pollStatus.result());
+        JobAnalysis jobAnalysis = createJobAnalysis(jobs, ctx.getUser(), pollStatus.result());
         pendingSizingJobRepository.delete(ctx);
 
         return new SizingStatusDTO("completed", 100.0, JobAnalysisResponseDTO.fromEntity(jobAnalysis));
     }
 
     @Transactional
-    public JobAnalysis createJobAnalysis(List<Job> jobs, Long workflowStepId, User user, TomatoSizingResponse sizingResponse) {
+    public JobAnalysis createJobAnalysis(List<Job> jobs, User user, TomatoSizingResponse sizingResponse) {
         Job job = jobs.get(0);
 
-        // Get the user's analysis setting (or global default)
         AnalysisSetting setting = analysisSettingService.getUserSetting(user);
 
-        // Create new JobAnalysis
         JobAnalysis jobAnalysis = new JobAnalysis();
 
-        // Replace macros in the name template
-        String resolvedName = resolveNameMacros(setting.getName(), job, workflowStepId);
+        String resolvedName = resolveNameMacros(setting.getName(), job);
         jobAnalysis.setName(resolvedName);
 
         jobAnalysis.setProject(job.getProject());
@@ -181,13 +159,11 @@ public class JobAnalysisService {
                 stats.fuzzy95Segments(), stats.fuzzy85Segments(), stats.fuzzy75Segments(),
                 stats.fuzzy50Segments(), stats.noMatchSegments());
 
-        // Set source and target language from API response
         jobAnalysis.setSourceLang(stats.sourceLanguage());
         if (stats.targetLanguage() != null) {
             jobAnalysis.setTargetLanguages(java.util.Set.of(stats.targetLanguage()));
         }
 
-        // Read TM words, characters, and segments from API response
         jobAnalysis.setRepetitionWords(safeLong(stats.repetitionTM_Words()));
         jobAnalysis.setRepetitionCharacters(safeLong(stats.repetitionTM_Characters()));
         jobAnalysis.setRepetitionSegments(safeLong(stats.repetitionTM_Segments()));
@@ -307,87 +283,6 @@ public class JobAnalysisService {
         return saved;
     }
 
-    /**
-     * Creates a new JobAnalysis using jobId.
-     * This is a convenience method for the controller layer.
-     *
-     * @param jobId The ID of the job
-     * @param user The user creating the analysis
-     * @param languages The set of languages to analyze
-     * @return The created JobAnalysisResponseDTO
-     */
-    @Transactional
-    public JobAnalysisResponseDTO createJobAnalysisFromJobIds(List<Long> jobIds, Long workflowStepId, User user) {
-        List<Job> jobs = jobIds.stream()
-                .map(id -> jobRepository.findById(id)
-                        .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
-                .collect(Collectors.toList());
-
-        Job primaryJob = jobs.get(0);
-
-        // Resolve the actual WorkflowStep from the JobWorkflowStep id
-        JobWorkflowStep jobWorkflowStep = jobWorkflowStepRepository.findById(workflowStepId)
-                .orElseThrow(() -> new RuntimeException("JobWorkflowStep not found with id: " + workflowStepId));
-        WorkflowStep workflowStep = jobWorkflowStep.getWorkflowStep();
-        Long actualWorkflowStepId = workflowStep.getId();
-        log.info("Resolved JobWorkflowStep id {} -> WorkflowStep id {} (name: {})",
-                workflowStepId, actualWorkflowStepId, workflowStep.getName());
-
-        // Get default net rate scheme and find the matching workflow step rates
-        NetRateSchemeResponseDTO defaultScheme = netRateSchemeService.getDefaultScheme();
-        WorkflowStepRateResponseDTO stepRate = defaultScheme.workflowStepRates().stream()
-                .filter(wf -> wf.workflowStepId().equals(actualWorkflowStepId))
-                .findFirst()
-                .orElseThrow(() -> new RuntimeException("No rates found for workflowStepId: " + actualWorkflowStepId));
-
-        log.info("matchTypeRates for workflowStepId {}: {}", actualWorkflowStepId, stepRate.matchTypeRates());
-
-        // Resolve the TM with read access for this project + workflow step
-        Long projectId = primaryJob.getProject().getId();
-        Long tmId = tmAssignmentRepo
-                .findByProjectIdAndWorkflowStepIdAndReadAccessTrue(projectId, actualWorkflowStepId)
-                .map(ProjectTmAssignment::getTmId)
-                .orElseThrow(() -> new RuntimeException(
-                        "No translation memory with read access assigned for project "
-                                + projectId + " and workflow step " + actualWorkflowStepId));
-        log.info("Resolved tmId {} for project {} and workflowStep {} ({})",
-                tmId, projectId, actualWorkflowStepId, workflowStep.getName());
-
-        // Build sizingRequestJson with the full net rate scheme structure Tomato expects
-        String sizingRequestJson = buildSizingRequestJson(defaultScheme, projectId, stepRate.matchTypeRates());
-        log.info("sizingRequestJson: {}", sizingRequestJson);
-
-        List<String> filePaths = jobs.stream()
-                .map(Job::getOriginalFilePath)
-                .collect(Collectors.toList());
-        String tomatoJobId = sizingService.sendFilesToTomatoAPIByPath(filePaths, sizingRequestJson, tmId);
-
-        TomatoSizingResponse sizingResponse = null;
-        for (int attempt = 1; attempt <= 60 && sizingResponse == null; attempt++) {
-            try { Thread.sleep(5_000L); } catch (InterruptedException e) { Thread.currentThread().interrupt(); break; }
-            SizingPollStatus pollStatus = sizingService.fetchSizingResultOnce(tomatoJobId);
-            sizingResponse = pollStatus.result();
-            log.info("Waiting for sizing result (attempt {}/60)", attempt);
-        }
-        if (sizingResponse == null) {
-            throw new RuntimeException("Sizing job " + tomatoJobId + " did not complete in time");
-        }
-
-        JobAnalysis jobAnalysis = createJobAnalysis(jobs, workflowStepId, user, sizingResponse);
-        JobAnalysisResponseDTO dto = JobAnalysisResponseDTO.fromEntity(jobAnalysis);
-        log.info("JobAnalysisResponseDTO: {}", dto);
-        return dto;
-    }
-
-    /**
-     * Resolves macros in the analysis name template.
-     * Supports: {projectName}, {sourceLang}, {targetLangs}, {userName}
-     *
-     * @param template The name template from AnalysisSetting
-     * @param job The job context for macro replacement
-     * @param workflowStepId The JobWorkflowStep ID to resolve the provider's username
-     * @return The resolved name with macros replaced
-     */
     @Transactional
     public List<JobAnalysisResponseDTO> getAllJobAnalyses() {
         List<PendingSizingJob> stillPending = new ArrayList<>();
@@ -400,7 +295,7 @@ public class JobAnalysisService {
                             .map(id -> jobRepository.findById(id)
                                     .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                             .collect(Collectors.toList());
-                    createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), pollStatus.result());
+                    createJobAnalysis(jobs, ctx.getUser(), pollStatus.result());
                     pendingSizingJobRepository.delete(ctx);
                     log.info("Resolved pending sizing job {} during getAllJobAnalyses", ctx.getTomatoJobId());
                 } else {
@@ -437,7 +332,7 @@ public class JobAnalysisService {
                             .map(id -> jobRepository.findById(id)
                                     .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                             .collect(Collectors.toList());
-                    createJobAnalysis(jobs, ctx.getWorkflowStepId(), ctx.getUser(), pollStatus.result());
+                    createJobAnalysis(jobs, ctx.getUser(), pollStatus.result());
                     pendingSizingJobRepository.delete(ctx);
                     log.info("Resolved pending sizing job {} during getJobAnalysesByProjectId", ctx.getTomatoJobId());
                 } else {
@@ -477,45 +372,46 @@ public class JobAnalysisService {
         jobAnalysisRepository.deleteById(id);
     }
 
-    private String resolveNameMacros(String template, Job job, Long workflowStepId) {
+    private NetRateSchemeResponseDTO resolveSchemeForProject(Project project) {
+        // 1. Project's own scheme
+        NetRateScheme projectScheme = project.getNetRateScheme();
+        if (projectScheme != null) {
+            return netRateSchemeService.toDTO(projectScheme);
+        }
+        // 2. Client's scheme
+        if (project.getClient() != null) {
+            NetRateScheme clientScheme = project.getClient().getNetRateScheme();
+            if (clientScheme != null) {
+                return netRateSchemeService.toDTO(clientScheme);
+            }
+        }
+        // 3. Global default
+        return netRateSchemeService.getDefaultScheme();
+    }
+
+    private String resolveNameMacros(String template, Job job) {
         if (template == null) {
             return "Analysis";
         }
 
         String resolved = template;
 
-        // Replace {projectName} macro with actual project name
         if (job.getProject() != null && job.getProject().getName() != null) {
             resolved = resolved.replace("{projectName}", job.getProject().getName());
         }
 
-        // Replace {sourceLang} macro with the job's source language
         if (job.getSourceLang() != null) {
             resolved = resolved.replace("{sourceLang}", job.getSourceLang());
         }
 
-        // Replace {targetLangs} macro with the job's target languages joined by comma
         if (job.getTargetLangs() != null && !job.getTargetLangs().isEmpty()) {
             resolved = resolved.replace("{targetLangs}", String.join(", ", job.getTargetLangs()));
-        }
-
-        // Replace {userName} macro with the provider's username from the matching workflow step
-        if (workflowStepId != null && job.getWorkflowSteps() != null) {
-            String userName = job.getWorkflowSteps().stream()
-                    .filter(ws -> ws.getId().equals(workflowStepId))
-                    .findFirst()
-                    .map(JobWorkflowStep::getProvider)
-                    .map(User::getUsername)
-                    .orElse(null);
-            if (userName != null) {
-                resolved = resolved.replace("{userName}", userName);
-            }
         }
 
         return resolved;
     }
 
-    private String buildSizingRequestJson(NetRateSchemeResponseDTO scheme, Long projectId, List<MatchTypeRateResponseDTO> rates) {
+    private String buildSizingRequestJson(NetRateSchemeResponseDTO scheme, Long projectId) {
         try {
             ObjectMapper mapper = new ObjectMapper();
             ObjectNode root = mapper.createObjectNode();
@@ -535,7 +431,7 @@ public class JobAnalysisService {
                 .add("xref").add("userinput");
 
             ArrayNode matchTypeRates = root.putArray("matchTypeRates");
-            for (MatchTypeRateResponseDTO rate : rates) {
+            for (MatchTypeRateResponseDTO rate : scheme.matchTypeRates()) {
                 ObjectNode rateNode = matchTypeRates.addObject();
                 rateNode.put("matchType", rate.matchType().name());
                 rateNode.put("transMemoryPercent", rate.transMemoryPercent() != null ? rate.transMemoryPercent() : 0L);
