@@ -109,6 +109,7 @@ public class NetRateSchemeService {
         return toDTO(scheme);
     }
 
+    @Transactional
     public NetRateSchemeResponseDTO getSchemeByClientId(long clientId) {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new RuntimeException("Client not found"));

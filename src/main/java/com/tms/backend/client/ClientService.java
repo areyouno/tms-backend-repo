@@ -12,6 +12,7 @@ import com.tms.backend.netRateScheme.NetRateScheme;
 import com.tms.backend.netRateScheme.NetRateSchemeRepository;
 
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 
 @Service
 public class ClientService {
@@ -21,6 +22,7 @@ public class ClientService {
     @Autowired
     private NetRateSchemeRepository netRateSchemeRepository;
 
+    @Transactional
     public ClientResponseDTO createClient(CreateClientRequest req) {
         Client client = new Client();
         client.setName(req.name());
@@ -36,19 +38,23 @@ public class ClientService {
         return toDTO(repo.save(client));
     }
 
+    @Transactional
     public List<ClientResponseDTO> getActiveClients() {
         return repo.findByActiveTrue().stream().map(this::toDTO).toList();
     }
 
+    @Transactional
     public List<ClientResponseDTO> getActiveCLOrdered() {
         return repo.findActiveClientOrderByName().stream().map(this::toDTO).toList();
     }
 
+    @Transactional
     public ClientResponseDTO getClientById(Long id) {
         return toDTO(repo.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Client not found with id: " + id)));
     }
 
+    @Transactional
     public ClientResponseDTO updateClient(Long id, UpdateClientRequest req) {
         Client client = repo.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Client not found"));
