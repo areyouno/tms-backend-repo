@@ -36,6 +36,7 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import jakarta.validation.constraints.Size;
 
@@ -110,7 +111,8 @@ public class Project {
         joinColumns = @JoinColumn(name = "project_id"),
         inverseJoinColumns = @JoinColumn(name = "workflow_step_id")
     )
-    private Set<WorkflowStep> workflowSteps = new HashSet<>();
+    @OrderColumn(name = "step_order")
+    private List<WorkflowStep> workflowSteps = new ArrayList<>();
 
     Boolean fileHandover;
 
@@ -214,8 +216,8 @@ public class Project {
     public SubDomain getSubdomain() { return subdomain; }
     public void setSubdomain(SubDomain subdomain) { this.subdomain = subdomain; }
 
-    public Set<WorkflowStep> getWorkflowSteps() { return workflowSteps; }
-    public void setWorkflowSteps(Set<WorkflowStep> workflowSteps) { this.workflowSteps = workflowSteps; }
+    public List<WorkflowStep> getWorkflowSteps() { return workflowSteps; }
+    public void setWorkflowSteps(List<WorkflowStep> workflowSteps) { this.workflowSteps = workflowSteps; }
 
     public Boolean getFileHandover() { return fileHandover; }
     public void setFileHandover(Boolean fileHandover) { this.fileHandover = fileHandover; }

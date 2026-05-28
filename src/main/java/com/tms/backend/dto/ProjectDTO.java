@@ -1,6 +1,7 @@
 package com.tms.backend.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -23,7 +24,7 @@ public record ProjectDTO (
     Long costCenterId,
     Long domainId,
     Long subdomainId,
-    Set<Long> workflowStepIds,
+    List<Long> workflowStepIds,
     String ownerUid,
     String createdBy,
     LocalDateTime createDate,
@@ -44,11 +45,11 @@ public record ProjectDTO (
 
     public static ProjectDTO fromEntity(Project project) {
 
-        Set<Long> workflowStepIds =
+        List<Long> workflowStepIds =
             project.getWorkflowSteps()
                    .stream()
                    .map(WorkflowStep::getId)
-                   .collect(Collectors.toSet());
+                   .collect(Collectors.toList());
 
         Set<String> automationRules =
             project.getStatusAutomationSetting() != null

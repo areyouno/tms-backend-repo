@@ -162,10 +162,10 @@ public class ProjectService {
         }
 
         if (createDTO.workflowSteps() != null && !createDTO.workflowSteps().isEmpty()) {
-            Set<WorkflowStep> steps = createDTO.workflowSteps().stream()
+            List<WorkflowStep> steps = createDTO.workflowSteps().stream()
                      .map(id -> wfRepo.findById(id)
                     .orElseThrow(() -> new RuntimeException("WorkflowStep not found: " + id)))
-                    .collect(Collectors.toSet());
+                    .collect(Collectors.toList());
             project.setWorkflowSteps(steps);
         }
         
@@ -353,8 +353,8 @@ public class ProjectService {
                 project.getDomain() != null ? project.getDomain().getId() : null,
                 project.getSubdomain() != null ? project.getSubdomain().getId() : null,
                 project.getWorkflowSteps().stream()
-                .map(WorkflowStep::getId) // get uid of each workflow; .map(workflowStep ->
-                .collect(Collectors.toSet()), // put them into Set<String>
+                .map(WorkflowStep::getId)
+                .collect(Collectors.toList()),
                 project.getOwner() != null ? project.getOwner().getUid() : null,
                 project.getCreatedBy(),
                 project.getCreateDate(),
@@ -476,10 +476,10 @@ public class ProjectService {
             //     throw new IllegalStateException("Workflow steps have already been set and cannot be modified");
             // }
 
-            Set<WorkflowStep> steps = updatedData.workflowStepIds().stream()
+            List<WorkflowStep> steps = updatedData.workflowStepIds().stream()
                 .map(stepId -> wfRepo.findById(stepId)
                     .orElseThrow(() -> new EntityNotFoundException("WorkflowStep not found: " + stepId)))
-                .collect(Collectors.toSet());
+                .collect(Collectors.toList());
             project.setWorkflowSteps(steps);
 
             // Sync workflow steps to all active jobs in this project

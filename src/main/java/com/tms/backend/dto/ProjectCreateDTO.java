@@ -1,6 +1,7 @@
 package com.tms.backend.dto;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -43,7 +44,7 @@ public record ProjectCreateDTO(
     Long costCenterId,
     Long domainId,
     Long subdomainId,
-    Set<@Positive Long> workflowSteps,
+    List<@Positive Long> workflowSteps,
     String owner,
     Set<String> automationRules
 ) {}

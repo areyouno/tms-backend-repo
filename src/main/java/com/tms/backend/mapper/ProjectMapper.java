@@ -1,6 +1,7 @@
 package com.tms.backend.mapper;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -43,8 +44,8 @@ public class ProjectMapper {
             project.getDomain() != null ? project.getDomain().getId() : null,
             project.getSubdomain() != null ? project.getSubdomain().getId() : null,
             project.getWorkflowSteps().stream()
-                    .map(WorkflowStep::getId) // get uid of each workflow; .map(workflowStep ->
-                    .collect(Collectors.toSet()), // put them into Set<String>
+                    .map(WorkflowStep::getId)
+                    .collect(Collectors.toList()),
             project.getOwner() != null ? project.getOwner().getUid() : null,
             project.getCreatedBy(),
             project.getCreateDate(),
