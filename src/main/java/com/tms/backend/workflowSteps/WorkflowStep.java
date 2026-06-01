@@ -14,6 +14,7 @@ public class WorkflowStep {
     private Integer displayOrder;
     private String abbreviation;
     private Boolean isLQA;
+    private Boolean isActive = true;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -29,4 +30,7 @@ public class WorkflowStep {
 
     public Boolean getIsLQA() { return isLQA; }
     public void setIsLQA(Boolean isLQA) { this.isLQA = isLQA; }
+
+    public Boolean getIsActive() { return isActive; }
+    public void setIsActive(Boolean isActive) { this.isActive = isActive; }
 }

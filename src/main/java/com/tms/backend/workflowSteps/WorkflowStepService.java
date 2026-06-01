@@ -6,7 +6,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.tms.backend.dto.WorkflowStepActiveRequestDTO;
 import com.tms.backend.dto.WorkflowStepCreateDTO;
+import com.tms.backend.dto.WorkflowStepDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 
 import jakarta.transaction.Transactional;
@@ -20,7 +22,11 @@ public class WorkflowStepService {
     }
 
     public List<WorkflowStep> getAllSteps() {
-        return wfRepo.findAll();
+        return wfRepo.findByIsActiveTrueOrderByDisplayOrderAsc();
+    }
+
+    public List<WorkflowStep> getAllStepsIncludingInactive() {
+        return wfRepo.findAllByOrderByDisplayOrderAsc();
     }
 
     @Transactional
@@ -72,18 +78,40 @@ public class WorkflowStepService {
                         "Workflow step with ID " + id + " not found"));
 
         String stepName = step.getName();
-        wfRepo.deleteById(id);
+        step.setIsActive(false);
+        wfRepo.save(step);
         return stepName;
     }
 
     @Transactional
-    public void deleteWorkflowSteps(List<Long> id) {
-        List<WorkflowStep> steps = wfRepo.findAllById(id);
+    public List<WorkflowStepDTO> updateWorkflowStepsActive(List<WorkflowStepActiveRequestDTO> requests) {
+        return requests.stream().map(req -> {
+            WorkflowStep step = wfRepo.findById(req.id())
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Workflow step with ID " + req.id() + " not found"));
+            step.setIsActive(req.isActive());
+            WorkflowStep saved = wfRepo.save(step);
+            return new WorkflowStepDTO(
+                saved.getId(),
+                saved.getName(),
+                saved.getDisplayOrder(),
+                saved.getAbbreviation(),
+                saved.getIsLQA(),
+                saved.getIsActive()
+            );
+        }).toList();
+    }
+
+    @Transactional
+    public void deleteWorkflowSteps(List<Long> ids) {
+        List<WorkflowStep> steps = wfRepo.findAllById(ids);
 
         if (steps.isEmpty()) {
             throw new RuntimeException("No steps found for the given IDs");
         }
 
-        wfRepo.deleteAll(steps);
+        steps.forEach(s -> s.setIsActive(false));
+        wfRepo.saveAll(steps);
     }
 }

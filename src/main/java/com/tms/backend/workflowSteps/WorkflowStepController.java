@@ -11,11 +11,13 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tms.backend.dto.WorkflowStepActiveRequestDTO;
 import com.tms.backend.dto.WorkflowStepCreateDTO;
 import com.tms.backend.dto.WorkflowStepDTO;
 import com.tms.backend.dto.WorkflowStepDeleteRequestDTO;
@@ -36,6 +38,15 @@ public class WorkflowStepController {
     @PreAuthorize("isAuthenticated()")
     public List<WorkflowStepDTO> getAllSteps() {
         return wfService.getAllSteps()
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize(AccessRolesConstants.ADMIN_OR_PM)
+    public List<WorkflowStepDTO> getAllStepsIncludingInactive() {
+        return wfService.getAllStepsIncludingInactive()
                 .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -75,13 +86,21 @@ public class WorkflowStepController {
         return ResponseEntity.ok(successMessage);
     }
 
+    @PatchMapping("/active")
+    @PreAuthorize(AccessRolesConstants.ADMIN_OR_PM)
+    public ResponseEntity<List<WorkflowStepDTO>> updateWorkflowStepsActive(
+            @RequestBody List<WorkflowStepActiveRequestDTO> requests) {
+        return ResponseEntity.ok(wfService.updateWorkflowStepsActive(requests));
+    }
+
     private WorkflowStepDTO convertToDTO(WorkflowStep step) {
         return new WorkflowStepDTO(
             step.getId(),
             step.getName(),
             step.getDisplayOrder(),
             step.getAbbreviation(),
-            step.getIsLQA()
+            step.getIsLQA(),
+            step.getIsActive()
         );
     }
 }

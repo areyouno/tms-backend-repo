@@ -5,5 +5,6 @@ public record WorkflowStepDTO(
     String name,
     Integer displayOrder,
     String abbreviation,
-    Boolean isLQA
+    Boolean isLQA,
+    Boolean isActive
 ) {}

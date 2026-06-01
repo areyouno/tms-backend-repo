@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface WorkflowStepRepository extends JpaRepository<WorkflowStep, Long> {
     List<WorkflowStep> findAllByOrderByDisplayOrderAsc();
+    List<WorkflowStep> findByIsActiveTrueOrderByDisplayOrderAsc();
     boolean existsByName(String name);
     boolean existsByAbbreviation(String abbreviation);
     boolean existsByDisplayOrder(Integer displayOrder);
