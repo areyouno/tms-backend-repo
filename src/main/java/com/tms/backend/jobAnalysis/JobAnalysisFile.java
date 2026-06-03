@@ -69,6 +69,8 @@ public class JobAnalysisFile {
     private Double noMatchNT_Weighted;
     private Double totalWeighted;
     private Double totalWeightedPercentage;
+    private Long allWords;
+    private Long allCharacters;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -219,4 +221,10 @@ public class JobAnalysisFile {
 
     public Double getTotalWeightedPercentage() { return totalWeightedPercentage; }
     public void setTotalWeightedPercentage(Double v) { this.totalWeightedPercentage = v; }
+
+    public Long getAllWords() { return allWords; }
+    public void setAllWords(Long v) { this.allWords = v; }
+
+    public Long getAllCharacters() { return allCharacters; }
+    public void setAllCharacters(Long v) { this.allCharacters = v; }
 }
