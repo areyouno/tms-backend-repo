@@ -448,8 +448,8 @@ public class JobAnalysisService {
                 ObjectNode rateNode = matchTypeRates.addObject();
                 rateNode.put("matchType", rate.matchType().name());
                 rateNode.put("transMemoryPercent", rate.transMemoryPercent() != null ? rate.transMemoryPercent() : 0L);
-                rateNode.put("nonTranslatablePercent", rate.nonTranslatablePercent() != null ? rate.nonTranslatablePercent() : 0L);
-                rateNode.put("machineTransPercent", rate.machineTransPercent() != null ? rate.machineTransPercent() : 0L);
+                // rateNode.put("nonTranslatablePercent", rate.nonTranslatablePercent() != null ? rate.nonTranslatablePercent() : 0L);
+                // rateNode.put("machineTransPercent", rate.machineTransPercent() != null ? rate.machineTransPercent() : 0L);
             }
             return mapper.writeValueAsString(root);
         } catch (Exception e) {

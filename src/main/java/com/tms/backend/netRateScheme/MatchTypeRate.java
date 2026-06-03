@@ -24,19 +24,18 @@ public class MatchTypeRate {
     private MatchType matchType;
 
     private Long transMemoryPercent;
-    private Long machineTransPercent;
-    private Long nonTranslatablePercent;
-    private Long internalFuzziesPercent;
+    // private Long machineTransPercent;
+    // private Long nonTranslatablePercent;
+    // private Long internalFuzziesPercent;
 
     public MatchTypeRate() {}
 
-    public MatchTypeRate(MatchType matchType, Long transMemoryPercent, Long machineTransPercent,
-                         Long nonTranslatablePercent, Long internalFuzziesPercent) {
+    public MatchTypeRate(MatchType matchType, Long transMemoryPercent) {
         this.matchType = matchType;
         this.transMemoryPercent = transMemoryPercent;
-        this.machineTransPercent = machineTransPercent;
-        this.nonTranslatablePercent = nonTranslatablePercent;
-        this.internalFuzziesPercent = internalFuzziesPercent;
+        // this.machineTransPercent = machineTransPercent;
+        // this.nonTranslatablePercent = nonTranslatablePercent;
+        // this.internalFuzziesPercent = internalFuzziesPercent;
     }
 
     public NetRateScheme getNetRateScheme() { return netRateScheme; }
@@ -48,12 +47,12 @@ public class MatchTypeRate {
     public Long getTransMemoryPercent() { return transMemoryPercent; }
     public void setTransMemoryPercent(Long transMemoryPercent) { this.transMemoryPercent = transMemoryPercent; }
 
-    public Long getMachineTransPercent() { return machineTransPercent; }
-    public void setMachineTransPercent(Long machineTransPercent) { this.machineTransPercent = machineTransPercent; }
+    // public Long getMachineTransPercent() { return machineTransPercent; }
+    // public void setMachineTransPercent(Long machineTransPercent) { this.machineTransPercent = machineTransPercent; }
 
-    public Long getNonTranslatablePercent() { return nonTranslatablePercent; }
-    public void setNonTranslatablePercent(Long nonTranslatablePercent) { this.nonTranslatablePercent = nonTranslatablePercent; }
+    // public Long getNonTranslatablePercent() { return nonTranslatablePercent; }
+    // public void setNonTranslatablePercent(Long nonTranslatablePercent) { this.nonTranslatablePercent = nonTranslatablePercent; }
 
-    public Long getInternalFuzziesPercent() { return internalFuzziesPercent; }
-    public void setInternalFuzziesPercent(Long internalFuzziesPercent) { this.internalFuzziesPercent = internalFuzziesPercent; }
+    // public Long getInternalFuzziesPercent() { return internalFuzziesPercent; }
+    // public void setInternalFuzziesPercent(Long internalFuzziesPercent) { this.internalFuzziesPercent = internalFuzziesPercent; }
 }

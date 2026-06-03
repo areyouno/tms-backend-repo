@@ -4,13 +4,13 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.tms.backend.client.Client;
+import com.tms.backend.client.ClientRepository;
 import com.tms.backend.dto.MatchTypeRateDTO;
 import com.tms.backend.dto.MatchTypeRateResponseDTO;
 import com.tms.backend.dto.NetRateSchemeCreateDTO;
 import com.tms.backend.dto.NetRateSchemeResponseDTO;
 import com.tms.backend.dto.NetRateSchemeUpdateDTO;
-import com.tms.backend.client.Client;
-import com.tms.backend.client.ClientRepository;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
 
@@ -84,10 +84,10 @@ public class NetRateSchemeService {
         List<MatchTypeRateResponseDTO> rates = scheme.getMatchTypeRates().stream()
                 .map(m -> new MatchTypeRateResponseDTO(
                         m.getMatchType(),
-                        m.getTransMemoryPercent(),
-                        m.getMachineTransPercent(),
-                        m.getNonTranslatablePercent(),
-                        m.getInternalFuzziesPercent()
+                        m.getTransMemoryPercent()
+                        // m.getMachineTransPercent(),
+                        // m.getNonTranslatablePercent(),
+                        // m.getInternalFuzziesPercent()
                 ))
                 .toList();
 
@@ -178,10 +178,10 @@ public class NetRateSchemeService {
         for (MatchTypeRate original_rate : original.getMatchTypeRates()) {
             MatchTypeRate rateCopy = new MatchTypeRate(
                 original_rate.getMatchType(),
-                original_rate.getTransMemoryPercent(),
-                original_rate.getMachineTransPercent(),
-                original_rate.getNonTranslatablePercent(),
-                original_rate.getInternalFuzziesPercent()
+                original_rate.getTransMemoryPercent()
+                // original_rate.getMachineTransPercent(),
+                // original_rate.getNonTranslatablePercent(),
+                // original_rate.getInternalFuzziesPercent()
             );
             rateCopy.setNetRateScheme(copy);
             copy.getMatchTypeRates().add(rateCopy);
@@ -208,14 +208,14 @@ public class NetRateSchemeService {
 
     private List<MatchTypeRate> createDefaultMatchTypeRates() {
         return List.of(
-            new MatchTypeRate(MatchType.REPETITIONS, 10L, 0L, 0L, 0L),
-            new MatchTypeRate(MatchType.PERCENT_101, 10L, 0L, 0L, 0L),
-            new MatchTypeRate(MatchType.PERCENT_100, 10L, 30L, 10L, 10L),
-            new MatchTypeRate(MatchType.PERCENT_95, 33L, 40L, 33L, 33L),
-            new MatchTypeRate(MatchType.PERCENT_85, 66L, 70L, 66L, 66L),
-            new MatchTypeRate(MatchType.PERCENT_75, 100L, 100L, 100L, 100L),
-            new MatchTypeRate(MatchType.PERCENT_50, 100L, 100L, 100L, 100L),
-            new MatchTypeRate(MatchType.PERCENT_0, 100L, 100L, 100L, 100L)
+            new MatchTypeRate(MatchType.REPETITIONS, 30L /*, 0L, 0L, 0L*/),
+            new MatchTypeRate(MatchType.PERCENT_101, 0L /*, 0L, 0L, 0L*/),
+            new MatchTypeRate(MatchType.PERCENT_100, 0L /*, 30L, 10L, 10L*/),
+            new MatchTypeRate(MatchType.PERCENT_95, 70L /*, 40L, 33L, 33L*/),
+            new MatchTypeRate(MatchType.PERCENT_85, 70L /*, 70L, 66L, 66L*/),
+            new MatchTypeRate(MatchType.PERCENT_75, 100L /*, 100L, 100L, 100L*/),
+            new MatchTypeRate(MatchType.PERCENT_50, 100L /*, 100L, 100L, 100L*/),
+            new MatchTypeRate(MatchType.PERCENT_0, 100L /*, 100L, 100L, 100L*/)
         );
     }
 
@@ -223,9 +223,9 @@ public class NetRateSchemeService {
         MatchTypeRate rate = new MatchTypeRate();
         rate.setMatchType(dto.matchType());
         rate.setTransMemoryPercent(dto.transMemoryPercent());
-        rate.setMachineTransPercent(dto.machineTransPercent());
-        rate.setNonTranslatablePercent(dto.nonTranslatablePercent());
-        rate.setInternalFuzziesPercent(dto.internalFuzziesPercent());
+        // rate.setMachineTransPercent(dto.machineTransPercent());
+        // rate.setNonTranslatablePercent(dto.nonTranslatablePercent());
+        // rate.setInternalFuzziesPercent(dto.internalFuzziesPercent());
         return rate;
     }
 }
