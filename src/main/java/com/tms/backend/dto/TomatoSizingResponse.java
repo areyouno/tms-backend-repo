@@ -125,6 +125,7 @@ public record TomatoSizingResponse(String status, Statistics statistics, String 
         Double totalWeighted,
         Double totalWeightedPercentage,
         String sourceLanguage,
-        String targetLanguage
+        String targetLanguage,
+        String unitType
     ) {}
 }
