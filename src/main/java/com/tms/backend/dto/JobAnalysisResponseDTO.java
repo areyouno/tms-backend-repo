@@ -46,6 +46,7 @@ public record JobAnalysisResponseDTO(
     // Double fuzzy50TM_Weighted, Double fuzzy50NT_Weighted,
     // Double noMatchTM_Weighted, Double noMatchNT_Weighted,
     Double totalWeighted, Double totalWeightedPercentage,
+    String unitType,
     List<FileAnalysis> files
 ) {
     public record FileAnalysis(
@@ -143,6 +144,7 @@ public record JobAnalysisResponseDTO(
             // a.getFuzzy50TM_Weighted(), a.getFuzzy50NT_Weighted(),
             // a.getNoMatchTM_Weighted(), a.getNoMatchNT_Weighted(),
             a.getTotalWeighted(), a.getTotalWeightedPercentage(),
+            a.getUnitType(),
             files
         );
     }
@@ -154,7 +156,7 @@ public record JobAnalysisResponseDTO(
             null, null, null, null, null, null,
             null, null, null, null, null, null,
             null, null, null, null, null, null,
-            null, null, null, null
+            null, null, null, null, null
         );
     }
 }

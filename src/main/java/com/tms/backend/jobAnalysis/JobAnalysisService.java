@@ -219,6 +219,7 @@ public class JobAnalysisService {
         jobAnalysis.setNoMatchNT_Weighted(stats.noMatchNT_Weighted());
         
         jobAnalysis.setTotalWeightedPercentage(stats.totalWeightedPercentage());
+        jobAnalysis.setUnitType(stats.unitType());
 
         // logger for TM
         log.info("TM Words - repetition: {}, contextMatch: {}, perfect100: {}, fuzzy95: {}, fuzzy85: {}, fuzzy75: {}, fuzzy50: {}, noMatch: {}",

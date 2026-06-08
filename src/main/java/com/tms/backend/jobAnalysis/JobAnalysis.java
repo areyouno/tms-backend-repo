@@ -128,6 +128,7 @@ public class JobAnalysis {
     private Double totalWeightedPercentage;
     private Long allWords;
     private Long allCharacters;
+    private String unitType;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -329,4 +330,7 @@ public class JobAnalysis {
 
     public Long getAllCharacters() { return allCharacters; }
     public void setAllCharacters(Long v) { this.allCharacters = v; }
+
+    public String getUnitType() { return unitType; }
+    public void setUnitType(String unitType) { this.unitType = unitType; }
 }
