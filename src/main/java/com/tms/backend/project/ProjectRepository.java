@@ -58,11 +58,9 @@ public interface ProjectRepository extends JpaRepository<Project, Long>{
     @Query("""
         SELECT DISTINCT p FROM Project p
         JOIN p.tmAssignments ta
-        WHERE ta.tmId IN (
-            SELECT ta2.tmId FROM ProjectTmAssignment ta2 WHERE ta2.project.id = :projectId
-        )
-        AND p.id != :projectId
+        WHERE ta.tmId = :tmId
         AND p.deleted = false
+        ORDER BY p.createDate DESC
     """)
-    List<Project> findRelatedBySharedTm(@Param("projectId") Long projectId);
+    List<Project> findByAssignedTmId(@Param("tmId") Long tmId);
 }

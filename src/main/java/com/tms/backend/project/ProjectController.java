@@ -25,14 +25,14 @@ import org.springframework.web.multipart.MultipartFile;
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
-import com.tms.backend.dto.ProjectSummaryDTO;
 import com.tms.backend.dto.ProjectSoftDeleteDTO;
-import com.tms.backend.dto.ProjectWithJobsCreateDTO;
+import com.tms.backend.dto.ProjectSummaryDTO;
 import com.tms.backend.dto.ProjectTbAssignmentDTO;
 import com.tms.backend.dto.ProjectTbAssignmentRequest;
 import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentRequest;
 import com.tms.backend.dto.ProjectWithJobDTO;
+import com.tms.backend.dto.ProjectWithJobsCreateDTO;
 import com.tms.backend.job.JobService;
 import com.tms.backend.projectTbAssignment.ProjectTbAssignmentService;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
@@ -196,9 +196,9 @@ public class ProjectController {
         return projectService.getTargetLanguages(projectId);
     }
 
-    @GetMapping("/{projectId}/related")
-    public ResponseEntity<List<ProjectSummaryDTO>> getRelatedProjects(@PathVariable Long projectId) {
-        return ResponseEntity.ok(projectService.getRelatedProjects(projectId));
+    @GetMapping("/related/{tmId}")
+    public ResponseEntity<List<ProjectSummaryDTO>> getProjectsByTmId(@PathVariable Long tmId) {
+        return ResponseEntity.ok(projectService.getProjectsByTmId(tmId));
     }
 
 }

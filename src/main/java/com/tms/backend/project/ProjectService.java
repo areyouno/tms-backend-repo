@@ -584,11 +584,8 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProjectSummaryDTO> getRelatedProjects(Long projectId) {
-        if (!projectRepo.existsById(projectId)) {
-            throw new EntityNotFoundException("Project not found with id: " + projectId);
-        }
-        return projectRepo.findRelatedBySharedTm(projectId)
+    public List<ProjectSummaryDTO> getProjectsByTmId(Long tmId) {
+        return projectRepo.findByAssignedTmId(tmId)
                 .stream()
                 .map(this::convertToSummaryDTO)
                 .collect(Collectors.toList());
