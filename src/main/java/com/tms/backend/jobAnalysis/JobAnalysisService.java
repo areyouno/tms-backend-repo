@@ -175,7 +175,6 @@ public class JobAnalysisService {
         jobAnalysis.setNoMatchWords(safeLong(stats.noMatchTM_Words()));
         jobAnalysis.setFuzzy85Words(safeLong(stats.fuzzy85TM_Words()));
         jobAnalysis.setAllWords(stats.totalCount());
-        jobAnalysis.setTotalWeighted(stats.totalWeighted()); // net rate (words)
 
         // characters
         jobAnalysis.setRepetitionCharacters(safeLong(stats.repetitionTM_Characters() + safeLong(stats.repetitionNT_Characters())));
@@ -217,9 +216,13 @@ public class JobAnalysisService {
         jobAnalysis.setFuzzy50NT_Weighted(stats.fuzzy50NT_Weighted());
         jobAnalysis.setNoMatchTM_Weighted(stats.noMatchTM_Weighted());
         jobAnalysis.setNoMatchNT_Weighted(stats.noMatchNT_Weighted());
-        
+
+        jobAnalysis.setTotalWeighted(stats.totalWeighted());
         jobAnalysis.setTotalWeightedPercentage(stats.totalWeightedPercentage());
         jobAnalysis.setUnitType(stats.unitType());
+
+        log.info("Weighted values from Tomato - noMatchTM: {}, noMatchNT: {}, totalWeighted: {}, totalWeightedPct: {}",
+                stats.noMatchTM_Weighted(), stats.noMatchNT_Weighted(), stats.totalWeighted(), stats.totalWeightedPercentage());
 
         // logger for TM
         log.info("TM Words - repetition: {}, contextMatch: {}, perfect100: {}, fuzzy95: {}, fuzzy85: {}, fuzzy75: {}, fuzzy50: {}, noMatch: {}",
@@ -452,7 +455,9 @@ public class JobAnalysisService {
                 // rateNode.put("nonTranslatablePercent", rate.nonTranslatablePercent() != null ? rate.nonTranslatablePercent() : 0L);
                 // rateNode.put("machineTransPercent", rate.machineTransPercent() != null ? rate.machineTransPercent() : 0L);
             }
-            return mapper.writeValueAsString(root);
+            String json = mapper.writeValueAsString(root);
+            log.info("sizingRequestJson sent to Tomato: {}", json);
+            return json;
         } catch (Exception e) {
             throw new RuntimeException("Failed to build sizingRequestJson", e);
         }
