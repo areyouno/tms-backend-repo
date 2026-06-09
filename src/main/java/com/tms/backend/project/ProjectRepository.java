@@ -54,4 +54,15 @@ public interface ProjectRepository extends JpaRepository<Project, Long>{
     // find deleted files for clean up
     @Query("SELECT p FROM Project p WHERE p.deleted = true AND p.deletedDate < :cutoffDate")
     List<Project> findSoftDeletedBefore(@Param("cutoffDate") LocalDateTime cutoffDate);
+
+    @Query("""
+        SELECT DISTINCT p FROM Project p
+        JOIN p.tmAssignments ta
+        WHERE ta.tmId IN (
+            SELECT ta2.tmId FROM ProjectTmAssignment ta2 WHERE ta2.project.id = :projectId
+        )
+        AND p.id != :projectId
+        AND p.deleted = false
+    """)
+    List<Project> findRelatedBySharedTm(@Param("projectId") Long projectId);
 }

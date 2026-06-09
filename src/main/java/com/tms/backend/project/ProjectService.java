@@ -583,6 +583,17 @@ public class ProjectService {
         return convertToFullDTO(restored);
     }
 
+    @Transactional(readOnly = true)
+    public List<ProjectSummaryDTO> getRelatedProjects(Long projectId) {
+        if (!projectRepo.existsById(projectId)) {
+            throw new EntityNotFoundException("Project not found with id: " + projectId);
+        }
+        return projectRepo.findRelatedBySharedTm(projectId)
+                .stream()
+                .map(this::convertToSummaryDTO)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public Set<String> getTargetLanguages(Long projectId) {
         Project project = projectRepo.findById(projectId)

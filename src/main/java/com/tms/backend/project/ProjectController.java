@@ -25,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
+import com.tms.backend.dto.ProjectSummaryDTO;
 import com.tms.backend.dto.ProjectSoftDeleteDTO;
 import com.tms.backend.dto.ProjectWithJobsCreateDTO;
 import com.tms.backend.dto.ProjectTbAssignmentDTO;
@@ -193,6 +194,11 @@ public class ProjectController {
     @GetMapping("/{projectId}/targetLanguages")
     public Set<String> getProjectTargetLanguages(@PathVariable Long projectId) {
         return projectService.getTargetLanguages(projectId);
+    }
+
+    @GetMapping("/{projectId}/related")
+    public ResponseEntity<List<ProjectSummaryDTO>> getRelatedProjects(@PathVariable Long projectId) {
+        return ResponseEntity.ok(projectService.getRelatedProjects(projectId));
     }
 
 }
