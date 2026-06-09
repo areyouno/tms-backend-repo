@@ -393,13 +393,17 @@ public class JobAnalysisService {
         // 1. Project's own scheme
         NetRateScheme projectScheme = project.getNetRateScheme();
         if (projectScheme != null) {
-            return netRateSchemeService.toDTO(projectScheme);
+            NetRateSchemeResponseDTO dto = netRateSchemeService.toDTO(projectScheme);
+            if (!dto.matchTypeRates().isEmpty()) return dto;
+            log.warn("Project scheme '{}' (id={}) has no match type rates, falling back to default", dto.name(), dto.id());
         }
         // 2. Client's scheme
         if (project.getClient() != null) {
             NetRateScheme clientScheme = project.getClient().getNetRateScheme();
             if (clientScheme != null) {
-                return netRateSchemeService.toDTO(clientScheme);
+                NetRateSchemeResponseDTO dto = netRateSchemeService.toDTO(clientScheme);
+                if (!dto.matchTypeRates().isEmpty()) return dto;
+                log.warn("Client scheme '{}' (id={}) has no match type rates, falling back to default", dto.name(), dto.id());
             }
         }
         // 3. Global default
