@@ -25,6 +25,10 @@ public record JobDTO(
     Long characterCount,
     Long progress,
     LocalDateTime createDate,
-    String tomatoSizingJobId
+    String tomatoSizingJobId,
+    String checkoutUserId,
+    String checkoutUserName,
+    LocalDateTime checkoutAt,
+    LocalDateTime fileUpdatedAt
 )
 {}

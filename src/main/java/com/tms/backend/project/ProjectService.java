@@ -235,7 +235,9 @@ public class ProjectService {
                 null, null, null, null, null, null, null, null, null,
                 projectDTO.id(),
                 jobWfSteps,
-                null, null, null, null, null, null, null
+                null, null, null, null, null, null, null,
+                null, null, null, // checkoutUserId, checkoutUserName, checkoutAt
+                null // fileUpdatedAt
         );
 
         // 3. Get user uid from email

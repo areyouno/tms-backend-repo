@@ -82,6 +82,11 @@ public class Job {
     private LocalDateTime deletedDate;
     private String deletedBy;
 
+    private String checkoutUserId;
+    private String checkoutUserName;
+    private LocalDateTime checkoutAt;
+    private LocalDateTime fileUpdatedAt;
+
     public enum OriginalFileFormat {
         XML,
         SDLXLIFF,
@@ -185,4 +190,16 @@ public class Job {
 
     public OriginalFileFormat getOriginalFileFormat() { return originalFileFormat; }
     public void setOriginalFileFormat(OriginalFileFormat originalFileFormat) { this.originalFileFormat = originalFileFormat; }
+
+    public String getCheckoutUserId() { return checkoutUserId; }
+    public void setCheckoutUserId(String checkoutUserId) { this.checkoutUserId = checkoutUserId; }
+
+    public String getCheckoutUserName() { return checkoutUserName; }
+    public void setCheckoutUserName(String checkoutUserName) { this.checkoutUserName = checkoutUserName; }
+
+    public LocalDateTime getCheckoutAt() { return checkoutAt; }
+    public void setCheckoutAt(LocalDateTime checkoutAt) { this.checkoutAt = checkoutAt; }
+
+    public LocalDateTime getFileUpdatedAt() { return fileUpdatedAt; }
+    public void setFileUpdatedAt(LocalDateTime fileUpdatedAt) { this.fileUpdatedAt = fileUpdatedAt; }
 }

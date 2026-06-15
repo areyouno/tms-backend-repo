@@ -28,7 +28,6 @@ import com.tms.backend.dto.JobWorkflowStepEditDTO;
 import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.dto.TomatoSizingResponse;
 import com.tms.backend.email.EmailService;
-import com.tms.backend.tomato.SizingWithXliffResult;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.mapper.ProjectMapper;
 import com.tms.backend.project.Project;
@@ -37,6 +36,7 @@ import com.tms.backend.project.ProjectService;
 import com.tms.backend.role.RoleConstants;
 import com.tms.backend.tomato.FileConversionService;
 import com.tms.backend.tomato.SizingService;
+import com.tms.backend.tomato.SizingWithXliffResult;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
 import com.tms.backend.workflowSteps.WorkflowStep;
@@ -226,7 +226,9 @@ public class JobService {
                 jobDTO.characterCount(),
                 null,
                 LocalDateTime.now(),
-                null  // tomatoSizingJobId
+                null,  // tomatoSizingJobId
+                null, null, null, // checkoutUserId, checkoutUserName, checkoutAt
+                null // fileUpdatedAt
         );
 
         String dateTimeFolder = java.time.LocalDateTime.now()
@@ -350,6 +352,7 @@ public class JobService {
         // Update job with translated file path
         job.setTranslatedFileName(fileName);
         job.setTranslatedFilePath(relativePath.toString().replace("\\", "/"));
+        job.setFileUpdatedAt(LocalDateTime.now());
 
         logger.info("Updated job with translated file path: {}", job.getTranslatedFilePath());
 
@@ -533,6 +536,52 @@ public class JobService {
         return JobWorkflowStepDTO.from(wfStep);
     }
 
+    @Transactional
+    public JobDTO checkoutJob(Long jobId, String uid) {
+        Job job = jobRepo.findById(jobId)
+            .orElseThrow(() -> new ResourceNotFoundException("Job not found: " + jobId));
+
+        if (job.getCheckoutUserId() != null && !job.getCheckoutUserId().equals(uid)) {
+            boolean lockExpired = job.getCheckoutAt() != null &&
+                job.getCheckoutAt().isBefore(LocalDateTime.now().minusMinutes(5));
+            if (!lockExpired) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "File is already checked out by " + job.getCheckoutUserName());
+            }
+            job.setCheckoutUserId(null);
+            job.setCheckoutUserName(null);
+            job.setCheckoutAt(null);
+        }
+
+        User currentUser = userRepo.findByUid(uid)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + uid));
+
+        job.setCheckoutUserId(uid);
+        job.setCheckoutUserName(currentUser.getFirstName() + " " + currentUser.getLastName());
+        job.setCheckoutAt(LocalDateTime.now());
+        jobRepo.save(job);
+
+        return convertToDTO(job);
+    }
+
+    @Transactional
+    public JobDTO checkinJob(Long jobId, String uid) {
+        Job job = jobRepo.findById(jobId)
+            .orElseThrow(() -> new ResourceNotFoundException("Job not found: " + jobId));
+
+        if (job.getCheckoutUserId() != null && !job.getCheckoutUserId().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Cannot check in a file checked out by another user");
+        }
+
+        job.setCheckoutUserId(null);
+        job.setCheckoutUserName(null);
+        job.setCheckoutAt(null);
+        jobRepo.save(job);
+
+        return convertToDTO(job);
+    }
+
     public void deleteJob(Long id) throws IOException {
         if (!jobRepo.existsById(id)){
             throw new ResourceNotFoundException("Job not found with id: " + id);
@@ -677,7 +726,11 @@ public class JobService {
                 job.getCharacterCount(),
                 job.getProgress(),
                 job.getCreateDate(),
-                tomatoSizingJobId
+                tomatoSizingJobId,
+                job.getCheckoutUserId(),
+                job.getCheckoutUserName(),
+                job.getCheckoutAt(),
+                job.getFileUpdatedAt()
         );
     }
 

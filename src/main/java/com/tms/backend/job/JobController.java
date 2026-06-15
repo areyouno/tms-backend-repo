@@ -44,8 +44,6 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 
 import com.tms.backend.dto.DownloadJobsRequest;
 import com.tms.backend.dto.DownloadProjectsRequest;
-import com.tms.backend.settingCompletedFilesNaming.CompletedFilesNamingSetting;
-import com.tms.backend.settingCompletedFilesNaming.CompletedFilesNamingSettingService;
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.JobSoftDeleteDTO;
 import com.tms.backend.dto.JobWorkflowStepDTO;
@@ -53,6 +51,8 @@ import com.tms.backend.dto.JobWorkflowStepEditDTO;
 import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.dto.TranslatedFileUploadRequest;
 import com.tms.backend.exception.ResourceNotFoundException;
+import com.tms.backend.settingCompletedFilesNaming.CompletedFilesNamingSetting;
+import com.tms.backend.settingCompletedFilesNaming.CompletedFilesNamingSettingService;
 import com.tms.backend.tomato.FileConversionService;
 import com.tms.backend.user.CustomUserDetails;
 import com.tms.backend.user.User;
@@ -682,6 +682,26 @@ public class JobController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("An unexpected error occurred");
         }
+    }
+
+    @PostMapping("/{jobId}/checkout")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<JobDTO> checkoutJob(
+            @PathVariable Long jobId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        String uid = userDetails.getUid();
+        JobDTO dto = jobService.checkoutJob(jobId, uid);
+        return ResponseEntity.ok(dto);
+    }
+
+    @PostMapping("/{jobId}/checkin")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<JobDTO> checkinJob(
+            @PathVariable Long jobId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        String uid = userDetails.getUid();
+        JobDTO dto = jobService.checkinJob(jobId, uid);
+        return ResponseEntity.ok(dto);
     }
 
     @DeleteMapping("/{id}/hard")

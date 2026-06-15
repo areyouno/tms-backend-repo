@@ -13,5 +13,6 @@ public record LoginDTO(
     String roleName,
     String token,
     Boolean isActive,
-    String username
+    String username,
+    String uid
 ) {}
