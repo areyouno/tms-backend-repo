@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -32,16 +33,16 @@ public class TermbaseController {
     public ResponseEntity<Map<String, String>> importTermbase(
             @PathVariable Long id,
             @RequestPart("file") MultipartFile file,
-            @RequestPart("userName") String userName) throws IOException {
+            @RequestParam("userName") String userName) throws IOException {
         String jobId = termbaseService.submitImport(id, file, userName);
         pollService.startPolling(jobId, id);
         return ResponseEntity.accepted().body(Map.of("jobId", jobId));
     }
 
     @GetMapping(value = "/import/jobs/{tomatoJobId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter streamImportStatus(@PathVariable String jobId) {
+    public SseEmitter streamImportStatus(@PathVariable String tomatoJobId) {
         SseEmitter emitter = new SseEmitter(1_800_000L);
-        pollService.registerEmitter(jobId, emitter);
+        pollService.registerEmitter(tomatoJobId, emitter);
         return emitter;
     }
 
