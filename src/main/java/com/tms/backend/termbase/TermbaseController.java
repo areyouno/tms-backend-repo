@@ -31,13 +31,14 @@ public class TermbaseController {
     @PostMapping(value = "/{id}/import", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, String>> importTermbase(
             @PathVariable Long id,
-            @RequestPart("file") MultipartFile file) throws IOException {
-        String jobId = termbaseService.submitImport(id, file);
+            @RequestPart("file") MultipartFile file,
+            @RequestPart("userName") String userName) throws IOException {
+        String jobId = termbaseService.submitImport(id, file, userName);
         pollService.startPolling(jobId, id);
         return ResponseEntity.accepted().body(Map.of("jobId", jobId));
     }
 
-    @GetMapping(value = "/import/jobs/{jobId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @GetMapping(value = "/import/jobs/{tomatoJobId}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamImportStatus(@PathVariable String jobId) {
         SseEmitter emitter = new SseEmitter(1_800_000L);
         pollService.registerEmitter(jobId, emitter);

@@ -41,7 +41,7 @@ public class TermbaseService {
         this.restTemplate = restTemplateBuilder.requestFactory(() -> factory).build();
     }
 
-    public String submitImport(Long termbaseId, MultipartFile file) throws IOException {
+    public String submitImport(Long termbaseId, MultipartFile file, String userName) throws IOException {
         String externalUrl = tomatoBaseUrl + "/api/Term/import";
 
         ByteArrayResource fileResource = new ByteArrayResource(file.getBytes()) {
@@ -52,6 +52,7 @@ public class TermbaseService {
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
         body.add("file", fileResource);
         body.add("termbaseId", termbaseId);
+        body.add("userName", userName);
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
