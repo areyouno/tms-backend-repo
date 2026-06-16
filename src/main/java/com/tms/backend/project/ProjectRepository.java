@@ -63,4 +63,13 @@ public interface ProjectRepository extends JpaRepository<Project, Long>{
         ORDER BY p.createDate DESC
     """)
     List<Project> findByAssignedTmId(@Param("tmId") Long tmId);
+
+    @Query("""
+        SELECT DISTINCT p FROM Project p
+        JOIN p.tbAssignments tb
+        WHERE tb.tbId = :tbId
+        AND p.deleted = false
+        ORDER BY p.createDate DESC
+    """)
+    List<Project> findByAssignedTbId(@Param("tbId") Long tbId);
 }

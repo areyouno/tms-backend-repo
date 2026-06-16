@@ -593,6 +593,14 @@ public class ProjectService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<ProjectSummaryDTO> getProjectsByTbId(Long tbId) {
+        return projectRepo.findByAssignedTbId(tbId)
+                .stream()
+                .map(this::convertToSummaryDTO)
+                .collect(Collectors.toList());
+    }
+
     @Transactional
     public Set<String> getTargetLanguages(Long projectId) {
         Project project = projectRepo.findById(projectId)

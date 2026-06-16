@@ -201,4 +201,9 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.getProjectsByTmId(tmId));
     }
 
+    @GetMapping("/related/tb/{tbId}")
+    public ResponseEntity<List<ProjectSummaryDTO>> getProjectsByTbId(@PathVariable Long tbId) {
+        return ResponseEntity.ok(projectService.getProjectsByTbId(tbId));
+    }
+
 }
