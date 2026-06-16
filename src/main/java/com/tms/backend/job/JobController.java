@@ -170,6 +170,14 @@ public class JobController {
         }
     }
 
+    @GetMapping("/workflow-step-statuses")
+    @PreAuthorize("isAuthenticated()")
+    public List<Map<String, String>> getWorkflowStepStatuses() {
+        return java.util.Arrays.stream(JobWorkflowStatus.values())
+            .map(s -> Map.of("value", s.name(), "label", s.getName()))
+            .collect(java.util.stream.Collectors.toList());
+    }
+
     @PutMapping("/{jobId}/workflow-step")
     public ResponseEntity<JobWorkflowStepDTO> updateWorkflowSteps(
         @PathVariable Long jobId, 
