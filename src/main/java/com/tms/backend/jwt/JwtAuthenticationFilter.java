@@ -18,6 +18,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import com.tms.backend.user.CustomUserDetails;
 
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -47,18 +49,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String uid;
-        final Long id;
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
-        jwt = authHeader.substring(7); // remove "Bearer "
-        uid = jwtService.extractUid(jwt);
-        id = jwtService.extractId(jwt);
+        final String jwt = authHeader.substring(7); // remove "Bearer "
+        final String uid;
+        final Long id;
+
+        try {
+            uid = jwtService.extractUid(jwt);
+            id = jwtService.extractId(jwt);
+        } catch (ExpiredJwtException e) {
+            // flag the request so the entry point can tell the frontend the token specifically expired
+            request.setAttribute("jwt_expired", true);
+            filterChain.doFilter(request, response);
+            return;
+        } catch (JwtException e) {
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (uid != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 
@@ -80,7 +92,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     userDetails.getAuthorities());
 
             if (jwtService.isTokenValid(jwt, userDetails)) {
-                log.info("✅ Token valid, setting authentication");
+                log.info("Token valid, setting authentication");
                 UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
