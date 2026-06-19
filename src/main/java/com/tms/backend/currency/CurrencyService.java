@@ -21,24 +21,7 @@ public class CurrencyService {
         List<Currency> defaults = List.of(
             new Currency("EUR", "Euro"),
             new Currency("USD", "US Dollar"),
-            new Currency("GBP", "British Pound"),
-            new Currency("JPY", "Japanese Yen"),
-            new Currency("CHF", "Swiss Franc"),
-            new Currency("CAD", "Canadian Dollar"),
-            new Currency("AUD", "Australian Dollar"),
-            new Currency("CNY", "Chinese Yuan"),
-            new Currency("KRW", "South Korean Won"),
-            new Currency("SEK", "Swedish Krona"),
-            new Currency("NOK", "Norwegian Krone"),
-            new Currency("DKK", "Danish Krone"),
-            new Currency("PLN", "Polish Zloty"),
-            new Currency("CZK", "Czech Koruna"),
-            new Currency("BRL", "Brazilian Real"),
-            new Currency("INR", "Indian Rupee"),
-            new Currency("MXN", "Mexican Peso"),
-            new Currency("SGD", "Singapore Dollar"),
-            new Currency("HKD", "Hong Kong Dollar"),
-            new Currency("TRY", "Turkish Lira")
+            new Currency("KRW", "South Korean Won")
         );
 
         for (Currency currency : defaults) {
