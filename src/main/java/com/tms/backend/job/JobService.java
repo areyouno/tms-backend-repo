@@ -22,6 +22,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.tms.backend.dto.FileDownloadDTO;
+import com.tms.backend.dto.JobCheckoutStatusDTO;
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.JobSoftDeleteDTO;
 import com.tms.backend.dto.JobWorkflowStepDTO;
@@ -441,6 +442,17 @@ public class JobService {
         Job job = jobRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + id));
         return convertToDTO(job);
+    }
+
+    public JobCheckoutStatusDTO getCheckoutStatus(Long jobId) {
+        Job job = jobRepo.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
+        return new JobCheckoutStatusDTO(
+                job.getCheckoutUserId(),
+                job.getCheckoutUserName(),
+                job.getCheckoutAt(),
+                job.getFileUpdatedAt()
+        );
     }
 
     // Get job by ID

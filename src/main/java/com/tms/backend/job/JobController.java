@@ -44,6 +44,7 @@ import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBo
 
 import com.tms.backend.dto.DownloadJobsRequest;
 import com.tms.backend.dto.DownloadProjectsRequest;
+import com.tms.backend.dto.JobCheckoutStatusDTO;
 import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.JobSoftDeleteDTO;
 import com.tms.backend.dto.JobWorkflowStepDTO;
@@ -190,6 +191,17 @@ public class JobController {
         String uid = userDetails.getUid();
         JobWorkflowStepDTO updated = jobService.updateWorkflowStepStatus(jobId, stepId, body.status(), uid);
         return ResponseEntity.ok(updated);
+    }
+
+    @GetMapping("/{id}/checkout-status")
+    @PreAuthorize("isAuthenticated()")
+    @Transactional(readOnly = true)
+    public ResponseEntity<JobCheckoutStatusDTO> getCheckoutStatus(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(jobService.getCheckoutStatus(id));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 
     @PutMapping("/{jobId}/workflow-step")
