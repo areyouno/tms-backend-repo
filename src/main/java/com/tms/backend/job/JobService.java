@@ -52,6 +52,7 @@ public class JobService {
     private final UserRepository userRepo;
     private final WorkflowStepRepository wfRepo;
     private final JobWorkflowStepRepository jobWfRepo;
+    private final JobCheckinHistoryRepository jobCheckinHistoryRepo;
     private final SizingService sizingService;
     private final FileConversionService fileConversionService;
     private final ProjectService projectService;
@@ -65,12 +66,13 @@ public class JobService {
     private static final Logger logger = LoggerFactory.getLogger(JobService.class);
     
 
-    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService, EmailService emailService){
+    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, JobCheckinHistoryRepository jobCheckinHistoryRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService, EmailService emailService){
         this.jobRepo = jobRepo;
         this.projectRepo = projectRepo;
         this.userRepo = userRepo;
         this.wfRepo = wfRepo;
         this.jobWfRepo = jobWfRepo;
+        this.jobCheckinHistoryRepo = jobCheckinHistoryRepo;
         this.projectMapper = projectMapper;
         this.sizingService = sizingService;
         this.fileConversionService = fileConversionService;
@@ -228,7 +230,8 @@ public class JobService {
                 LocalDateTime.now(),
                 null,  // tomatoSizingJobId
                 null, null, null, // checkoutUserId, checkoutUserName, checkoutAt
-                null // fileUpdatedAt
+                null, // fileUpdatedAt
+                0, 0
         );
 
         String dateTimeFolder = java.time.LocalDateTime.now()
@@ -537,6 +540,38 @@ public class JobService {
     }
 
     @Transactional
+    public JobWorkflowStepDTO updateWorkflowStepStatus(Long jobId, Long stepId, com.tms.backend.job.JobWorkflowStatus status, String currentUserUid) {
+        Job job = jobRepo.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
+
+        JobWorkflowStep wfStep = job.getWorkflowSteps().stream()
+                .filter(ws -> ws.getId().equals(stepId))
+                .findFirst()
+                .orElseThrow(() -> new ResourceNotFoundException("Workflow step not found with id: " + stepId));
+
+        JobWorkflowStatus previousStatus = wfStep.getStatus();
+        if (status.equals(previousStatus)) {
+            return JobWorkflowStepDTO.from(wfStep);
+        }
+
+        wfStep.setStatus(status);
+        jobRepo.save(job);
+
+        if (job.getJobOwner() != null && job.getJobOwner().getEmail() != null) {
+            emailService.sendJobStatusChangeEmail(
+                    job.getJobOwner().getEmail(),
+                    job.getProject().getName(),
+                    wfStep.getWorkflowStep().getName(),
+                    previousStatus,
+                    status);
+        }
+
+        projectService.checkAndUpdateProjectStatus(job.getProject().getId(), wfStep.getWorkflowStep().getName(), currentUserUid);
+
+        return JobWorkflowStepDTO.from(wfStep);
+    }
+
+    @Transactional
     public JobDTO checkoutJob(Long jobId, String uid) {
         Job job = jobRepo.findById(jobId)
             .orElseThrow(() -> new ResourceNotFoundException("Job not found: " + jobId));
@@ -565,13 +600,59 @@ public class JobService {
     }
 
     @Transactional
-    public JobDTO checkinJob(Long jobId, String uid) {
+    public JobDTO checkinJob(Long jobId, String uid, String versionType) {
         Job job = jobRepo.findById(jobId)
             .orElseThrow(() -> new ResourceNotFoundException("Job not found: " + jobId));
 
         if (job.getCheckoutUserId() != null && !job.getCheckoutUserId().equals(uid)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                 "Cannot check in a file checked out by another user");
+        }
+
+        if ("major".equalsIgnoreCase(versionType)) {
+            job.setVersionMajor(job.getVersionMajor() + 1);
+        } else {
+            job.setVersionMinor(job.getVersionMinor() + 1);
+        }
+
+        job.setCheckoutUserId(null);
+        job.setCheckoutUserName(null);
+        job.setCheckoutAt(null);
+        jobRepo.save(job);
+
+        User checkedInBy = userRepo.findByUid(uid)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + uid));
+        jobCheckinHistoryRepo.save(new JobCheckinHistory(
+            job,
+            job.getVersionMajor(),
+            job.getVersionMinor(),
+            uid,
+            checkedInBy.getFirstName() + " " + checkedInBy.getLastName()
+        ));
+
+        return convertToDTO(job);
+    }
+
+    @Transactional
+    public JobDTO cancelCheckoutJob(Long jobId, String uid) {
+        Job job = jobRepo.findById(jobId)
+            .orElseThrow(() -> new ResourceNotFoundException("Job not found: " + jobId));
+
+        if (job.getCheckoutUserId() != null && !job.getCheckoutUserId().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Cannot cancel checkout of a file checked out by another user");
+        }
+
+        if (job.getTranslatedFilePath() != null) {
+            try {
+                Path translatedFile = Paths.get(baseUploadDir).resolve(job.getTranslatedFilePath());
+                Files.deleteIfExists(translatedFile);
+            } catch (IOException e) {
+                logger.warn("Could not delete translated file on cancel-checkout for job {}: {}", jobId, e.getMessage());
+            }
+            job.setTranslatedFilePath(null);
+            job.setTranslatedFileName(null);
+            job.setFileUpdatedAt(null);
         }
 
         job.setCheckoutUserId(null);
@@ -730,7 +811,9 @@ public class JobService {
                 job.getCheckoutUserId(),
                 job.getCheckoutUserName(),
                 job.getCheckoutAt(),
-                job.getFileUpdatedAt()
+                job.getFileUpdatedAt(),
+                job.getVersionMajor(),
+                job.getVersionMinor()
         );
     }
 

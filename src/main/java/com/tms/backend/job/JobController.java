@@ -48,6 +48,7 @@ import com.tms.backend.dto.JobDTO;
 import com.tms.backend.dto.JobSoftDeleteDTO;
 import com.tms.backend.dto.JobWorkflowStepDTO;
 import com.tms.backend.dto.JobWorkflowStepEditDTO;
+import com.tms.backend.dto.JobWorkflowStepStatusUpdateDTO;
 import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.dto.TranslatedFileUploadRequest;
 import com.tms.backend.exception.ResourceNotFoundException;
@@ -176,6 +177,19 @@ public class JobController {
         return java.util.Arrays.stream(JobWorkflowStatus.values())
             .map(s -> Map.of("value", s.name(), "label", s.getName()))
             .collect(java.util.stream.Collectors.toList());
+    }
+
+    @PatchMapping("/{jobId}/workflow-steps/{stepId}/status")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<JobWorkflowStepDTO> updateWorkflowStepStatus(
+        @PathVariable Long jobId,
+        @PathVariable Long stepId,
+        @RequestBody JobWorkflowStepStatusUpdateDTO body,
+        @AuthenticationPrincipal CustomUserDetails userDetails)
+    {
+        String uid = userDetails.getUid();
+        JobWorkflowStepDTO updated = jobService.updateWorkflowStepStatus(jobId, stepId, body.status(), uid);
+        return ResponseEntity.ok(updated);
     }
 
     @PutMapping("/{jobId}/workflow-step")
@@ -706,9 +720,20 @@ public class JobController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<JobDTO> checkinJob(
             @PathVariable Long jobId,
+            @RequestParam(defaultValue = "minor") String versionType,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         String uid = userDetails.getUid();
-        JobDTO dto = jobService.checkinJob(jobId, uid);
+        JobDTO dto = jobService.checkinJob(jobId, uid, versionType);
+        return ResponseEntity.ok(dto);
+    }
+
+    @PostMapping("/{jobId}/cancel-checkout")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<JobDTO> cancelCheckoutJob(
+            @PathVariable Long jobId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        String uid = userDetails.getUid();
+        JobDTO dto = jobService.cancelCheckoutJob(jobId, uid);
         return ResponseEntity.ok(dto);
     }
 

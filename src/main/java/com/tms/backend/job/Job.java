@@ -87,6 +87,9 @@ public class Job {
     private LocalDateTime checkoutAt;
     private LocalDateTime fileUpdatedAt;
 
+    private int versionMajor = 0;
+    private int versionMinor = 0;
+
     public enum OriginalFileFormat {
         XML,
         SDLXLIFF,
@@ -202,4 +205,10 @@ public class Job {
 
     public LocalDateTime getFileUpdatedAt() { return fileUpdatedAt; }
     public void setFileUpdatedAt(LocalDateTime fileUpdatedAt) { this.fileUpdatedAt = fileUpdatedAt; }
+
+    public int getVersionMajor() { return versionMajor; }
+    public void setVersionMajor(int versionMajor) { this.versionMajor = versionMajor; }
+
+    public int getVersionMinor() { return versionMinor; }
+    public void setVersionMinor(int versionMinor) { this.versionMinor = versionMinor; }
 }

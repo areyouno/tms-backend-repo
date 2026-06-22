@@ -237,7 +237,8 @@ public class ProjectService {
                 jobWfSteps,
                 null, null, null, null, null, null, null,
                 null, null, null, // checkoutUserId, checkoutUserName, checkoutAt
-                null // fileUpdatedAt
+                null, // fileUpdatedAt
+                0, 0
         );
 
         // 3. Get user uid from email

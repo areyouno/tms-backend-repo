@@ -29,6 +29,8 @@ public record JobDTO(
     String checkoutUserId,
     String checkoutUserName,
     LocalDateTime checkoutAt,
-    LocalDateTime fileUpdatedAt
+    LocalDateTime fileUpdatedAt,
+    int versionMajor,
+    int versionMinor
 )
 {}
