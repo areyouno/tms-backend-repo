@@ -341,6 +341,35 @@ public class JobController {
         }
     }
 
+    // Download the most recent checked-in snapshot, ignoring any uncommitted draft
+    @GetMapping("/{jobId}/download/translated/latest-checkin")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Resource> downloadLatestCheckedInFile(@PathVariable Long jobId) {
+        try {
+            Path filePath = jobService.getLatestCheckedInFilePath(jobId);
+
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists() || !resource.isReadable()) {
+                logger.error("Checked-in file not readable: {}", filePath);
+                return ResponseEntity.notFound().build();
+            }
+
+            return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/xml"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + filePath.getFileName() + "\"")
+                .body(resource);
+
+        } catch (ResourceNotFoundException e) {
+            logger.error("File not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error downloading latest checked-in file for job: " + jobId, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
     private boolean isJobCompleted(Job job, Long workflowStepId) {
         if (workflowStepId == null) {
             return false;

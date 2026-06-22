@@ -37,18 +37,26 @@ public class JobCheckinHistory {
     @Column(name = "checked_in_by_name")
     private String checkedInByName;
 
+    @Column(name = "file_path")
+    private String filePath;
+
+    @Column(name = "file_name")
+    private String fileName;
+
     @Column(name = "checked_in_at", updatable = false)
     @CreationTimestamp
     private LocalDateTime checkedInAt;
 
     public JobCheckinHistory() {}
 
-    public JobCheckinHistory(Job job, int versionMajor, int versionMinor, String checkedInByUid, String checkedInByName) {
+    public JobCheckinHistory(Job job, int versionMajor, int versionMinor, String checkedInByUid, String checkedInByName, String filePath, String fileName) {
         this.job = job;
         this.versionMajor = versionMajor;
         this.versionMinor = versionMinor;
         this.checkedInByUid = checkedInByUid;
         this.checkedInByName = checkedInByName;
+        this.filePath = filePath;
+        this.fileName = fileName;
     }
 
     public Long getId() { return id; }
@@ -67,6 +75,12 @@ public class JobCheckinHistory {
 
     public String getCheckedInByName() { return checkedInByName; }
     public void setCheckedInByName(String checkedInByName) { this.checkedInByName = checkedInByName; }
+
+    public String getFilePath() { return filePath; }
+    public void setFilePath(String filePath) { this.filePath = filePath; }
+
+    public String getFileName() { return fileName; }
+    public void setFileName(String fileName) { this.fileName = fileName; }
 
     public LocalDateTime getCheckedInAt() { return checkedInAt; }
     public void setCheckedInAt(LocalDateTime checkedInAt) { this.checkedInAt = checkedInAt; }

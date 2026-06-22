@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -620,6 +621,29 @@ public class JobService {
         job.setCheckoutAt(null);
         jobRepo.save(job);
 
+        String versionedFilePath = null;
+        String versionedFileName = null;
+        if (job.getTranslatedFilePath() != null) {
+            try {
+                Path baseDir = Paths.get(baseUploadDir);
+                Path currentFile = baseDir.resolve(job.getTranslatedFilePath());
+                if (Files.exists(currentFile)) {
+                    Path versionsDir = currentFile.getParent().resolve("versions");
+                    Files.createDirectories(versionsDir);
+
+                    versionedFileName = String.format("v%d.%d_%s",
+                        job.getVersionMajor(), job.getVersionMinor(), job.getTranslatedFileName());
+                    Path versionedPath = versionsDir.resolve(versionedFileName);
+                    Files.copy(currentFile, versionedPath, StandardCopyOption.REPLACE_EXISTING);
+                    versionedFilePath = baseDir.relativize(versionedPath).toString().replace("\\", "/");
+                }
+            } catch (IOException e) {
+                logger.warn("Could not snapshot translated file on check-in for job {}: {}", jobId, e.getMessage());
+                versionedFilePath = null;
+                versionedFileName = null;
+            }
+        }
+
         User checkedInBy = userRepo.findByUid(uid)
             .orElseThrow(() -> new ResourceNotFoundException("User not found: " + uid));
         jobCheckinHistoryRepo.save(new JobCheckinHistory(
@@ -627,7 +651,9 @@ public class JobService {
             job.getVersionMajor(),
             job.getVersionMinor(),
             uid,
-            checkedInBy.getFirstName() + " " + checkedInBy.getLastName()
+            checkedInBy.getFirstName() + " " + checkedInBy.getLastName(),
+            versionedFilePath,
+            versionedFileName
         ));
 
         return convertToDTO(job);
@@ -871,7 +897,24 @@ public class JobService {
         if (!Files.exists(filePath)) {
             throw new ResourceNotFoundException("Translated file not found on disk: " + filePath);
         }
-        
+
+        return filePath;
+    }
+
+    // Get the file path of the most recent checked-in snapshot
+    public Path getLatestCheckedInFilePath(Long jobId) {
+        JobCheckinHistory latest = jobCheckinHistoryRepo.findByJobIdOrderByCheckedInAtDesc(jobId).stream()
+            .filter(h -> h.getFilePath() != null)
+            .findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("No checked-in version found for job: " + jobId));
+
+        Path baseDir = Paths.get(baseUploadDir);
+        Path filePath = baseDir.resolve(latest.getFilePath());
+
+        if (!Files.exists(filePath)) {
+            throw new ResourceNotFoundException("Checked-in file not found on disk: " + filePath);
+        }
+
         return filePath;
     }
 
