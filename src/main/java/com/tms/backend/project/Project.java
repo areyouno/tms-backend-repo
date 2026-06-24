@@ -16,6 +16,7 @@ import com.tms.backend.job.Job;
 import com.tms.backend.jobAnalysis.JobAnalysis;
 import com.tms.backend.machineTranslation.MachineTranslation;
 import com.tms.backend.netRateScheme.NetRateScheme;
+import com.tms.backend.priceList.PriceList;
 import com.tms.backend.projectTbAssignment.ProjectTbAssignment;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignment;
 import com.tms.backend.subDomain.SubDomain;
@@ -70,6 +71,10 @@ public class Project {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "net_rate_scheme_id")
     private NetRateScheme netRateScheme;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "price_list_id")
+    private PriceList priceList;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "owner_id")
@@ -188,6 +193,9 @@ public class Project {
 
     public NetRateScheme getNetRateScheme() { return netRateScheme; }
     public void setNetRateScheme(NetRateScheme netRateScheme) { this.netRateScheme = netRateScheme; }
+
+    public PriceList getPriceList() { return priceList; }
+    public void setPriceList(PriceList priceList) { this.priceList = priceList; }
 
     public User getOwner() { return owner; }
     public void setOwner(User owner) { this.owner = owner; }

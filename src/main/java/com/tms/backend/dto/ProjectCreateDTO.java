@@ -33,6 +33,8 @@ public record ProjectCreateDTO(
 
     Long netRateSchemeId,
 
+    Long priceListId,
+
     Long businessUnitId,
     
     @Size(max = 10, message = "Purchase order must not exceed 10 characters")

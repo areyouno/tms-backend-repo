@@ -35,6 +35,7 @@ public class ProjectMapper {
             project.getTargetLanguages(),
             project.getMachineTranslation() != null ? project.getMachineTranslation().getId() : null,
             project.getNetRateScheme() != null ? project.getNetRateScheme().getId() : null,
+            project.getPriceList() != null ? project.getPriceList().getId() : null,
             project.getBusinessUnit() != null ? project.getBusinessUnit().getId() : null,
             project.getPurchaseOrderNum(),
             project.getType(),

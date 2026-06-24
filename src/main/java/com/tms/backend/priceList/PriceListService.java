@@ -11,12 +11,8 @@ import com.tms.backend.dto.PriceListLanguagePairDTO;
 import com.tms.backend.dto.PriceListLanguagePairResponseDTO;
 import com.tms.backend.dto.PriceListResponseDTO;
 import com.tms.backend.dto.PriceListUpdateDTO;
-import com.tms.backend.dto.PriceListWorkflowStepPriceDTO;
-import com.tms.backend.dto.PriceListWorkflowStepPriceResponseDTO;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
-import com.tms.backend.workflowSteps.WorkflowStep;
-import com.tms.backend.workflowSteps.WorkflowStepRepository;
 
 import jakarta.transaction.Transactional;
 
@@ -25,18 +21,15 @@ public class PriceListService {
 
     private final PriceListRepository priceListRepository;
     private final UserRepository userRepository;
-    private final WorkflowStepRepository workflowStepRepository;
     private final CurrencyRepository currencyRepository;
 
     public PriceListService(
         PriceListRepository priceListRepository,
         UserRepository userRepository,
-        WorkflowStepRepository workflowStepRepository,
         CurrencyRepository currencyRepository
     ) {
         this.priceListRepository = priceListRepository;
         this.userRepository = userRepository;
-        this.workflowStepRepository = workflowStepRepository;
         this.currencyRepository = currencyRepository;
     }
 
@@ -96,14 +89,7 @@ public class PriceListService {
             lp.getId(),
             lp.getSourceLanguage(),
             lp.getTargetLanguage(),
-            lp.getMinPrice(),
-            lp.getWorkflowStepPrices().stream()
-                .map(wf -> new PriceListWorkflowStepPriceResponseDTO(
-                    wf.getWorkflowStep().getId(),
-                    wf.getWorkflowStep().getName(),
-                    wf.getPrice()
-                ))
-                .toList()
+            lp.getPrice()
         );
     }
 
@@ -163,23 +149,7 @@ public class PriceListService {
 
         lp.setSourceLanguage(dto.sourceLanguage());
         lp.setTargetLanguage(dto.targetLanguage());
-        lp.setMinPrice(dto.minPrice() != null ? dto.minPrice() : 0.0);
-
-        // Clear and rebuild workflow step prices
-        lp.getWorkflowStepPrices().clear();
-
-        if (dto.workflowStepPrices() != null) {
-            for (PriceListWorkflowStepPriceDTO wfDto : dto.workflowStepPrices()) {
-                WorkflowStep ws = workflowStepRepository.findById(wfDto.workflowStepId())
-                    .orElseThrow(() -> new RuntimeException("WorkflowStep not found: " + wfDto.workflowStepId()));
-
-                PriceListWorkflowStepPrice wfPrice = new PriceListWorkflowStepPrice();
-                wfPrice.setLanguagePair(lp);
-                wfPrice.setWorkflowStep(ws);
-                wfPrice.setPrice(wfDto.price() != null ? wfDto.price() : 0.0);
-                lp.getWorkflowStepPrices().add(wfPrice);
-            }
-        }
+        lp.setPrice(dto.price() != null ? dto.price() : 0.0);
 
         PriceList saved = priceListRepository.save(priceList);
         return toDTO(saved);
@@ -205,32 +175,7 @@ public class PriceListService {
         lp.setPriceList(priceList);
         lp.setSourceLanguage(dto.sourceLanguage());
         lp.setTargetLanguage(dto.targetLanguage());
-        lp.setMinPrice(dto.minPrice() != null ? dto.minPrice() : 0.0);
-
-        if (dto.workflowStepPrices() != null && !dto.workflowStepPrices().isEmpty()) {
-            // Use provided workflow step prices
-            for (PriceListWorkflowStepPriceDTO wfDto : dto.workflowStepPrices()) {
-                WorkflowStep ws = workflowStepRepository.findById(wfDto.workflowStepId())
-                    .orElseThrow(() -> new RuntimeException("WorkflowStep not found: " + wfDto.workflowStepId()));
-
-                PriceListWorkflowStepPrice wfPrice = new PriceListWorkflowStepPrice();
-                wfPrice.setLanguagePair(lp);
-                wfPrice.setWorkflowStep(ws);
-                wfPrice.setPrice(wfDto.price() != null ? wfDto.price() : 0.0);
-                lp.getWorkflowStepPrices().add(wfPrice);
-            }
-        } else {
-            // Auto-populate all available workflow steps with default price of 0
-            List<WorkflowStep> allSteps = workflowStepRepository.findAll();
-            for (WorkflowStep ws : allSteps) {
-                PriceListWorkflowStepPrice wfPrice = new PriceListWorkflowStepPrice();
-                wfPrice.setLanguagePair(lp);
-                wfPrice.setWorkflowStep(ws);
-                wfPrice.setPrice(0.0);
-                lp.getWorkflowStepPrices().add(wfPrice);
-            }
-        }
-
+        lp.setPrice(dto.price() != null ? dto.price() : 0.0);
         return lp;
     }
 
@@ -240,14 +185,7 @@ public class PriceListService {
                 lp.getId(),
                 lp.getSourceLanguage(),
                 lp.getTargetLanguage(),
-                lp.getMinPrice(),
-                lp.getWorkflowStepPrices().stream()
-                    .map(wf -> new PriceListWorkflowStepPriceResponseDTO(
-                        wf.getWorkflowStep().getId(),
-                        wf.getWorkflowStep().getName(),
-                        wf.getPrice()
-                    ))
-                    .toList()
+                lp.getPrice()
             ))
             .toList();
 

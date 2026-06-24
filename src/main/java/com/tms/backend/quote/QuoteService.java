@@ -124,7 +124,7 @@ public class QuoteService {
                     .orElseThrow(() -> new RuntimeException(
                         "No language pair found in price list for: " + sourceLang + " -> " + targetLang));
 
-            log.info("[Quote] Matched language pair id={} | minPrice={}", languagePair.getId(), languagePair.getMinPrice());
+            log.info("[Quote] Matched language pair id={} | price={}", languagePair.getId(), languagePair.getPrice());
 
             List<QuoteWorkflowStep> steps = request.workflowSteps().stream().map(entry -> {
                 WorkflowStep workflowStep = workflowStepRepository.findById(entry.workflowStepId())
@@ -132,13 +132,13 @@ public class QuoteService {
 
                 long netWords = entry.netWords() != null ? entry.netWords() : 0L;
                 double unitPrice = entry.price() != null ? entry.price().doubleValue() : 0.0;
-                double minPrice = languagePair.getMinPrice() != null ? languagePair.getMinPrice() : 0.0;
-                double effectiveUnitPrice = Math.max(unitPrice, minPrice);
+                double pairPrice = languagePair.getPrice() != null ? languagePair.getPrice() : 0.0;
+                double effectiveUnitPrice = Math.max(unitPrice, pairPrice);
                 BigDecimal finalPrice = BigDecimal.valueOf(netWords * effectiveUnitPrice);
 
-                log.info("[Quote] Step '{}' (id={}) | netWords={} | unitPrice={} | effectiveUnitPrice={} | minPrice={} | finalPrice={}",
+                log.info("[Quote] Step '{}' (id={}) | netWords={} | unitPrice={} | effectiveUnitPrice={} | pairPrice={} | finalPrice={}",
                         workflowStep.getName(), workflowStep.getId(),
-                        netWords, unitPrice, effectiveUnitPrice, minPrice, finalPrice);
+                        netWords, unitPrice, effectiveUnitPrice, pairPrice, finalPrice);
 
                 QuoteWorkflowStep step = new QuoteWorkflowStep();
                 step.setQuote(quote);
