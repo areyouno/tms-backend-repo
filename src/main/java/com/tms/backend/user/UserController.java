@@ -1,6 +1,8 @@
 package com.tms.backend.user;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tms.backend.dto.ChangePasswordDTO;
 import com.tms.backend.dto.CreateUserDTO;
 import com.tms.backend.dto.OwnerDTO;
 import com.tms.backend.dto.ProviderDTO;
@@ -118,6 +121,19 @@ public class UserController {
         return ResponseEntity.ok("User updated");
     }
 
+    @PatchMapping("/change-password")
+    public ResponseEntity<String> changePassword(@RequestBody ChangePasswordDTO request, Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        String uid = userDetails.getUid();
+
+        try {
+            userService.changePassword(uid, request);
+            return ResponseEntity.ok("Password updated");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
     @PatchMapping("/update-by-userId")
     public ResponseEntity<?> updateUserById(
             @RequestBody UpdateUserByIdDTO request,
@@ -176,7 +192,7 @@ public class UserController {
         try {
             userService.markUserAsVerified(token);
             // Redirect to login page after successful verification
-            response.sendRedirect("https://xliffl10n.latispass.net/setPassword");
+            response.sendRedirect("https://xliffl10n.latispass.net/setPassword?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8));
         } catch (Exception e) {
             // Redirect to error page or login with error message
             response.sendRedirect("https://xliffl10n.latispass.net/?error=verification_failed");

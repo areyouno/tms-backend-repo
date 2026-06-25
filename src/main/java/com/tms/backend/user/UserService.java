@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.tms.backend.dto.ChangePasswordDTO;
 import com.tms.backend.dto.CreateUserDTO;
 import com.tms.backend.dto.OwnerDTO;
 import com.tms.backend.dto.ReferenceDTO;
@@ -227,6 +228,19 @@ public class UserService {
         tokenRepo.delete(token);
     }
     
+    @Transactional
+    public void changePassword(String uid, ChangePasswordDTO dto) {
+        User user = userRepo.findByUid(uid)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
+            throw new RuntimeException("Current password is incorrect");
+        }
+
+        user.setPassword(passwordEncoder.encode(dto.newPassword()));
+        userRepo.save(user);
+    }
+
     public List<UserDTO> getAllUsers() {
         return userRepo.findAll().stream()
                 .map(this::toDTO)
