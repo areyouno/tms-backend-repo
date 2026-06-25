@@ -73,6 +73,10 @@ public class Quote {
     @JoinColumn(name = "net_rate_scheme_id")
     private NetRateScheme netRateScheme;
 
+    // Snapshot of the scheme name at quote creation, kept after the scheme is deleted
+    @Column(name = "net_rate_scheme_name")
+    private String netRateSchemeName;
+
     // Analysis used to derive net words ("analysis name")
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_analysis_id")
@@ -115,6 +119,9 @@ public class Quote {
 
     public NetRateScheme getNetRateScheme() { return netRateScheme; }
     public void setNetRateScheme(NetRateScheme netRateScheme) { this.netRateScheme = netRateScheme; }
+
+    public String getNetRateSchemeName() { return netRateSchemeName; }
+    public void setNetRateSchemeName(String netRateSchemeName) { this.netRateSchemeName = netRateSchemeName; }
 
     public JobAnalysis getJobAnalysis() { return jobAnalysis; }
     public void setJobAnalysis(JobAnalysis jobAnalysis) { this.jobAnalysis = jobAnalysis; }

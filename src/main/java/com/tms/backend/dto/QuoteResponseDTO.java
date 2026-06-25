@@ -43,7 +43,7 @@ public record QuoteResponseDTO(
             quote.getCurrency() != null ? quote.getCurrency().getCode() : null,
             quote.getBillingUnit(),
             quote.getNetRateScheme() != null ? quote.getNetRateScheme().getId() : null,
-            quote.getNetRateScheme() != null ? quote.getNetRateScheme().getName() : null,
+            quote.getNetRateSchemeName(),
             quote.getJobAnalysis() != null ? quote.getJobAnalysis().getId() : null,
             quote.getJobAnalysis() != null ? quote.getJobAnalysis().getName() : null,
             quote.getWorkflowSteps() != null

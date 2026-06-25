@@ -11,6 +11,8 @@ import com.tms.backend.dto.MatchTypeRateResponseDTO;
 import com.tms.backend.dto.NetRateSchemeCreateDTO;
 import com.tms.backend.dto.NetRateSchemeResponseDTO;
 import com.tms.backend.dto.NetRateSchemeUpdateDTO;
+import com.tms.backend.project.ProjectRepository;
+import com.tms.backend.quote.QuoteRepository;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
 
@@ -21,15 +23,21 @@ public class NetRateSchemeService {
     private final NetRateSchemeRepository netRateSchemeRepository;
     private final UserRepository userRepository;
     private final ClientRepository clientRepository;
+    private final ProjectRepository projectRepository;
+    private final QuoteRepository quoteRepository;
 
     public NetRateSchemeService(
         NetRateSchemeRepository netRateSchemeRepository,
         UserRepository userRepository,
-        ClientRepository clientRepository
+        ClientRepository clientRepository,
+        ProjectRepository projectRepository,
+        QuoteRepository quoteRepository
     ) {
         this.netRateSchemeRepository = netRateSchemeRepository;
         this.userRepository = userRepository;
         this.clientRepository = clientRepository;
+        this.projectRepository = projectRepository;
+        this.quoteRepository = quoteRepository;
     }
 
     @Transactional
@@ -153,6 +161,7 @@ public class NetRateSchemeService {
         netRateSchemeRepository.save(scheme);
     }
 
+    @Transactional
     public void deleteSchemes(List<Long> ids) {
         List<NetRateScheme> schemes = netRateSchemeRepository.findAllById(ids);
 
@@ -160,6 +169,9 @@ public class NetRateSchemeService {
             throw new RuntimeException("No schemes found for the given IDs");
         }
 
+        projectRepository.clearNetRateSchemeByIds(ids);
+        clientRepository.clearNetRateSchemeByIds(ids);
+        quoteRepository.clearNetRateSchemeByIds(ids);
         netRateSchemeRepository.deleteAll(schemes);
     }
 

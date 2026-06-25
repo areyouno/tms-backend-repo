@@ -84,9 +84,15 @@ public class QuoteService {
 
         if (request.netRateSchemeId() != null) {
             netRateSchemeRepository.findById(request.netRateSchemeId())
-                    .ifPresent(quote::setNetRateScheme);
+                    .ifPresent(scheme -> {
+                        quote.setNetRateScheme(scheme);
+                        quote.setNetRateSchemeName(scheme.getName());
+                    });
         } else {
-            netRateSchemeRepository.findByIsDefaultTrue().ifPresent(quote::setNetRateScheme);
+            netRateSchemeRepository.findByIsDefaultTrue().ifPresent(scheme -> {
+                quote.setNetRateScheme(scheme);
+                quote.setNetRateSchemeName(scheme.getName());
+            });
         }
 
         if (request.jobAnalysisId() != null) {

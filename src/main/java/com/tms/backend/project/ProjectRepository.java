@@ -72,4 +72,8 @@ public interface ProjectRepository extends JpaRepository<Project, Long>{
         ORDER BY p.createDate DESC
     """)
     List<Project> findByAssignedTbId(@Param("tbId") Long tbId);
+
+    @Modifying
+    @Query("UPDATE Project p SET p.netRateScheme = null WHERE p.netRateScheme.id IN :ids")
+    void clearNetRateSchemeByIds(@Param("ids") List<Long> ids);
 }
