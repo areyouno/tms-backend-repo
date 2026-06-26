@@ -86,7 +86,14 @@ public class FileConversionService {
                     return originalName;
                 }
             });
-            
+
+            if (job.getSourceLang() != null) {
+                body.add("sourceLanguage", job.getSourceLang());
+            }
+            if (job.getTargetLangs() != null && !job.getTargetLangs().isEmpty()) {
+                body.add("targetLanguage", job.getTargetLangs().iterator().next());
+            }
+
             // Set headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
