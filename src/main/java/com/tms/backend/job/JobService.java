@@ -10,12 +10,14 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -54,7 +56,7 @@ public class JobService {
     private final UserRepository userRepo;
     private final WorkflowStepRepository wfRepo;
     private final JobWorkflowStepRepository jobWfRepo;
-    private final JobCheckinHistoryRepository jobCheckinHistoryRepo;
+    private final JobCheckoutRepository jobCheckoutRepo;
     private final SizingService sizingService;
     private final FileConversionService fileConversionService;
     private final ProjectService projectService;
@@ -65,16 +67,19 @@ public class JobService {
     @Value("${file.upload-dir}")
     private String baseUploadDir;
 
-    private static final Logger logger = LoggerFactory.getLogger(JobService.class);
-    
+    @Value("${job.checkout.ttl-hours}")
+    private long checkoutTtlHours;
 
-    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, JobCheckinHistoryRepository jobCheckinHistoryRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService, EmailService emailService){
+    private static final Logger logger = LoggerFactory.getLogger(JobService.class);
+
+
+    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, JobCheckoutRepository jobCheckoutRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService, EmailService emailService){
         this.jobRepo = jobRepo;
         this.projectRepo = projectRepo;
         this.userRepo = userRepo;
         this.wfRepo = wfRepo;
         this.jobWfRepo = jobWfRepo;
-        this.jobCheckinHistoryRepo = jobCheckinHistoryRepo;
+        this.jobCheckoutRepo = jobCheckoutRepo;
         this.projectMapper = projectMapper;
         this.sizingService = sizingService;
         this.fileConversionService = fileConversionService;
@@ -447,12 +452,52 @@ public class JobService {
     public JobCheckoutStatusDTO getCheckoutStatus(Long jobId) {
         Job job = jobRepo.findById(jobId)
                 .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
+
+        JobCheckout checkout = jobCheckoutRepo.findByJobId(jobId)
+                .filter(c -> !c.isExpired())
+                .orElse(null);
+
+        return buildCheckoutStatusDTO(job, checkout);
+    }
+
+    private JobCheckoutStatusDTO buildCheckoutStatusDTO(Job job, JobCheckout checkout) {
+        if (checkout == null) {
+            return new JobCheckoutStatusDTO(null, null, null, job.getFileUpdatedAt(), null, null);
+        }
         return new JobCheckoutStatusDTO(
-                job.getCheckoutUserId(),
-                job.getCheckoutUserName(),
-                job.getCheckoutAt(),
-                job.getFileUpdatedAt()
+                checkout.getUserId(),
+                checkout.getUserName(),
+                checkout.getCheckedOutAt(),
+                job.getFileUpdatedAt(),
+                checkout.getLastSavedAt(),
+                checkout.getExpiresAt()
         );
+    }
+
+    // Resolve the job's storage folder (".../{projectId}/{jobId}") from any of its known file paths
+    private Path resolveJobDirectory(Job job) {
+        String referencePath = job.getConvertedFilePath() != null
+                ? job.getConvertedFilePath()
+                : job.getOriginalFilePath();
+        if (referencePath == null) {
+            throw new ResourceNotFoundException("Job has no files on disk: " + job.getId());
+        }
+        return Paths.get(referencePath).getParent().getParent();
+    }
+
+    // Delete a checkout's working copy from disk and DB, and clear the job's cached lock fields
+    private void releaseCheckout(Job job, JobCheckout checkout) {
+        try {
+            Path baseDir = Paths.get(baseUploadDir);
+            Files.deleteIfExists(baseDir.resolve(checkout.getWorkingCopyPath()));
+        } catch (IOException e) {
+            logger.warn("Could not delete working copy for job {}: {}", job.getId(), e.getMessage());
+        }
+        jobCheckoutRepo.delete(checkout);
+        job.setCheckoutUserId(null);
+        job.setCheckoutUserName(null);
+        job.setCheckoutAt(null);
+        jobRepo.save(job);
     }
 
     // Get job by ID
@@ -585,47 +630,148 @@ public class JobService {
     }
 
     @Transactional
-    public JobDTO checkoutJob(Long jobId, String uid) {
+    public JobCheckoutStatusDTO checkoutJob(Long jobId, String uid) {
         Job job = jobRepo.findById(jobId)
             .orElseThrow(() -> new ResourceNotFoundException("Job not found: " + jobId));
 
-        if (job.getCheckoutUserId() != null && !job.getCheckoutUserId().equals(uid)) {
-            boolean lockExpired = job.getCheckoutAt() != null &&
-                job.getCheckoutAt().isBefore(LocalDateTime.now().minusMinutes(5));
-            if (!lockExpired) {
+        Optional<JobCheckout> existingOpt = jobCheckoutRepo.findByJobId(jobId);
+        if (existingOpt.isPresent()) {
+            JobCheckout existing = existingOpt.get();
+            if (existing.isExpired()) {
+                releaseCheckout(job, existing);
+            } else if (existing.getUserId().equals(uid)) {
+                // Same user returning before expiry: resume, don't touch the working copy
+                return buildCheckoutStatusDTO(job, existing);
+            } else {
                 throw new ResponseStatusException(HttpStatus.CONFLICT,
-                    "File is already checked out by " + job.getCheckoutUserName());
+                    "File is already checked out by " + existing.getUserName());
             }
-            job.setCheckoutUserId(null);
-            job.setCheckoutUserName(null);
-            job.setCheckoutAt(null);
         }
 
         User currentUser = userRepo.findByUid(uid)
             .orElseThrow(() -> new ResourceNotFoundException("User not found: " + uid));
 
-        job.setCheckoutUserId(uid);
-        job.setCheckoutUserName(currentUser.getFirstName() + " " + currentUser.getLastName());
-        job.setCheckoutAt(LocalDateTime.now());
-        jobRepo.save(job);
+        String sourcePath = job.getTranslatedFilePath() != null
+                ? job.getTranslatedFilePath() : job.getConvertedFilePath();
+        String sourceFileName = job.getTranslatedFileName() != null
+                ? job.getTranslatedFileName() : job.getConvertedFileName();
+        if (sourcePath == null) {
+            throw new ResourceNotFoundException("Job has no converted file to check out: " + jobId);
+        }
 
-        return convertToDTO(job);
+        Path baseDir = Paths.get(baseUploadDir);
+        Path sourceAbsolutePath = baseDir.resolve(sourcePath);
+        if (!Files.exists(sourceAbsolutePath)) {
+            throw new ResourceNotFoundException("Source file not found on disk: " + sourceAbsolutePath);
+        }
+
+        try {
+            Path workingCopyDir = baseDir.resolve(resolveJobDirectory(job)).resolve("working-copy");
+            Files.createDirectories(workingCopyDir);
+            Path workingCopyAbsolutePath = workingCopyDir.resolve(sourceFileName);
+            Files.copy(sourceAbsolutePath, workingCopyAbsolutePath, StandardCopyOption.REPLACE_EXISTING);
+
+            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime expiresAt = now.plusHours(checkoutTtlHours);
+            String relativeWorkingCopyPath = baseDir.relativize(workingCopyAbsolutePath).toString().replace("\\", "/");
+            String userName = currentUser.getFirstName() + " " + currentUser.getLastName();
+
+            JobCheckout checkout = new JobCheckout(job, uid, userName, now, expiresAt,
+                    relativeWorkingCopyPath, sourceFileName);
+            jobCheckoutRepo.save(checkout);
+
+            job.setCheckoutUserId(uid);
+            job.setCheckoutUserName(userName);
+            job.setCheckoutAt(now);
+            jobRepo.save(job);
+
+            return buildCheckoutStatusDTO(job, checkout);
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to create working copy: " + e.getMessage());
+        }
     }
 
     @Transactional
-    public JobDTO checkinJob(Long jobId, String uid, String versionType) {
+    public JobCheckoutStatusDTO saveDraft(Long jobId, String uid, MultipartFile file) {
         Job job = jobRepo.findById(jobId)
             .orElseThrow(() -> new ResourceNotFoundException("Job not found: " + jobId));
 
-        if (job.getCheckoutUserId() != null && !job.getCheckoutUserId().equals(uid)) {
+        JobCheckout checkout = jobCheckoutRepo.findByJobId(jobId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job is not checked out: " + jobId));
+
+        if (!checkout.getUserId().equals(uid)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Cannot save: checked out by another user");
+        }
+
+        try {
+            Path baseDir = Paths.get(baseUploadDir);
+            file.transferTo(baseDir.resolve(checkout.getWorkingCopyPath()).toFile());
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to save working copy: " + e.getMessage());
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        checkout.setLastSavedAt(now);
+        checkout.setExpiresAt(now.plusHours(checkoutTtlHours));
+        jobCheckoutRepo.save(checkout);
+
+        return buildCheckoutStatusDTO(job, checkout);
+    }
+
+    // Get the working copy file path for the editor to load while checked out
+    public Path getWorkingCopyPath(Long jobId) {
+        JobCheckout checkout = jobCheckoutRepo.findByJobId(jobId)
+            .orElseThrow(() -> new ResourceNotFoundException("Job is not checked out: " + jobId));
+
+        Path baseDir = Paths.get(baseUploadDir);
+        Path filePath = baseDir.resolve(checkout.getWorkingCopyPath());
+
+        if (!Files.exists(filePath)) {
+            throw new ResourceNotFoundException("Working copy not found on disk: " + filePath);
+        }
+
+        return filePath;
+    }
+
+    @Transactional
+    public JobDTO checkinJob(Long jobId, String uid, MultipartFile file) {
+        Job job = jobRepo.findById(jobId)
+            .orElseThrow(() -> new ResourceNotFoundException("Job not found: " + jobId));
+
+        JobCheckout checkout = jobCheckoutRepo.findByJobId(jobId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job is not checked out: " + jobId));
+
+        if (!checkout.getUserId().equals(uid)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                 "Cannot check in a file checked out by another user");
         }
 
-        if ("major".equalsIgnoreCase(versionType)) {
-            job.setVersionMajor(job.getVersionMajor() + 1);
-        } else {
-            job.setVersionMinor(job.getVersionMinor() + 1);
+        Path baseDir = Paths.get(baseUploadDir);
+        Path workingCopyAbsolutePath = baseDir.resolve(checkout.getWorkingCopyPath());
+
+        try {
+            // Defensive: commit any final edit that wasn't already saved as a draft
+            if (file != null && !file.isEmpty()) {
+                file.transferTo(workingCopyAbsolutePath.toFile());
+            }
+
+            String translatedFileName = job.getTranslatedFileName() != null
+                    ? job.getTranslatedFileName() : checkout.getWorkingCopyFileName();
+
+            Path translatedDir = baseDir.resolve(resolveJobDirectory(job)).resolve("translated");
+            Files.createDirectories(translatedDir);
+            Path translatedAbsolutePath = translatedDir.resolve(translatedFileName);
+            Files.copy(workingCopyAbsolutePath, translatedAbsolutePath, StandardCopyOption.REPLACE_EXISTING);
+
+            job.setTranslatedFileName(translatedFileName);
+            job.setTranslatedFilePath(baseDir.relativize(translatedAbsolutePath).toString().replace("\\", "/"));
+            job.setFileUpdatedAt(LocalDateTime.now());
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Failed to commit working copy: " + e.getMessage());
         }
 
         job.setCheckoutUserId(null);
@@ -633,40 +779,12 @@ public class JobService {
         job.setCheckoutAt(null);
         jobRepo.save(job);
 
-        String versionedFilePath = null;
-        String versionedFileName = null;
-        if (job.getTranslatedFilePath() != null) {
-            try {
-                Path baseDir = Paths.get(baseUploadDir);
-                Path currentFile = baseDir.resolve(job.getTranslatedFilePath());
-                if (Files.exists(currentFile)) {
-                    Path versionsDir = currentFile.getParent().resolve("versions");
-                    Files.createDirectories(versionsDir);
-
-                    versionedFileName = String.format("v%d.%d_%s",
-                        job.getVersionMajor(), job.getVersionMinor(), job.getTranslatedFileName());
-                    Path versionedPath = versionsDir.resolve(versionedFileName);
-                    Files.copy(currentFile, versionedPath, StandardCopyOption.REPLACE_EXISTING);
-                    versionedFilePath = baseDir.relativize(versionedPath).toString().replace("\\", "/");
-                }
-            } catch (IOException e) {
-                logger.warn("Could not snapshot translated file on check-in for job {}: {}", jobId, e.getMessage());
-                versionedFilePath = null;
-                versionedFileName = null;
-            }
+        try {
+            Files.deleteIfExists(workingCopyAbsolutePath);
+        } catch (IOException e) {
+            logger.warn("Could not delete working copy on check-in for job {}: {}", jobId, e.getMessage());
         }
-
-        User checkedInBy = userRepo.findByUid(uid)
-            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + uid));
-        jobCheckinHistoryRepo.save(new JobCheckinHistory(
-            job,
-            job.getVersionMajor(),
-            job.getVersionMinor(),
-            uid,
-            checkedInBy.getFirstName() + " " + checkedInBy.getLastName(),
-            versionedFilePath,
-            versionedFileName
-        ));
+        jobCheckoutRepo.delete(checkout);
 
         return convertToDTO(job);
     }
@@ -676,29 +794,45 @@ public class JobService {
         Job job = jobRepo.findById(jobId)
             .orElseThrow(() -> new ResourceNotFoundException("Job not found: " + jobId));
 
-        if (job.getCheckoutUserId() != null && !job.getCheckoutUserId().equals(uid)) {
+        JobCheckout checkout = jobCheckoutRepo.findByJobId(jobId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job is not checked out: " + jobId));
+
+        if (!checkout.getUserId().equals(uid)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                 "Cannot cancel checkout of a file checked out by another user");
         }
 
-        if (job.getTranslatedFilePath() != null) {
-            try {
-                Path translatedFile = Paths.get(baseUploadDir).resolve(job.getTranslatedFilePath());
-                Files.deleteIfExists(translatedFile);
-            } catch (IOException e) {
-                logger.warn("Could not delete translated file on cancel-checkout for job {}: {}", jobId, e.getMessage());
-            }
-            job.setTranslatedFilePath(null);
-            job.setTranslatedFileName(null);
-            job.setFileUpdatedAt(null);
-        }
-
-        job.setCheckoutUserId(null);
-        job.setCheckoutUserName(null);
-        job.setCheckoutAt(null);
-        jobRepo.save(job);
+        // Discard never touches the committed translated file - only the lock and working copy
+        releaseCheckout(job, checkout);
 
         return convertToDTO(job);
+    }
+
+    // Periodically reclaim locks/working copies nobody re-checked-out after they expired
+    @Scheduled(fixedRateString = "${job.checkout.cleanup-interval-ms}")
+    @Transactional
+    public void cleanupExpiredCheckouts() {
+        List<JobCheckout> expired = jobCheckoutRepo.findByExpiresAtBefore(LocalDateTime.now());
+        for (JobCheckout checkout : expired) {
+            Job job = checkout.getJob();
+            try {
+                Path baseDir = Paths.get(baseUploadDir);
+                Files.deleteIfExists(baseDir.resolve(checkout.getWorkingCopyPath()));
+            } catch (IOException e) {
+                logger.warn("Could not delete expired working copy for job {}: {}",
+                        job != null ? job.getId() : null, e.getMessage());
+            }
+            if (job != null) {
+                job.setCheckoutUserId(null);
+                job.setCheckoutUserName(null);
+                job.setCheckoutAt(null);
+                jobRepo.save(job);
+            }
+            jobCheckoutRepo.delete(checkout);
+        }
+        if (!expired.isEmpty()) {
+            logger.info("Cleaned up {} expired job checkout(s)", expired.size());
+        }
     }
 
     public void deleteJob(Long id) throws IOException {
@@ -913,22 +1047,6 @@ public class JobService {
         return filePath;
     }
 
-    // Get the file path of the most recent checked-in snapshot
-    public Path getLatestCheckedInFilePath(Long jobId) {
-        JobCheckinHistory latest = jobCheckinHistoryRepo.findByJobIdOrderByCheckedInAtDesc(jobId).stream()
-            .filter(h -> h.getFilePath() != null)
-            .findFirst()
-            .orElseThrow(() -> new ResourceNotFoundException("No checked-in version found for job: " + jobId));
-
-        Path baseDir = Paths.get(baseUploadDir);
-        Path filePath = baseDir.resolve(latest.getFilePath());
-
-        if (!Files.exists(filePath)) {
-            throw new ResourceNotFoundException("Checked-in file not found on disk: " + filePath);
-        }
-
-        return filePath;
-    }
 
     public FileDownloadDTO getOriginalFileForDownload(Long jobId, String uid) {
         Job job = jobRepo.findById(jobId)

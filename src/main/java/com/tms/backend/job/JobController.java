@@ -353,34 +353,6 @@ public class JobController {
         }
     }
 
-    // Download the most recent checked-in snapshot, ignoring any uncommitted draft
-    @GetMapping("/{jobId}/download/translated/latest-checkin")
-    @Transactional(readOnly = true)
-    public ResponseEntity<Resource> downloadLatestCheckedInFile(@PathVariable Long jobId) {
-        try {
-            Path filePath = jobService.getLatestCheckedInFilePath(jobId);
-
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (!resource.exists() || !resource.isReadable()) {
-                logger.error("Checked-in file not readable: {}", filePath);
-                return ResponseEntity.notFound().build();
-            }
-
-            return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("application/xml"))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + filePath.getFileName() + "\"")
-                .body(resource);
-
-        } catch (ResourceNotFoundException e) {
-            logger.error("File not found: {}", e.getMessage());
-            return ResponseEntity.notFound().build();
-        } catch (Exception e) {
-            logger.error("Error downloading latest checked-in file for job: " + jobId, e);
-            return ResponseEntity.internalServerError().build();
-        }
-    }
 
     private boolean isJobCompleted(Job job, Long workflowStepId) {
         if (workflowStepId == null) {
@@ -749,22 +721,64 @@ public class JobController {
 
     @PostMapping("/{jobId}/checkout")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<JobDTO> checkoutJob(
+    public ResponseEntity<JobCheckoutStatusDTO> checkoutJob(
             @PathVariable Long jobId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         String uid = userDetails.getUid();
-        JobDTO dto = jobService.checkoutJob(jobId, uid);
+        JobCheckoutStatusDTO dto = jobService.checkoutJob(jobId, uid);
         return ResponseEntity.ok(dto);
+    }
+
+    // Partial save: overwrite the working copy and refresh the lock's expiry, file stays checked out
+    @PostMapping("/{jobId}/save-draft")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<JobCheckoutStatusDTO> saveDraft(
+            @PathVariable Long jobId,
+            @RequestPart("file") MultipartFile file,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        String uid = userDetails.getUid();
+        JobCheckoutStatusDTO dto = jobService.saveDraft(jobId, uid, file);
+        return ResponseEntity.ok(dto);
+    }
+
+    // Download the working copy so the editor can load what is currently checked out
+    @GetMapping("/{jobId}/download/working-copy")
+    @PreAuthorize("isAuthenticated()")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Resource> downloadWorkingCopy(@PathVariable Long jobId) {
+        try {
+            Path filePath = jobService.getWorkingCopyPath(jobId);
+
+            Resource resource = new UrlResource(filePath.toUri());
+
+            if (!resource.exists() || !resource.isReadable()) {
+                logger.error("Working copy not readable: {}", filePath);
+                return ResponseEntity.notFound().build();
+            }
+
+            return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/xml"))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + filePath.getFileName() + "\"")
+                .body(resource);
+
+        } catch (ResourceNotFoundException e) {
+            logger.error("File not found: {}", e.getMessage());
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error downloading working copy for job: " + jobId, e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     @PostMapping("/{jobId}/checkin")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<JobDTO> checkinJob(
             @PathVariable Long jobId,
-            @RequestParam(defaultValue = "minor") String versionType,
+            @RequestPart(value = "file", required = false) MultipartFile file,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         String uid = userDetails.getUid();
-        JobDTO dto = jobService.checkinJob(jobId, uid, versionType);
+        JobDTO dto = jobService.checkinJob(jobId, uid, file);
         return ResponseEntity.ok(dto);
     }
 

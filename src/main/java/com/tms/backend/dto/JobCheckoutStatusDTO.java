@@ -6,6 +6,8 @@ public record JobCheckoutStatusDTO(
     String checkoutUserId,
     String checkoutUserName,
     LocalDateTime checkoutAt,
-    LocalDateTime fileUpdatedAt
+    LocalDateTime fileUpdatedAt,
+    LocalDateTime lastSavedAt,
+    LocalDateTime expiresAt
 )
 {}
