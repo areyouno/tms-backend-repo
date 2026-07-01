@@ -29,6 +29,11 @@ public class QuoteController {
         return ResponseEntity.ok(quoteService.getAllQuotes());
     }
 
+    @GetMapping("/project/{projectId}")
+    public ResponseEntity<List<QuoteResponseDTO>> getQuotesByProject(@PathVariable Long projectId) {
+        return ResponseEntity.ok(quoteService.getQuotesByProject(projectId));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<QuoteResponseDTO> getQuote(@PathVariable Long id) {
         return ResponseEntity.ok(quoteService.getQuote(id));

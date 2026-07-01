@@ -11,4 +11,6 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
     @Modifying
     @Query("UPDATE Quote q SET q.netRateScheme = null WHERE q.netRateScheme.id IN :ids")
     void clearNetRateSchemeByIds(@Param("ids") List<Long> ids);
+
+    List<Quote> findByProject_Id(Long projectId);
 }
