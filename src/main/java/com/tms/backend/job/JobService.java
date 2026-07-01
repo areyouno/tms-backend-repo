@@ -237,8 +237,7 @@ public class JobService {
                 LocalDateTime.now(),
                 null,  // tomatoSizingJobId
                 null, null, null, // checkoutUserId, checkoutUserName, checkoutAt
-                null, // fileUpdatedAt
-                0, 0
+                null // fileUpdatedAt
         );
 
         String dateTimeFolder = java.time.LocalDateTime.now()
@@ -983,9 +982,7 @@ public class JobService {
                 job.getCheckoutUserId(),
                 job.getCheckoutUserName(),
                 job.getCheckoutAt(),
-                job.getFileUpdatedAt(),
-                job.getVersionMajor(),
-                job.getVersionMinor()
+                job.getFileUpdatedAt()
         );
     }
 
