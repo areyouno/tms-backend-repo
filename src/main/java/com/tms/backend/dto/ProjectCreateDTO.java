@@ -46,7 +46,7 @@ public record ProjectCreateDTO(
     Long costCenterId,
     Long domainId,
     Long subdomainId,
-    List<@Positive Long> workflowSteps,
+    List<@Positive Long> workflowStepIds,
     String owner,
     Set<String> automationRules
 ) {}

@@ -173,8 +173,8 @@ public class ProjectService {
             project.setSubdomain(subdomain);
         }
 
-        if (createDTO.workflowSteps() != null && !createDTO.workflowSteps().isEmpty()) {
-            List<WorkflowStep> steps = createDTO.workflowSteps().stream()
+        if (createDTO.workflowStepIds() != null && !createDTO.workflowStepIds().isEmpty()) {
+            List<WorkflowStep> steps = createDTO.workflowStepIds().stream()
                      .map(id -> wfRepo.findById(id)
                     .orElseThrow(() -> new RuntimeException("WorkflowStep not found: " + id)))
                     .collect(Collectors.toList());
@@ -232,9 +232,9 @@ public class ProjectService {
         if (workflowSteps != null && !workflowSteps.isEmpty()) {
             // Use the provided workflow steps with provider assignments
             jobWfSteps = workflowSteps;
-        } else if (createDTO.workflowSteps() != null && !createDTO.workflowSteps().isEmpty()) {
+        } else if (createDTO.workflowStepIds() != null && !createDTO.workflowStepIds().isEmpty()) {
             // Fallback: use project workflow step IDs without providers
-            jobWfSteps = createDTO.workflowSteps().stream()
+            jobWfSteps = createDTO.workflowStepIds().stream()
                     .map(stepId -> new com.tms.backend.dto.JobWorkflowStepDTO(
                             stepId, null, null, null, null, null, null, null))
                     .toList();
