@@ -11,6 +11,7 @@ import com.tms.backend.jobAnalysis.JobAnalysis;
 import com.tms.backend.netRateScheme.NetRateScheme;
 import com.tms.backend.priceList.BillingUnit;
 import com.tms.backend.priceList.PriceList;
+import com.tms.backend.project.Project;
 import com.tms.backend.user.User;
 
 import jakarta.persistence.CascadeType;
@@ -47,6 +48,10 @@ public class Quote {
 
     @Column(name = "target_language")
     private String targetLanguage;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "project_id")
+    private Project project;
 
     // Provider (linguist/vendor assigned to this quote)
     @ManyToOne(fetch = FetchType.LAZY)
@@ -125,6 +130,9 @@ public class Quote {
 
     public JobAnalysis getJobAnalysis() { return jobAnalysis; }
     public void setJobAnalysis(JobAnalysis jobAnalysis) { this.jobAnalysis = jobAnalysis; }
+
+    public Project getProject() { return project; }
+    public void setProject(Project project) { this.project = project; }
 
     public List<QuoteWorkflowStep> getWorkflowSteps() { return workflowSteps; }
     public void setWorkflowSteps(List<QuoteWorkflowStep> workflowSteps) { this.workflowSteps = workflowSteps; }

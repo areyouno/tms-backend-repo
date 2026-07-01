@@ -14,6 +14,7 @@ import com.tms.backend.costCenter.CostCenter;
 import com.tms.backend.domain.Domain;
 import com.tms.backend.job.Job;
 import com.tms.backend.jobAnalysis.JobAnalysis;
+import com.tms.backend.quote.Quote;
 import com.tms.backend.machineTranslation.MachineTranslation;
 import com.tms.backend.netRateScheme.NetRateScheme;
 import com.tms.backend.priceList.PriceList;
@@ -151,6 +152,9 @@ public class Project {
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<JobAnalysis> jobAnalyses = new ArrayList<>();
 
+    @OneToMany(mappedBy = "project", fetch = FetchType.LAZY)
+    private List<Quote> quotes = new ArrayList<>();
+
     public void addJob(Job job) {
         jobs.add(job);
         job.setProject(this);
@@ -256,4 +260,7 @@ public class Project {
 
     public List<JobAnalysis> getJobAnalyses() { return jobAnalyses; }
     public void setJobAnalyses(List<JobAnalysis> jobAnalyses) { this.jobAnalyses = jobAnalyses; }
+
+    public List<Quote> getQuotes() { return quotes; }
+    public void setQuotes(List<Quote> quotes) { this.quotes = quotes; }
 }

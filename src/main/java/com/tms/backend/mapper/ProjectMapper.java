@@ -11,6 +11,7 @@ import com.tms.backend.dto.JobAnalysisResponseDTO;
 import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectTbAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentDTO;
+import com.tms.backend.dto.QuoteResponseDTO;
 import com.tms.backend.project.Project;
 import com.tms.backend.workflowSteps.WorkflowStep;
 
@@ -68,7 +69,11 @@ public class ProjectMapper {
             project.getJobAnalyses()
                         .stream()
                         .map(JobAnalysisResponseDTO::fromEntity)
-                        .collect(Collectors.toSet())
+                        .collect(Collectors.toSet()),
+            project.getQuotes()
+                        .stream()
+                        .map(QuoteResponseDTO::fromEntity)
+                        .collect(Collectors.toList())
                     );
     }
 }

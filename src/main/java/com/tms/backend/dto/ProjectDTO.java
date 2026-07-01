@@ -41,7 +41,9 @@ public record ProjectDTO (
 
     Set<ProjectTbAssignmentDTO> assignedTBs,
 
-    Set<JobAnalysisResponseDTO> jobAnalyses
+    Set<JobAnalysisResponseDTO> jobAnalyses,
+
+    List<QuoteResponseDTO> quotes
 ) {
 
     public static ProjectDTO fromEntity(Project project) {
@@ -78,6 +80,12 @@ public record ProjectDTO (
                    .stream()
                    .map(JobAnalysisResponseDTO::fromEntity)
                    .collect(Collectors.toSet());
+
+        List<QuoteResponseDTO> quotes =
+            project.getQuotes()
+                   .stream()
+                   .map(QuoteResponseDTO::fromEntity)
+                   .collect(Collectors.toList());
 
         return new ProjectDTO(
             project.getId(),
@@ -140,7 +148,8 @@ public record ProjectDTO (
             automationRules,
             assignedTMs,
             assignedTBs,
-            jobAnalyses
+            jobAnalyses,
+            quotes
         );
     }
 }

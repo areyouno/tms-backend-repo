@@ -31,6 +31,7 @@ import com.tms.backend.dto.ProjectSummaryDTO;
 import com.tms.backend.dto.ProjectTbAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.dto.ProjectWithJobDTO;
+import com.tms.backend.dto.QuoteResponseDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.job.Job;
 import com.tms.backend.job.JobRepository;
@@ -391,7 +392,11 @@ public class ProjectService {
                 project.getJobAnalyses()
                         .stream()
                         .map(JobAnalysisResponseDTO::fromEntity)
-                        .collect(Collectors.toSet())
+                        .collect(Collectors.toSet()),
+                project.getQuotes()
+                        .stream()
+                        .map(QuoteResponseDTO::fromEntity)
+                        .collect(Collectors.toList())
                 );
     }
 
