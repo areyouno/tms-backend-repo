@@ -48,6 +48,13 @@ public class QuoteService {
     }
 
     @Transactional(readOnly = true)
+    public List<QuoteResponseDTO> getQuotesByProject(Long projectId) {
+        return quoteRepository.findByProject_Id(projectId).stream()
+                .map(QuoteResponseDTO::fromEntity)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public QuoteResponseDTO getQuote(Long id) {
         Quote quote = quoteRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Quote not found with id: " + id));
@@ -102,6 +109,9 @@ public class QuoteService {
             quote.setSourceLanguage(jobAnalysis.getSourceLang());
             if (jobAnalysis.getTargetLanguages() != null) {
                 quote.setTargetLanguage(String.join(", ", jobAnalysis.getTargetLanguages()));
+            }
+            if (jobAnalysis.getProject() != null) {
+                quote.setProject(jobAnalysis.getProject());
             }
         }
 
