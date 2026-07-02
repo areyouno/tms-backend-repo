@@ -78,7 +78,13 @@ public class JobAnalysisService {
                 .map(Job::getOriginalFilePath)
                 .collect(Collectors.toList());
 
-        String tomatoJobId = sizingService.sendFilesToTomatoAPIByPath(filePaths, sizingRequestJson, tmId);
+        String sourceLanguage = primaryJob.getSourceLang();
+        String targetLanguage = primaryJob.getTargetLangs() != null
+                ? primaryJob.getTargetLangs().stream().findFirst().orElse(null)
+                : null;
+
+        String tomatoJobId = sizingService.sendFilesToTomatoAPIByPath(
+                filePaths, sizingRequestJson, tmId, sourceLanguage, targetLanguage);
 
         pendingSizingJobRepository.save(new PendingSizingJob(tomatoJobId, jobIds, projectId, user));
         sizingPollService.startPolling(tomatoJobId);
