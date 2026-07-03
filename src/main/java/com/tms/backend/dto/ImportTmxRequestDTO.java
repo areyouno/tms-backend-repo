@@ -3,5 +3,7 @@ package com.tms.backend.dto;
 public record ImportTmxRequestDTO(
         String userName,
         boolean overwrite,
-        String jobId
+        String jobId,
+        String sourceLang,
+        String targetLang
 ) {}

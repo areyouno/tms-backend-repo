@@ -55,6 +55,12 @@ public class TranslationMemoryService {
         body.add("userName", metadata.userName());
         body.add("overwrite", metadata.overwrite());
         body.add("jobId", metadata.jobId());
+        if (metadata.sourceLang() != null) {
+            body.add("sourceLang", metadata.sourceLang());
+        }
+        if (metadata.targetLang() != null) {
+            body.add("targetLang", metadata.targetLang());
+        }
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.MULTIPART_FORM_DATA);
