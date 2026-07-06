@@ -78,13 +78,26 @@ public class TmxImportPollService {
         }
     }
 
+    // map values from poll
     private void updateJobProgress(TmxImportJob job, TmxImportJobStatusDTO status) {
+        job.setFileName(status.fileName());
         job.setProgressPercent(status.progressPercent());
         job.setProcessedCount(status.processedCount());
         job.setTotalCount(status.totalCount());
         job.setImportedCount(status.importedCount());
         job.setSkippedCount(status.skippedCount());
+        job.setLanguageMismatchSkippedCount(status.languageMismatchSkippedCount());
+        job.setEmptySegmentSkippedCount(status.emptySegmentSkippedCount());
+        job.setDuplicateSkippedCount(status.duplicateSkippedCount());
+        job.setInvalidTuSkippedCount(status.invalidTuSkippedCount());
         job.setOverwrittenCount(status.overwrittenCount());
+        job.setIsCompleted(status.isCompleted());
+        job.setIsCancelled(status.isCancelled());
+        job.setWasDiscarded(status.wasDiscarded());
+        job.setDiscardedCount(status.discardedCount());
+        job.setKeepPartialResults(status.keepPartialResults());
+        job.setStartedAt(status.startedAt());
+        job.setCompletedAt(status.completedAt());
         job.setUpdatedAt(LocalDateTime.now());
         jobRepo.save(job);
     }
