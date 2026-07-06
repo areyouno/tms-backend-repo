@@ -34,6 +34,9 @@ public class JobAnalysis {
 
     private String name;
 
+    @Column(name = "tomato_job_id")
+    private String tomatoJobId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "type")
     private JobAnalysisType type = JobAnalysisType.DEFAULT;
@@ -130,6 +133,11 @@ public class JobAnalysis {
     private Long allCharacters;
     private String unitType;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "job_analysis_tm_names",
+                    joinColumns = @JoinColumn(name = "job_analysis_id"))
+    private List<String> tmNames;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -138,6 +146,9 @@ public class JobAnalysis {
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
+
+    public String getTomatoJobId() { return tomatoJobId; }
+    public void setTomatoJobId(String tomatoJobId) { this.tomatoJobId = tomatoJobId; }
 
     public JobAnalysisType getType() { return type; }
     public void setType(JobAnalysisType type) { this.type = type; }
@@ -333,4 +344,7 @@ public class JobAnalysis {
 
     public String getUnitType() { return unitType; }
     public void setUnitType(String unitType) { this.unitType = unitType; }
+
+    public List<String> getTmNames() { return tmNames; }
+    public void setTmNames(List<String> tmNames) { this.tmNames = tmNames; }
 }

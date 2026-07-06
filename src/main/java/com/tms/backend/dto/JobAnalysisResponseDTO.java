@@ -47,6 +47,7 @@ public record JobAnalysisResponseDTO(
     // Double noMatchTM_Weighted, Double noMatchNT_Weighted,
     Double totalWeighted, Double totalWeightedPercentage,
     String unitType,
+    List<String> tmNames,
     List<FileAnalysis> files
 ) {
     public record FileAnalysis(
@@ -108,7 +109,7 @@ public record JobAnalysisResponseDTO(
 
         return new JobAnalysisResponseDTO(
             a.getId(),
-            null,
+            a.getTomatoJobId(),
             "completed",
             a.getName(),
             a.getType(),
@@ -145,6 +146,7 @@ public record JobAnalysisResponseDTO(
             // a.getNoMatchTM_Weighted(), a.getNoMatchNT_Weighted(),
             a.getTotalWeighted(), a.getTotalWeightedPercentage(),
             a.getUnitType(),
+            a.getTmNames(),
             files
         );
     }
@@ -156,7 +158,7 @@ public record JobAnalysisResponseDTO(
             null, null, null, null, null, null,
             null, null, null, null, null, null,
             null, null, null, null, null, null,
-            null, null, null, null, null
+            null, null, null, null, null, null
         );
     }
 }

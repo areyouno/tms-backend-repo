@@ -110,7 +110,7 @@ public class JobAnalysisService {
                         .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                 .collect(Collectors.toList());
 
-        createJobAnalysis(jobs, ctx.getUser(), sizingResponse);
+        createJobAnalysis(jobs, ctx.getUser(), sizingResponse, tomatoJobId);
         pendingSizingJobRepository.delete(ctx);
         log.info("JobAnalysis created and saved for tomatoJobId: {}", tomatoJobId);
     }
@@ -135,14 +135,14 @@ public class JobAnalysisService {
                         .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                 .collect(Collectors.toList());
 
-        JobAnalysis jobAnalysis = createJobAnalysis(jobs, ctx.getUser(), pollStatus.result());
+        JobAnalysis jobAnalysis = createJobAnalysis(jobs, ctx.getUser(), pollStatus.result(), tomatoJobId);
         pendingSizingJobRepository.delete(ctx);
 
         return new SizingStatusDTO("completed", 100.0, JobAnalysisResponseDTO.fromEntity(jobAnalysis));
     }
 
     @Transactional
-    public JobAnalysis createJobAnalysis(List<Job> jobs, User user, TomatoSizingResponse sizingResponse) {
+    public JobAnalysis createJobAnalysis(List<Job> jobs, User user, TomatoSizingResponse sizingResponse, String tomatoJobId) {
         Job job = jobs.get(0);
 
         AnalysisSetting setting = analysisSettingService.getUserSetting(user);
@@ -151,6 +151,7 @@ public class JobAnalysisService {
 
         String resolvedName = resolveNameMacros(setting.getName(), job);
         jobAnalysis.setName(resolvedName);
+        jobAnalysis.setTomatoJobId(tomatoJobId);
 
         jobAnalysis.setProject(job.getProject());
         jobAnalysis.setTargetLanguages(new java.util.HashSet<>(job.getTargetLangs()));
@@ -226,6 +227,7 @@ public class JobAnalysisService {
         jobAnalysis.setTotalWeighted(stats.totalWeighted());
         jobAnalysis.setTotalWeightedPercentage(stats.totalWeightedPercentage());
         jobAnalysis.setUnitType(stats.unitType());
+        jobAnalysis.setTmNames(stats.tmNames());
 
         log.info("Weighted values from Tomato - noMatchTM: {}, noMatchNT: {}, totalWeighted: {}, totalWeightedPct: {}",
                 stats.noMatchTM_Weighted(), stats.noMatchNT_Weighted(), stats.totalWeighted(), stats.totalWeightedPercentage());
@@ -318,7 +320,7 @@ public class JobAnalysisService {
                             .map(id -> jobRepository.findById(id)
                                     .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                             .collect(Collectors.toList());
-                    createJobAnalysis(jobs, ctx.getUser(), pollStatus.result());
+                    createJobAnalysis(jobs, ctx.getUser(), pollStatus.result(), ctx.getTomatoJobId());
                     pendingSizingJobRepository.delete(ctx);
                     log.info("Resolved pending sizing job {} during getAllJobAnalyses", ctx.getTomatoJobId());
                 } else {
@@ -355,7 +357,7 @@ public class JobAnalysisService {
                             .map(id -> jobRepository.findById(id)
                                     .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                             .collect(Collectors.toList());
-                    createJobAnalysis(jobs, ctx.getUser(), pollStatus.result());
+                    createJobAnalysis(jobs, ctx.getUser(), pollStatus.result(), ctx.getTomatoJobId());
                     pendingSizingJobRepository.delete(ctx);
                     log.info("Resolved pending sizing job {} during getJobAnalysesByProjectId", ctx.getTomatoJobId());
                 } else {
@@ -447,15 +449,19 @@ public class JobAnalysisService {
             root.put("projectId", projectId);
 
             ObjectNode ntRules = root.putObject("ntRules");
-            ntRules.putArray("regexPatterns")
-                .add("^Model\\s+[A-Z0-9]+$")
-                .add("\\bBMW\\s+X[0-9]\\b");
-            ntRules.putArray("staticTerms")
-                .add("API").add("USB").add("ABS");
-            ntRules.putArray("exactTerms")
-                .add("OK").add("Cancel").add("Yes").add("No");
-            ntRules.putArray("inlineElements")
-                .add("xref").add("userinput");
+            ntRules.putArray("regexPatterns");
+            // ntRules.putArray("regexPatterns")
+            //     .add("^Model\\s+[A-Z0-9]+$")
+            //     .add("\\bBMW\\s+X[0-9]\\b");
+            ntRules.putArray("staticTerms");
+            // ntRules.putArray("staticTerms")
+            //     .add("API").add("USB").add("ABS");
+            ntRules.putArray("exactTerms");
+            // ntRules.putArray("exactTerms")
+            //     .add("OK").add("Cancel").add("Yes").add("No");
+            ntRules.putArray("inlineElements");
+            // ntRules.putArray("inlineElements")
+            //     .add("xref").add("userinput");
 
             ArrayNode matchTypeRates = root.putArray("matchTypeRates");
             for (MatchTypeRateResponseDTO rate : scheme.matchTypeRates()) {

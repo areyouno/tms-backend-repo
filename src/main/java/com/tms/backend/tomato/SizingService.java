@@ -75,6 +75,7 @@ public class SizingService {
 
             ObjectMapper mapper = new ObjectMapper();
             mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            mapper.configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
             return mapper.readValue(rawResponse.getBody(), TomatoSizingResponse.class);
         } catch (Exception e) {
             System.err.println("Failed to send file to tomato API: " + e.getMessage());
@@ -165,6 +166,7 @@ public class SizingService {
 
             ObjectMapper mapper = new ObjectMapper();
             mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            mapper.configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true);
             JsonNode progressRoot = mapper.readTree(progressResponse.getBody());
 
             String status = progressRoot.path("status").asText();
@@ -193,10 +195,11 @@ public class SizingService {
             ResponseEntity<String> resultResponse = restTemplate.getForEntity(
                     baseUrl + "/api/Sizing/sizing-result/" + tomatoJobId, String.class
             );
-
+            log.info("sizing success {}", resultResponse);
             JsonNode resultRoot = mapper.readTree(resultResponse.getBody());
             ObjectNode resultNode = (ObjectNode) resultRoot.path("result").deepCopy();
             resultNode.put("status", "completed");
+            resultNode.put("tomatoJobId", tomatoJobId);
             TomatoSizingResponse result = mapper.treeToValue(resultNode, TomatoSizingResponse.class);
             return new SizingPollStatus(progressPercent, currentStage, totalFiles, processedFiles, totalSegments, processedSegments, result);
 

@@ -2,7 +2,7 @@ package com.tms.backend.dto;
 
 import java.util.List;
 
-public record TomatoSizingResponse(String status, Statistics statistics, String fileName, List<TomatoSizingResponse> files) {
+public record TomatoSizingResponse(String status, Statistics statistics, String fileName, List<TomatoSizingResponse> files, String tomatoJobId) {
     public record Statistics(
         Long approvedCount,
         Long approvedSegments,
@@ -126,6 +126,7 @@ public record TomatoSizingResponse(String status, Statistics statistics, String 
         Double totalWeightedPercentage,
         String sourceLanguage,
         String targetLanguage,
-        String unitType
+        String unitType,
+        List<String> tmNames
     ) {}
 }
