@@ -32,18 +32,28 @@ public class JobAnalysisFile {
     private Long perfect100TM_Words;
     private Long perfect100TM_Characters;
     private Long perfect100TM_Segments;
+    private Long perfect100NT_Words;
+    private Long perfect100NT_Characters;
     private Long fuzzy95TM_Words;
     private Long fuzzy95TM_Characters;
     private Long fuzzy95TM_Segments;
+    private Long fuzzy95NT_Words;
+    private Long fuzzy95NT_Characters;
     private Long fuzzy85TM_Words;
     private Long fuzzy85TM_Characters;
     private Long fuzzy85TM_Segments;
+    private Long fuzzy85NT_Words;
+    private Long fuzzy85NT_Characters;
     private Long fuzzy75TM_Words;
     private Long fuzzy75TM_Characters;
     private Long fuzzy75TM_Segments;
+    private Long fuzzy75NT_Words;
+    private Long fuzzy75NT_Characters;
     private Long fuzzy50TM_Words;
     private Long fuzzy50TM_Characters;
     private Long fuzzy50TM_Segments;
+    private Long fuzzy50NT_Words;
+    private Long fuzzy50NT_Characters;
     private Long noMatchTM_Words;
     private Long noMatchTM_Characters;
     private Long noMatchTM_Segments;
@@ -117,6 +127,12 @@ public class JobAnalysisFile {
     public Long getPerfect100TM_Segments() { return perfect100TM_Segments; }
     public void setPerfect100TM_Segments(Long perfect100TM_Segments) { this.perfect100TM_Segments = perfect100TM_Segments; }
 
+    public Long getPerfect100NT_Words() { return perfect100NT_Words; }
+    public void setPerfect100NT_Words(Long perfect100NT_Words) { this.perfect100NT_Words = perfect100NT_Words; }
+
+    public Long getPerfect100NT_Characters() { return perfect100NT_Characters; }
+    public void setPerfect100NT_Characters(Long perfect100NT_Characters) { this.perfect100NT_Characters = perfect100NT_Characters; }
+
     public Long getFuzzy95TM_Words() { return fuzzy95TM_Words; }
     public void setFuzzy95TM_Words(Long fuzzy95TM_Words) { this.fuzzy95TM_Words = fuzzy95TM_Words; }
 
@@ -125,6 +141,12 @@ public class JobAnalysisFile {
 
     public Long getFuzzy95TM_Segments() { return fuzzy95TM_Segments; }
     public void setFuzzy95TM_Segments(Long fuzzy95TM_Segments) { this.fuzzy95TM_Segments = fuzzy95TM_Segments; }
+
+    public Long getFuzzy95NT_Words() { return fuzzy95NT_Words; }
+    public void setFuzzy95NT_Words(Long fuzzy95NT_Words) { this.fuzzy95NT_Words = fuzzy95NT_Words; }
+
+    public Long getFuzzy95NT_Characters() { return fuzzy95NT_Characters; }
+    public void setFuzzy95NT_Characters(Long fuzzy95NT_Characters) { this.fuzzy95NT_Characters = fuzzy95NT_Characters; }
 
     public Long getFuzzy85TM_Words() { return fuzzy85TM_Words; }
     public void setFuzzy85TM_Words(Long fuzzy85TM_Words) { this.fuzzy85TM_Words = fuzzy85TM_Words; }
@@ -135,6 +157,12 @@ public class JobAnalysisFile {
     public Long getFuzzy85TM_Segments() { return fuzzy85TM_Segments; }
     public void setFuzzy85TM_Segments(Long fuzzy85TM_Segments) { this.fuzzy85TM_Segments = fuzzy85TM_Segments; }
 
+    public Long getFuzzy85NT_Words() { return fuzzy85NT_Words; }
+    public void setFuzzy85NT_Words(Long fuzzy85NT_Words) { this.fuzzy85NT_Words = fuzzy85NT_Words; }
+
+    public Long getFuzzy85NT_Characters() { return fuzzy85NT_Characters; }
+    public void setFuzzy85NT_Characters(Long fuzzy85NT_Characters) { this.fuzzy85NT_Characters = fuzzy85NT_Characters; }
+
     public Long getFuzzy75TM_Words() { return fuzzy75TM_Words; }
     public void setFuzzy75TM_Words(Long fuzzy75TM_Words) { this.fuzzy75TM_Words = fuzzy75TM_Words; }
 
@@ -144,6 +172,12 @@ public class JobAnalysisFile {
     public Long getFuzzy75TM_Segments() { return fuzzy75TM_Segments; }
     public void setFuzzy75TM_Segments(Long fuzzy75TM_Segments) { this.fuzzy75TM_Segments = fuzzy75TM_Segments; }
 
+    public Long getFuzzy75NT_Words() { return fuzzy75NT_Words; }
+    public void setFuzzy75NT_Words(Long fuzzy75NT_Words) { this.fuzzy75NT_Words = fuzzy75NT_Words; }
+
+    public Long getFuzzy75NT_Characters() { return fuzzy75NT_Characters; }
+    public void setFuzzy75NT_Characters(Long fuzzy75NT_Characters) { this.fuzzy75NT_Characters = fuzzy75NT_Characters; }
+
     public Long getFuzzy50TM_Words() { return fuzzy50TM_Words; }
     public void setFuzzy50TM_Words(Long fuzzy50TM_Words) { this.fuzzy50TM_Words = fuzzy50TM_Words; }
 
@@ -152,6 +186,12 @@ public class JobAnalysisFile {
 
     public Long getFuzzy50TM_Segments() { return fuzzy50TM_Segments; }
     public void setFuzzy50TM_Segments(Long fuzzy50TM_Segments) { this.fuzzy50TM_Segments = fuzzy50TM_Segments; }
+
+    public Long getFuzzy50NT_Words() { return fuzzy50NT_Words; }
+    public void setFuzzy50NT_Words(Long fuzzy50NT_Words) { this.fuzzy50NT_Words = fuzzy50NT_Words; }
+
+    public Long getFuzzy50NT_Characters() { return fuzzy50NT_Characters; }
+    public void setFuzzy50NT_Characters(Long fuzzy50NT_Characters) { this.fuzzy50NT_Characters = fuzzy50NT_Characters; }
 
     public Long getNoMatchTM_Words() { return noMatchTM_Words; }
     public void setNoMatchTM_Words(Long noMatchTM_Words) { this.noMatchTM_Words = noMatchTM_Words; }

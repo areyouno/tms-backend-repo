@@ -2,14 +2,13 @@ package com.tms.backend.jobAnalysis;
 
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 import com.tms.backend.project.Project;
 import com.tms.backend.settingAnalysis.AnalysisScope;
 import com.tms.backend.user.User;
-
-import java.util.ArrayList;
-import java.util.List;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.CollectionTable;
@@ -107,6 +106,38 @@ public class JobAnalysis {
     private Long noMatchWords;
     private Long noMatchCharacters;
     private Long noMatchSegments;
+
+    // TM breakdown of word counts
+    private Long perfect100WordsTM;
+    private Long fuzzy95WordsTM;
+    private Long fuzzy85WordsTM;
+    private Long fuzzy75WordsTM;
+    private Long fuzzy50WordsTM;
+    private Long noMatchWordsTM;
+
+    // NT breakdown of word counts
+    private Long perfect100WordsNT;
+    private Long fuzzy95WordsNT;
+    private Long fuzzy85WordsNT;
+    private Long fuzzy75WordsNT;
+    private Long fuzzy50WordsNT;
+    private Long noMatchWordsNT;
+
+    // TM breakdown of character counts
+    private Long perfect100CharactersTM;
+    private Long fuzzy95CharactersTM;
+    private Long fuzzy85CharactersTM;
+    private Long fuzzy75CharactersTM;
+    private Long fuzzy50CharactersTM;
+    private Long noMatchCharactersTM;
+
+    // NT breakdown of character counts
+    private Long perfect100CharactersNT;
+    private Long fuzzy95CharactersNT;
+    private Long fuzzy85CharactersNT;
+    private Long fuzzy75CharactersNT;
+    private Long fuzzy50CharactersNT;
+    private Long noMatchCharactersNT;
 
     // weighted values
     private Double approvedTM_Weighted;
@@ -272,6 +303,78 @@ public class JobAnalysis {
 
     public Long getNoMatchSegments() { return noMatchSegments; }
     public void setNoMatchSegments(Long noMatchSegments) { this.noMatchSegments = noMatchSegments; }
+
+    public Long getPerfect100WordsTM() { return perfect100WordsTM; }
+    public void setPerfect100WordsTM(Long perfect100WordsTM) { this.perfect100WordsTM = perfect100WordsTM; }
+
+    public Long getPerfect100WordsNT() { return perfect100WordsNT; }
+    public void setPerfect100WordsNT(Long perfect100WordsNT) { this.perfect100WordsNT = perfect100WordsNT; }
+
+    public Long getFuzzy95WordsTM() { return fuzzy95WordsTM; }
+    public void setFuzzy95WordsTM(Long fuzzy95WordsTM) { this.fuzzy95WordsTM = fuzzy95WordsTM; }
+
+    public Long getFuzzy95WordsNT() { return fuzzy95WordsNT; }
+    public void setFuzzy95WordsNT(Long fuzzy95WordsNT) { this.fuzzy95WordsNT = fuzzy95WordsNT; }
+
+    public Long getFuzzy85WordsTM() { return fuzzy85WordsTM; }
+    public void setFuzzy85WordsTM(Long fuzzy85WordsTM) { this.fuzzy85WordsTM = fuzzy85WordsTM; }
+
+    public Long getFuzzy85WordsNT() { return fuzzy85WordsNT; }
+    public void setFuzzy85WordsNT(Long fuzzy85WordsNT) { this.fuzzy85WordsNT = fuzzy85WordsNT; }
+
+    public Long getFuzzy75WordsTM() { return fuzzy75WordsTM; }
+    public void setFuzzy75WordsTM(Long fuzzy75WordsTM) { this.fuzzy75WordsTM = fuzzy75WordsTM; }
+
+    public Long getFuzzy75WordsNT() { return fuzzy75WordsNT; }
+    public void setFuzzy75WordsNT(Long fuzzy75WordsNT) { this.fuzzy75WordsNT = fuzzy75WordsNT; }
+
+    public Long getFuzzy50WordsTM() { return fuzzy50WordsTM; }
+    public void setFuzzy50WordsTM(Long fuzzy50WordsTM) { this.fuzzy50WordsTM = fuzzy50WordsTM; }
+
+    public Long getFuzzy50WordsNT() { return fuzzy50WordsNT; }
+    public void setFuzzy50WordsNT(Long fuzzy50WordsNT) { this.fuzzy50WordsNT = fuzzy50WordsNT; }
+
+    public Long getNoMatchWordsTM() { return noMatchWordsTM; }
+    public void setNoMatchWordsTM(Long noMatchWordsTM) { this.noMatchWordsTM = noMatchWordsTM; }
+
+    public Long getNoMatchWordsNT() { return noMatchWordsNT; }
+    public void setNoMatchWordsNT(Long noMatchWordsNT) { this.noMatchWordsNT = noMatchWordsNT; }
+
+    public Long getPerfect100CharactersTM() { return perfect100CharactersTM; }
+    public void setPerfect100CharactersTM(Long perfect100CharactersTM) { this.perfect100CharactersTM = perfect100CharactersTM; }
+
+    public Long getFuzzy95CharactersTM() { return fuzzy95CharactersTM; }
+    public void setFuzzy95CharactersTM(Long fuzzy95CharactersTM) { this.fuzzy95CharactersTM = fuzzy95CharactersTM; }
+
+    public Long getFuzzy85CharactersTM() { return fuzzy85CharactersTM; }
+    public void setFuzzy85CharactersTM(Long fuzzy85CharactersTM) { this.fuzzy85CharactersTM = fuzzy85CharactersTM; }
+
+    public Long getFuzzy75CharactersTM() { return fuzzy75CharactersTM; }
+    public void setFuzzy75CharactersTM(Long fuzzy75CharactersTM) { this.fuzzy75CharactersTM = fuzzy75CharactersTM; }
+
+    public Long getFuzzy50CharactersTM() { return fuzzy50CharactersTM; }
+    public void setFuzzy50CharactersTM(Long fuzzy50CharactersTM) { this.fuzzy50CharactersTM = fuzzy50CharactersTM; }
+
+    public Long getNoMatchCharactersTM() { return noMatchCharactersTM; }
+    public void setNoMatchCharactersTM(Long noMatchCharactersTM) { this.noMatchCharactersTM = noMatchCharactersTM; }
+
+    public Long getPerfect100CharactersNT() { return perfect100CharactersNT; }
+    public void setPerfect100CharactersNT(Long perfect100CharactersNT) { this.perfect100CharactersNT = perfect100CharactersNT; }
+
+    public Long getFuzzy95CharactersNT() { return fuzzy95CharactersNT; }
+    public void setFuzzy95CharactersNT(Long fuzzy95CharactersNT) { this.fuzzy95CharactersNT = fuzzy95CharactersNT; }
+
+    public Long getFuzzy85CharactersNT() { return fuzzy85CharactersNT; }
+    public void setFuzzy85CharactersNT(Long fuzzy85CharactersNT) { this.fuzzy85CharactersNT = fuzzy85CharactersNT; }
+
+    public Long getFuzzy75CharactersNT() { return fuzzy75CharactersNT; }
+    public void setFuzzy75CharactersNT(Long fuzzy75CharactersNT) { this.fuzzy75CharactersNT = fuzzy75CharactersNT; }
+
+    public Long getFuzzy50CharactersNT() { return fuzzy50CharactersNT; }
+    public void setFuzzy50CharactersNT(Long fuzzy50CharactersNT) { this.fuzzy50CharactersNT = fuzzy50CharactersNT; }
+
+    public Long getNoMatchCharactersNT() { return noMatchCharactersNT; }
+    public void setNoMatchCharactersNT(Long noMatchCharactersNT) { this.noMatchCharactersNT = noMatchCharactersNT; }
 
     public List<JobAnalysisFile> getFiles() { return files; }
     public void setFiles(List<JobAnalysisFile> files) { this.files = files; }
