@@ -26,7 +26,7 @@ public record ProjectCreateDTO(
     String sourceLang,
     
     @NotEmpty(message = "At least one target language is required")
-    @Size(max = 3, message = "Too many target languages")
+    @Size(max = 30, message = "Too many target languages")
     Set<@NotBlank @Size(max = 10) String> targetLang,
     
     Long machineTranslationId,
