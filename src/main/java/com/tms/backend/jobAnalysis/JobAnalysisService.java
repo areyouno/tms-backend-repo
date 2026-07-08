@@ -183,7 +183,7 @@ public class JobAnalysisService {
 
         // words
         jobAnalysis.setRepetitionWords(safeLong(stats.repetitionCount()));
-        jobAnalysis.setContextMatchWords(safeLong(stats.context101TM_Words()));
+        jobAnalysis.setContextMatchWords(safeLong(stats.context101TM_Words()) + safeLong(stats.context101NT_Words()));
         jobAnalysis.setPerfect100Words(safeLong(stats.perfect100Count()));
         jobAnalysis.setFuzzy95Words(safeLong(stats.fuzzy95Count()));
         jobAnalysis.setFuzzy75Words(safeLong(stats.fuzzy75Count()));
@@ -208,7 +208,7 @@ public class JobAnalysisService {
 
         // characters
         jobAnalysis.setRepetitionCharacters(safeLong(stats.repetitionTM_Characters() + safeLong(stats.repetitionNT_Characters())));
-        jobAnalysis.setContextMatchCharacters(safeLong(stats.context101TM_Characters()));
+        jobAnalysis.setContextMatchCharacters(safeLong(stats.context101TM_Characters()) + safeLong(stats.context101NT_Characters()));
         jobAnalysis.setPerfect100Characters(safeLong(stats.perfect100TM_Characters()) + safeLong(stats.perfect100NT_Characters()));
         jobAnalysis.setFuzzy85Characters(safeLong(stats.fuzzy85TM_Characters()) + safeLong(stats.fuzzy85NT_Characters()));
         jobAnalysis.setFuzzy75Characters(safeLong(stats.fuzzy75TM_Characters()) + safeLong(stats.fuzzy75NT_Characters()));
@@ -350,11 +350,11 @@ public class JobAnalysisService {
                 file.setApprovedTM_Words(safeLong(s.approvedTM_Words()));
                 file.setApprovedTM_Characters(safeLong(s.approvedTM_Characters()));
                 file.setApprovedTM_Segments(safeLong(s.approvedTM_Segments()));
-                file.setRepetitionTM_Words(safeLong(s.repetitionTM_Words()));
-                file.setRepetitionTM_Characters(safeLong(s.repetitionTM_Characters()));
+                file.setRepetitionTM_Words(safeLong(s.repetitionTM_Words()) + safeLong(s.repetitionNT_Words()));
+                file.setRepetitionTM_Characters(safeLong(s.repetitionTM_Characters()) + safeLong(s.repetitionNT_Characters()));
                 file.setRepetitionTM_Segments(safeLong(s.repetitionTM_Segments()));
-                file.setContext101TM_Words(safeLong(s.context101TM_Words()));
-                file.setContext101TM_Characters(safeLong(s.context101TM_Characters()));
+                file.setContext101TM_Words(safeLong(s.context101TM_Words()) + safeLong(s.context101NT_Words()));
+                file.setContext101TM_Characters(safeLong(s.context101TM_Characters()) + safeLong(s.context101NT_Characters()));
                 file.setContext101TM_Segments(safeLong(s.context101TM_Segments()));
                 file.setPerfect100TM_Words(safeLong(s.perfect100TM_Words()));
                 file.setPerfect100TM_Characters(safeLong(s.perfect100TM_Characters()));
@@ -381,8 +381,8 @@ public class JobAnalysisService {
                 file.setFuzzy50TM_Segments(safeLong(s.fuzzy50TM_Segments()));
                 file.setFuzzy50NT_Words(safeLong(s.fuzzy50NT_Words()));
                 file.setFuzzy50NT_Characters(safeLong(s.fuzzy50NT_Characters()));
-                file.setNoMatchTM_Words(safeLong(s.noMatchTM_Words()));
-                file.setNoMatchTM_Characters(safeLong(s.noMatchTM_Characters()));
+                file.setNoMatchTM_Words(safeLong(s.noMatchTM_Words()) + safeLong(s.noMatchNT_Words()));
+                file.setNoMatchTM_Characters(safeLong(s.noMatchTM_Characters()) + safeLong(s.noMatchNT_Characters()));
                 file.setNoMatchTM_Segments(safeLong(s.noMatchTM_Segments()));
                 file.setApprovedTM_Weighted(s.approvedTM_Weighted());
                 file.setApprovedNT_Weighted(s.approvedNT_Weighted());
