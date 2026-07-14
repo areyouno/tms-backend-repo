@@ -170,170 +170,92 @@ public class JobAnalysisService {
             log.warn("Failed to pretty-print TomatoSizingResponse.statistics", e);
         }
 
-        // logger for segments
-        // log.info("Sizing stats - repetition: {}, contextMatch: {}, perfect100: {}, fuzzy95: {}, fuzzy85: {}, fuzzy75: {}, fuzzy50: {}, noMatch: {}",
-        //         stats.repetitionSegments(), stats.contextMatchSegments(), stats.perfect100Segments(),
-        //         stats.fuzzy95Segments(), stats.fuzzy85Segments(), stats.fuzzy75Segments(),
-        //         stats.fuzzy50Segments(), stats.noMatchSegments());
-
         jobAnalysis.setSourceLang(stats.sourceLanguage());
         if (stats.targetLanguage() != null) {
             jobAnalysis.setTargetLanguages(java.util.Set.of(stats.targetLanguage()));
         }
 
-        // words
-        jobAnalysis.setRepetitionWords(safeLong(stats.repetitionCount()));
-        jobAnalysis.setContextMatchWords(safeLong(stats.context101TM_Words()) + safeLong(stats.context101NT_Words()));
-        jobAnalysis.setPerfect100Words(safeLong(stats.perfect100Count()));
-        jobAnalysis.setFuzzy95Words(safeLong(stats.fuzzy95Count()));
-        jobAnalysis.setFuzzy75Words(safeLong(stats.fuzzy75Count()));
-        jobAnalysis.setFuzzy50Words(safeLong(stats.fuzzy50Count()));
-        jobAnalysis.setNoMatchWords(safeLong(stats.noMatchCount()));
-        jobAnalysis.setFuzzy85Words(safeLong(stats.fuzzy85Count()));
-        jobAnalysis.setAllWords(stats.totalCount());
+        jobAnalysis.setApprovedSegments(safeLong(stats.approvedSegments()));
+        jobAnalysis.setApprovedWords(safeLong(stats.approvedWords()));
+        jobAnalysis.setApprovedCharacters(safeLong(stats.approvedCharacters()));
+        jobAnalysis.setApprovedWeighted(stats.approvedWeighted());
+        jobAnalysis.setApprovedPercentage(stats.approvedPercentage());
 
-        // TM/NT breakdown of word counts
-        jobAnalysis.setPerfect100WordsTM(safeLong(stats.perfect100TM_Words()));
-        jobAnalysis.setPerfect100WordsNT(safeLong(stats.perfect100NT_Words()));
-        jobAnalysis.setFuzzy95WordsTM(safeLong(stats.fuzzy95TM_Words()));
-        jobAnalysis.setFuzzy95WordsNT(safeLong(stats.fuzzy95NT_Words()));
-        jobAnalysis.setFuzzy85WordsTM(safeLong(stats.fuzzy85TM_Words()));
-        jobAnalysis.setFuzzy85WordsNT(safeLong(stats.fuzzy85NT_Words()));
-        jobAnalysis.setFuzzy75WordsTM(safeLong(stats.fuzzy75TM_Words()));
-        jobAnalysis.setFuzzy75WordsNT(safeLong(stats.fuzzy75NT_Words()));
-        jobAnalysis.setFuzzy50WordsTM(safeLong(stats.fuzzy50TM_Words()));
-        jobAnalysis.setFuzzy50WordsNT(safeLong(stats.fuzzy50NT_Words()));
-        jobAnalysis.setNoMatchWordsTM(safeLong(stats.noMatchTM_Words()));
-        jobAnalysis.setNoMatchWordsNT(safeLong(stats.noMatchNT_Words()));
+        jobAnalysis.setRepetitionSegments(safeLong(stats.repetitionSegments()));
+        jobAnalysis.setRepetitionWords(safeLong(stats.repetitionWords()));
+        jobAnalysis.setRepetitionCharacters(safeLong(stats.repetitionCharacters()));
+        jobAnalysis.setRepetitionWeighted(stats.repetitionWeighted());
+        jobAnalysis.setRepetitionPercentage(stats.repetitionPercentage());
 
-        // characters
-        jobAnalysis.setRepetitionCharacters(safeLong(stats.repetitionTM_Characters() + safeLong(stats.repetitionNT_Characters())));
-        jobAnalysis.setContextMatchCharacters(safeLong(stats.context101TM_Characters()) + safeLong(stats.context101NT_Characters()));
-        jobAnalysis.setPerfect100Characters(safeLong(stats.perfect100TM_Characters()) + safeLong(stats.perfect100NT_Characters()));
-        jobAnalysis.setFuzzy85Characters(safeLong(stats.fuzzy85TM_Characters()) + safeLong(stats.fuzzy85NT_Characters()));
-        jobAnalysis.setFuzzy75Characters(safeLong(stats.fuzzy75TM_Characters()) + safeLong(stats.fuzzy75NT_Characters()));
-        jobAnalysis.setFuzzy50Characters(safeLong(stats.fuzzy50TM_Characters()) + safeLong(stats.fuzzy50NT_Characters()));
-        jobAnalysis.setNoMatchCharacters(safeLong(stats.noMatchTM_Characters()) + safeLong(stats.noMatchNT_Characters()));
-        jobAnalysis.setFuzzy95Characters(safeLong(stats.fuzzy95TM_Characters()) + safeLong(stats.fuzzy95NT_Characters()));
-        jobAnalysis.setAllCharacters(stats.totalCharacters());
+        jobAnalysis.setContext101Segments(safeLong(stats.context101Segments()));
+        jobAnalysis.setContext101Words(safeLong(stats.context101Words()));
+        jobAnalysis.setContext101Characters(safeLong(stats.context101Characters()));
+        jobAnalysis.setContext101Weighted(stats.context101Weighted());
+        jobAnalysis.setContext101Percentage(stats.context101Percentage());
 
-        // TM breakdown of character counts
-        jobAnalysis.setPerfect100CharactersTM(safeLong(stats.perfect100TM_Characters()));
-        jobAnalysis.setFuzzy95CharactersTM(safeLong(stats.fuzzy95TM_Characters()));
-        jobAnalysis.setFuzzy85CharactersTM(safeLong(stats.fuzzy85TM_Characters()));
-        jobAnalysis.setFuzzy75CharactersTM(safeLong(stats.fuzzy75TM_Characters()));
-        jobAnalysis.setFuzzy50CharactersTM(safeLong(stats.fuzzy50TM_Characters()));
-        jobAnalysis.setNoMatchCharactersTM(safeLong(stats.noMatchTM_Characters()));
+        jobAnalysis.setPerfect100Segments(safeLong(stats.perfect100Segments()));
+        jobAnalysis.setPerfect100Words(safeLong(stats.perfect100Words()));
+        jobAnalysis.setPerfect100Characters(safeLong(stats.perfect100Characters()));
+        jobAnalysis.setPerfect100Weighted(stats.perfect100Weighted());
+        jobAnalysis.setPerfect100Percentage(stats.perfect100Percentage());
 
-        // NT breakdown of character counts
-        jobAnalysis.setPerfect100CharactersNT(safeLong(stats.perfect100NT_Characters()));
-        jobAnalysis.setFuzzy95CharactersNT(safeLong(stats.fuzzy95NT_Characters()));
-        jobAnalysis.setFuzzy85CharactersNT(safeLong(stats.fuzzy85NT_Characters()));
-        jobAnalysis.setFuzzy75CharactersNT(safeLong(stats.fuzzy75NT_Characters()));
-        jobAnalysis.setFuzzy50CharactersNT(safeLong(stats.fuzzy50NT_Characters()));
-        jobAnalysis.setNoMatchCharactersNT(safeLong(stats.noMatchNT_Characters()));
+        jobAnalysis.setFuzzy95Segments(safeLong(stats.fuzzy95Segments()));
+        jobAnalysis.setFuzzy95Words(safeLong(stats.fuzzy95Words()));
+        jobAnalysis.setFuzzy95Characters(safeLong(stats.fuzzy95Characters()));
+        jobAnalysis.setFuzzy95Weighted(stats.fuzzy95Weighted());
+        jobAnalysis.setFuzzy95Percentage(stats.fuzzy95Percentage());
 
-        // segments (not supported for now)
-        jobAnalysis.setRepetitionSegments(safeLong(stats.repetitionTM_Segments()));
-        jobAnalysis.setContextMatchSegments(safeLong(stats.context101TM_Segments()));
-        jobAnalysis.setPerfect100Segments(safeLong(stats.perfect100TM_Segments()));
-        jobAnalysis.setFuzzy95Segments(safeLong(stats.fuzzy95TM_Segments()));
-        jobAnalysis.setFuzzy85Segments(safeLong(stats.fuzzy85TM_Segments()));
-        jobAnalysis.setFuzzy75Segments(safeLong(stats.fuzzy75TM_Segments()));
-        jobAnalysis.setFuzzy50Segments(safeLong(stats.fuzzy50TM_Segments()));
-        jobAnalysis.setNoMatchSegments(safeLong(stats.noMatchTM_Segments()));
+        jobAnalysis.setFuzzy85Segments(safeLong(stats.fuzzy85Segments()));
+        jobAnalysis.setFuzzy85Words(safeLong(stats.fuzzy85Words()));
+        jobAnalysis.setFuzzy85Characters(safeLong(stats.fuzzy85Characters()));
+        jobAnalysis.setFuzzy85Weighted(stats.fuzzy85Weighted());
+        jobAnalysis.setFuzzy85Percentage(stats.fuzzy85Percentage());
 
-        // for net rate breakdown
-        jobAnalysis.setApprovedTM_Weighted(stats.approvedTM_Weighted());
-        jobAnalysis.setApprovedNT_Weighted(stats.approvedNT_Weighted());
-        jobAnalysis.setRepetitionTM_Weighted(stats.repetitionTM_Weighted());
-        jobAnalysis.setRepetitionNT_Weighted(stats.repetitionNT_Weighted());
-        jobAnalysis.setContext101TM_Weighted(stats.context101TM_Weighted());
-        jobAnalysis.setContext101NT_Weighted(stats.context101NT_Weighted());
-        jobAnalysis.setPerfect100TM_Weighted(stats.perfect100TM_Weighted());
-        jobAnalysis.setPerfect100NT_Weighted(stats.perfect100NT_Weighted());
-        jobAnalysis.setFuzzy95TM_Weighted(stats.fuzzy95TM_Weighted());
-        jobAnalysis.setFuzzy95NT_Weighted(stats.fuzzy95NT_Weighted());
-        jobAnalysis.setFuzzy85TM_Weighted(stats.fuzzy85TM_Weighted());
-        jobAnalysis.setFuzzy85NT_Weighted(stats.fuzzy85NT_Weighted());
-        jobAnalysis.setFuzzy75TM_Weighted(stats.fuzzy75TM_Weighted());
-        jobAnalysis.setFuzzy75NT_Weighted(stats.fuzzy75NT_Weighted());
-        jobAnalysis.setFuzzy50TM_Weighted(stats.fuzzy50TM_Weighted());
-        jobAnalysis.setFuzzy50NT_Weighted(stats.fuzzy50NT_Weighted());
-        jobAnalysis.setNoMatchTM_Weighted(stats.noMatchTM_Weighted());
-        jobAnalysis.setNoMatchNT_Weighted(stats.noMatchNT_Weighted());
+        jobAnalysis.setFuzzy75Segments(safeLong(stats.fuzzy75Segments()));
+        jobAnalysis.setFuzzy75Words(safeLong(stats.fuzzy75Words()));
+        jobAnalysis.setFuzzy75Characters(safeLong(stats.fuzzy75Characters()));
+        jobAnalysis.setFuzzy75Weighted(stats.fuzzy75Weighted());
+        jobAnalysis.setFuzzy75Percentage(stats.fuzzy75Percentage());
 
+        jobAnalysis.setFuzzy50Segments(safeLong(stats.fuzzy50Segments()));
+        jobAnalysis.setFuzzy50Words(safeLong(stats.fuzzy50Words()));
+        jobAnalysis.setFuzzy50Characters(safeLong(stats.fuzzy50Characters()));
+        jobAnalysis.setFuzzy50Weighted(stats.fuzzy50Weighted());
+        jobAnalysis.setFuzzy50Percentage(stats.fuzzy50Percentage());
+
+        jobAnalysis.setNoMatchSegments(safeLong(stats.noMatchSegments()));
+        jobAnalysis.setNoMatchWords(safeLong(stats.noMatchWords()));
+        jobAnalysis.setNoMatchCharacters(safeLong(stats.noMatchCharacters()));
+        jobAnalysis.setNoMatchWeighted(stats.noMatchWeighted());
+        jobAnalysis.setNoMatchPercentage(stats.noMatchPercentage());
+
+        jobAnalysis.setTotalSegments(stats.totalSegments());
+        jobAnalysis.setTotalWords(stats.totalWords());
+        jobAnalysis.setTotalCharacters(stats.totalCharacters());
         jobAnalysis.setTotalWeighted(stats.totalWeighted());
         jobAnalysis.setTotalWeightedPercentage(stats.totalWeightedPercentage());
         jobAnalysis.setUnitType(stats.unitType());
         jobAnalysis.setTmNames(stats.tmNames());
 
-        // log.info("Weighted values from Tomato - noMatchTM: {}, noMatchNT: {}, totalWeighted: {}, totalWeightedPct: {}",
-        //         stats.noMatchTM_Weighted(), stats.noMatchNT_Weighted(), stats.totalWeighted(), stats.totalWeightedPercentage());
-
-        // // logger for TM
-        // log.info("TM Words - repetition: {}, contextMatch: {}, perfect100: {}, fuzzy95: {}, fuzzy85: {}, fuzzy75: {}, fuzzy50: {}, noMatch: {}",
-        //         jobAnalysis.getRepetitionWords(), jobAnalysis.getContextMatchWords(), jobAnalysis.getPerfect100Words(),
-        //         jobAnalysis.getFuzzy95Words(), jobAnalysis.getFuzzy85Words(), jobAnalysis.getFuzzy75Words(),
-        //         jobAnalysis.getFuzzy50Words(), jobAnalysis.getNoMatchWords());
-
         log.info("Sizing mapping check [words]\n"
-                + "  repetition   raw(repetitionCount)={} -> mapped={}\n"
-                + "  contextMatch raw(context101TM_Words)={} -> mapped={}\n"
-                + "  perfect100   raw(perfect100Count)={} -> mapped={}\n"
-                + "  fuzzy95      raw(fuzzy95Count)={} -> mapped={}\n"
-                + "  fuzzy85      raw(fuzzy85Count)={} -> mapped={}\n"
-                + "  fuzzy75      raw(fuzzy75Count)={} -> mapped={}\n"
-                + "  fuzzy50      raw(fuzzy50Count)={} -> mapped={}\n"
-                + "  noMatch      raw(noMatchCount)={} -> mapped={}\n"
-                + "  allWords     raw(totalCount)={} -> mapped={}",
-                stats.repetitionCount(), jobAnalysis.getRepetitionWords(),
-                stats.context101TM_Words(), jobAnalysis.getContextMatchWords(),
-                stats.perfect100Count(), jobAnalysis.getPerfect100Words(),
-                stats.fuzzy95Count(), jobAnalysis.getFuzzy95Words(),
-                stats.fuzzy85Count(), jobAnalysis.getFuzzy85Words(),
-                stats.fuzzy75Count(), jobAnalysis.getFuzzy75Words(),
-                stats.fuzzy50Count(), jobAnalysis.getFuzzy50Words(),
-                stats.noMatchCount(), jobAnalysis.getNoMatchWords(),
-                stats.totalCount(), jobAnalysis.getAllWords());
-
-        log.info("Sizing mapping check [characters]\n"
-                + "  repetition    raw(repetitionTM_Characters+repetitionNT_Characters)={} -> mapped={}\n"
-                + "  contextMatch  raw(context101TM_Characters)={} -> mapped={}\n"
-                + "  perfect100    raw(perfect100TM_Characters+perfect100NT_Characters)={} -> mapped={}\n"
-                + "  fuzzy95       raw(fuzzy95TM_Characters+fuzzy95NT_Characters)={} -> mapped={}\n"
-                + "  fuzzy85       raw(fuzzy85TM_Characters+fuzzy85NT_Characters)={} -> mapped={}\n"
-                + "  fuzzy75       raw(fuzzy75TM_Characters+fuzzy75NT_Characters)={} -> mapped={}\n"
-                + "  fuzzy50       raw(fuzzy50TM_Characters+fuzzy50NT_Characters)={} -> mapped={}\n"
-                + "  noMatch       raw(noMatchTM_Characters+noMatchNT_Characters)={} -> mapped={}\n"
-                + "  allCharacters raw(totalCharacters)={} -> mapped={}",
-                safeLong(stats.repetitionTM_Characters()) + safeLong(stats.repetitionNT_Characters()), jobAnalysis.getRepetitionCharacters(),
-                stats.context101TM_Characters(), jobAnalysis.getContextMatchCharacters(),
-                safeLong(stats.perfect100TM_Characters()) + safeLong(stats.perfect100NT_Characters()), jobAnalysis.getPerfect100Characters(),
-                safeLong(stats.fuzzy95TM_Characters()) + safeLong(stats.fuzzy95NT_Characters()), jobAnalysis.getFuzzy95Characters(),
-                safeLong(stats.fuzzy85TM_Characters()) + safeLong(stats.fuzzy85NT_Characters()), jobAnalysis.getFuzzy85Characters(),
-                safeLong(stats.fuzzy75TM_Characters()) + safeLong(stats.fuzzy75NT_Characters()), jobAnalysis.getFuzzy75Characters(),
-                safeLong(stats.fuzzy50TM_Characters()) + safeLong(stats.fuzzy50NT_Characters()), jobAnalysis.getFuzzy50Characters(),
-                safeLong(stats.noMatchTM_Characters()) + safeLong(stats.noMatchNT_Characters()), jobAnalysis.getNoMatchCharacters(),
-                stats.totalCharacters(), jobAnalysis.getAllCharacters());
-
-        log.info("Sizing mapping check [segments]\n"
-                + "  repetition   raw(repetitionTM_Segments)={} -> mapped={}\n"
-                + "  contextMatch raw(context101TM_Segments)={} -> mapped={}\n"
-                + "  perfect100   raw(perfect100TM_Segments)={} -> mapped={}\n"
-                + "  fuzzy95      raw(fuzzy95TM_Segments)={} -> mapped={}\n"
-                + "  fuzzy85      raw(fuzzy85TM_Segments)={} -> mapped={}\n"
-                + "  fuzzy75      raw(fuzzy75TM_Segments)={} -> mapped={}\n"
-                + "  fuzzy50      raw(fuzzy50TM_Segments)={} -> mapped={}\n"
-                + "  noMatch      raw(noMatchTM_Segments)={} -> mapped={}",
-                stats.repetitionTM_Segments(), jobAnalysis.getRepetitionSegments(),
-                stats.context101TM_Segments(), jobAnalysis.getContextMatchSegments(),
-                stats.perfect100TM_Segments(), jobAnalysis.getPerfect100Segments(),
-                stats.fuzzy95TM_Segments(), jobAnalysis.getFuzzy95Segments(),
-                stats.fuzzy85TM_Segments(), jobAnalysis.getFuzzy85Segments(),
-                stats.fuzzy75TM_Segments(), jobAnalysis.getFuzzy75Segments(),
-                stats.fuzzy50TM_Segments(), jobAnalysis.getFuzzy50Segments(),
-                stats.noMatchTM_Segments(), jobAnalysis.getNoMatchSegments());
+                + "  repetition   raw={} -> mapped={}\n"
+                + "  context101   raw={} -> mapped={}\n"
+                + "  perfect100   raw={} -> mapped={}\n"
+                + "  fuzzy95      raw={} -> mapped={}\n"
+                + "  fuzzy85      raw={} -> mapped={}\n"
+                + "  fuzzy75      raw={} -> mapped={}\n"
+                + "  fuzzy50      raw={} -> mapped={}\n"
+                + "  noMatch      raw={} -> mapped={}\n"
+                + "  totalWords   raw={} -> mapped={}",
+                stats.repetitionWords(), jobAnalysis.getRepetitionWords(),
+                stats.context101Words(), jobAnalysis.getContext101Words(),
+                stats.perfect100Words(), jobAnalysis.getPerfect100Words(),
+                stats.fuzzy95Words(), jobAnalysis.getFuzzy95Words(),
+                stats.fuzzy85Words(), jobAnalysis.getFuzzy85Words(),
+                stats.fuzzy75Words(), jobAnalysis.getFuzzy75Words(),
+                stats.fuzzy50Words(), jobAnalysis.getFuzzy50Words(),
+                stats.noMatchWords(), jobAnalysis.getNoMatchWords(),
+                stats.totalWords(), jobAnalysis.getTotalWords());
 
         JobAnalysis saved = jobAnalysisRepository.save(jobAnalysis);
 
@@ -347,65 +269,66 @@ public class JobAnalysisService {
                 JobAnalysisFile file = new JobAnalysisFile();
                 file.setJobAnalysis(saved);
                 file.setFileName(f.fileName());
-                file.setApprovedTM_Words(safeLong(s.approvedTM_Words()));
-                file.setApprovedTM_Characters(safeLong(s.approvedTM_Characters()));
-                file.setApprovedTM_Segments(safeLong(s.approvedTM_Segments()));
-                file.setRepetitionTM_Words(safeLong(s.repetitionTM_Words()) + safeLong(s.repetitionNT_Words()));
-                file.setRepetitionTM_Characters(safeLong(s.repetitionTM_Characters()) + safeLong(s.repetitionNT_Characters()));
-                file.setRepetitionTM_Segments(safeLong(s.repetitionTM_Segments()));
-                file.setContext101TM_Words(safeLong(s.context101TM_Words()) + safeLong(s.context101NT_Words()));
-                file.setContext101TM_Characters(safeLong(s.context101TM_Characters()) + safeLong(s.context101NT_Characters()));
-                file.setContext101TM_Segments(safeLong(s.context101TM_Segments()));
-                file.setPerfect100TM_Words(safeLong(s.perfect100TM_Words()));
-                file.setPerfect100TM_Characters(safeLong(s.perfect100TM_Characters()));
-                file.setPerfect100TM_Segments(safeLong(s.perfect100TM_Segments()));
-                file.setPerfect100NT_Words(safeLong(s.perfect100NT_Words()));
-                file.setPerfect100NT_Characters(safeLong(s.perfect100NT_Characters()));
-                file.setFuzzy95TM_Words(safeLong(s.fuzzy95TM_Words()));
-                file.setFuzzy95TM_Characters(safeLong(s.fuzzy95TM_Characters()));
-                file.setFuzzy95TM_Segments(safeLong(s.fuzzy95TM_Segments()));
-                file.setFuzzy95NT_Words(safeLong(s.fuzzy95NT_Words()));
-                file.setFuzzy95NT_Characters(safeLong(s.fuzzy95NT_Characters()));
-                file.setFuzzy85TM_Words(safeLong(s.fuzzy85TM_Words()));
-                file.setFuzzy85TM_Characters(safeLong(s.fuzzy85TM_Characters()));
-                file.setFuzzy85TM_Segments(safeLong(s.fuzzy85TM_Segments()));
-                file.setFuzzy85NT_Words(safeLong(s.fuzzy85NT_Words()));
-                file.setFuzzy85NT_Characters(safeLong(s.fuzzy85NT_Characters()));
-                file.setFuzzy75TM_Words(safeLong(s.fuzzy75TM_Words()));
-                file.setFuzzy75TM_Characters(safeLong(s.fuzzy75TM_Characters()));
-                file.setFuzzy75TM_Segments(safeLong(s.fuzzy75TM_Segments()));
-                file.setFuzzy75NT_Words(safeLong(s.fuzzy75NT_Words()));
-                file.setFuzzy75NT_Characters(safeLong(s.fuzzy75NT_Characters()));
-                file.setFuzzy50TM_Words(safeLong(s.fuzzy50TM_Words()));
-                file.setFuzzy50TM_Characters(safeLong(s.fuzzy50TM_Characters()));
-                file.setFuzzy50TM_Segments(safeLong(s.fuzzy50TM_Segments()));
-                file.setFuzzy50NT_Words(safeLong(s.fuzzy50NT_Words()));
-                file.setFuzzy50NT_Characters(safeLong(s.fuzzy50NT_Characters()));
-                file.setNoMatchTM_Words(safeLong(s.noMatchTM_Words()) + safeLong(s.noMatchNT_Words()));
-                file.setNoMatchTM_Characters(safeLong(s.noMatchTM_Characters()) + safeLong(s.noMatchNT_Characters()));
-                file.setNoMatchTM_Segments(safeLong(s.noMatchTM_Segments()));
-                file.setApprovedTM_Weighted(s.approvedTM_Weighted());
-                file.setApprovedNT_Weighted(s.approvedNT_Weighted());
-                file.setRepetitionTM_Weighted(s.repetitionTM_Weighted());
-                file.setRepetitionNT_Weighted(s.repetitionNT_Weighted());
-                file.setContext101TM_Weighted(s.context101TM_Weighted());
-                file.setContext101NT_Weighted(s.context101NT_Weighted());
-                file.setPerfect100TM_Weighted(s.perfect100TM_Weighted());
-                file.setPerfect100NT_Weighted(s.perfect100NT_Weighted());
-                file.setFuzzy95TM_Weighted(s.fuzzy95TM_Weighted());
-                file.setFuzzy95NT_Weighted(s.fuzzy95NT_Weighted());
-                file.setFuzzy85TM_Weighted(s.fuzzy85TM_Weighted());
-                file.setFuzzy85NT_Weighted(s.fuzzy85NT_Weighted());
-                file.setFuzzy75TM_Weighted(s.fuzzy75TM_Weighted());
-                file.setFuzzy75NT_Weighted(s.fuzzy75NT_Weighted());
-                file.setFuzzy50TM_Weighted(s.fuzzy50TM_Weighted());
-                file.setFuzzy50NT_Weighted(s.fuzzy50NT_Weighted());
-                file.setNoMatchTM_Weighted(s.noMatchTM_Weighted());
-                file.setNoMatchNT_Weighted(s.noMatchNT_Weighted());
+
+                file.setApprovedSegments(safeLong(s.approvedSegments()));
+                file.setApprovedWords(safeLong(s.approvedWords()));
+                file.setApprovedCharacters(safeLong(s.approvedCharacters()));
+                file.setApprovedWeighted(s.approvedWeighted());
+                file.setApprovedPercentage(s.approvedPercentage());
+
+                file.setRepetitionSegments(safeLong(s.repetitionSegments()));
+                file.setRepetitionWords(safeLong(s.repetitionWords()));
+                file.setRepetitionCharacters(safeLong(s.repetitionCharacters()));
+                file.setRepetitionWeighted(s.repetitionWeighted());
+                file.setRepetitionPercentage(s.repetitionPercentage());
+
+                file.setContext101Segments(safeLong(s.context101Segments()));
+                file.setContext101Words(safeLong(s.context101Words()));
+                file.setContext101Characters(safeLong(s.context101Characters()));
+                file.setContext101Weighted(s.context101Weighted());
+                file.setContext101Percentage(s.context101Percentage());
+
+                file.setPerfect100Segments(safeLong(s.perfect100Segments()));
+                file.setPerfect100Words(safeLong(s.perfect100Words()));
+                file.setPerfect100Characters(safeLong(s.perfect100Characters()));
+                file.setPerfect100Weighted(s.perfect100Weighted());
+                file.setPerfect100Percentage(s.perfect100Percentage());
+
+                file.setFuzzy95Segments(safeLong(s.fuzzy95Segments()));
+                file.setFuzzy95Words(safeLong(s.fuzzy95Words()));
+                file.setFuzzy95Characters(safeLong(s.fuzzy95Characters()));
+                file.setFuzzy95Weighted(s.fuzzy95Weighted());
+                file.setFuzzy95Percentage(s.fuzzy95Percentage());
+
+                file.setFuzzy85Segments(safeLong(s.fuzzy85Segments()));
+                file.setFuzzy85Words(safeLong(s.fuzzy85Words()));
+                file.setFuzzy85Characters(safeLong(s.fuzzy85Characters()));
+                file.setFuzzy85Weighted(s.fuzzy85Weighted());
+                file.setFuzzy85Percentage(s.fuzzy85Percentage());
+
+                file.setFuzzy75Segments(safeLong(s.fuzzy75Segments()));
+                file.setFuzzy75Words(safeLong(s.fuzzy75Words()));
+                file.setFuzzy75Characters(safeLong(s.fuzzy75Characters()));
+                file.setFuzzy75Weighted(s.fuzzy75Weighted());
+                file.setFuzzy75Percentage(s.fuzzy75Percentage());
+
+                file.setFuzzy50Segments(safeLong(s.fuzzy50Segments()));
+                file.setFuzzy50Words(safeLong(s.fuzzy50Words()));
+                file.setFuzzy50Characters(safeLong(s.fuzzy50Characters()));
+                file.setFuzzy50Weighted(s.fuzzy50Weighted());
+                file.setFuzzy50Percentage(s.fuzzy50Percentage());
+
+                file.setNoMatchSegments(safeLong(s.noMatchSegments()));
+                file.setNoMatchWords(safeLong(s.noMatchWords()));
+                file.setNoMatchCharacters(safeLong(s.noMatchCharacters()));
+                file.setNoMatchWeighted(s.noMatchWeighted());
+                file.setNoMatchPercentage(s.noMatchPercentage());
+
+                file.setTotalSegments(s.totalSegments());
+                file.setTotalWords(s.totalWords());
+                file.setTotalCharacters(s.totalCharacters());
                 file.setTotalWeighted(s.totalWeighted());
                 file.setTotalWeightedPercentage(s.totalWeightedPercentage());
-                file.setAllWords(s.totalCount());
-                file.setAllCharacters(s.totalCharacters());
                 return file;
             }).collect(Collectors.toList());
             jobAnalysisFileRepository.saveAll(fileEntities);

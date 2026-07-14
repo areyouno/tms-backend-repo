@@ -20,67 +20,65 @@ public class JobAnalysisFile {
 
     private String fileName;
 
-    private Long approvedTM_Words;
-    private Long approvedTM_Characters;
-    private Long approvedTM_Segments;
-    private Long repetitionTM_Words;
-    private Long repetitionTM_Characters;
-    private Long repetitionTM_Segments;
-    private Long context101TM_Words;
-    private Long context101TM_Characters;
-    private Long context101TM_Segments;
-    private Long perfect100TM_Words;
-    private Long perfect100TM_Characters;
-    private Long perfect100TM_Segments;
-    private Long perfect100NT_Words;
-    private Long perfect100NT_Characters;
-    private Long fuzzy95TM_Words;
-    private Long fuzzy95TM_Characters;
-    private Long fuzzy95TM_Segments;
-    private Long fuzzy95NT_Words;
-    private Long fuzzy95NT_Characters;
-    private Long fuzzy85TM_Words;
-    private Long fuzzy85TM_Characters;
-    private Long fuzzy85TM_Segments;
-    private Long fuzzy85NT_Words;
-    private Long fuzzy85NT_Characters;
-    private Long fuzzy75TM_Words;
-    private Long fuzzy75TM_Characters;
-    private Long fuzzy75TM_Segments;
-    private Long fuzzy75NT_Words;
-    private Long fuzzy75NT_Characters;
-    private Long fuzzy50TM_Words;
-    private Long fuzzy50TM_Characters;
-    private Long fuzzy50TM_Segments;
-    private Long fuzzy50NT_Words;
-    private Long fuzzy50NT_Characters;
-    private Long noMatchTM_Words;
-    private Long noMatchTM_Characters;
-    private Long noMatchTM_Segments;
+    private Long approvedSegments;
+    private Long approvedWords;
+    private Long approvedCharacters;
+    private Double approvedWeighted;
+    private Double approvedPercentage;
 
-    // weighted values
-    private Double approvedTM_Weighted;
-    private Double approvedNT_Weighted;
-    private Double repetitionTM_Weighted;
-    private Double repetitionNT_Weighted;
-    private Double context101TM_Weighted;
-    private Double context101NT_Weighted;
-    private Double perfect100TM_Weighted;
-    private Double perfect100NT_Weighted;
-    private Double fuzzy95TM_Weighted;
-    private Double fuzzy95NT_Weighted;
-    private Double fuzzy85TM_Weighted;
-    private Double fuzzy85NT_Weighted;
-    private Double fuzzy75TM_Weighted;
-    private Double fuzzy75NT_Weighted;
-    private Double fuzzy50TM_Weighted;
-    private Double fuzzy50NT_Weighted;
-    private Double noMatchTM_Weighted;
-    private Double noMatchNT_Weighted;
+    private Long repetitionSegments;
+    private Long repetitionWords;
+    private Long repetitionCharacters;
+    private Double repetitionWeighted;
+    private Double repetitionPercentage;
+
+    private Long context101Segments;
+    private Long context101Words;
+    private Long context101Characters;
+    private Double context101Weighted;
+    private Double context101Percentage;
+
+    private Long perfect100Segments;
+    private Long perfect100Words;
+    private Long perfect100Characters;
+    private Double perfect100Weighted;
+    private Double perfect100Percentage;
+
+    private Long fuzzy95Segments;
+    private Long fuzzy95Words;
+    private Long fuzzy95Characters;
+    private Double fuzzy95Weighted;
+    private Double fuzzy95Percentage;
+
+    private Long fuzzy85Segments;
+    private Long fuzzy85Words;
+    private Long fuzzy85Characters;
+    private Double fuzzy85Weighted;
+    private Double fuzzy85Percentage;
+
+    private Long fuzzy75Segments;
+    private Long fuzzy75Words;
+    private Long fuzzy75Characters;
+    private Double fuzzy75Weighted;
+    private Double fuzzy75Percentage;
+
+    private Long fuzzy50Segments;
+    private Long fuzzy50Words;
+    private Long fuzzy50Characters;
+    private Double fuzzy50Weighted;
+    private Double fuzzy50Percentage;
+
+    private Long noMatchSegments;
+    private Long noMatchWords;
+    private Long noMatchCharacters;
+    private Double noMatchWeighted;
+    private Double noMatchPercentage;
+
+    private Long totalSegments;
+    private Long totalWords;
+    private Long totalCharacters;
     private Double totalWeighted;
     private Double totalWeightedPercentage;
-    private Long allWords;
-    private Long allCharacters;
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -91,180 +89,153 @@ public class JobAnalysisFile {
     public String getFileName() { return fileName; }
     public void setFileName(String fileName) { this.fileName = fileName; }
 
-    public Long getApprovedTM_Words() { return approvedTM_Words; }
-    public void setApprovedTM_Words(Long approvedTM_Words) { this.approvedTM_Words = approvedTM_Words; }
+    public Long getApprovedSegments() { return approvedSegments; }
+    public void setApprovedSegments(Long v) { this.approvedSegments = v; }
 
-    public Long getApprovedTM_Characters() { return approvedTM_Characters; }
-    public void setApprovedTM_Characters(Long approvedTM_Characters) { this.approvedTM_Characters = approvedTM_Characters; }
+    public Long getApprovedWords() { return approvedWords; }
+    public void setApprovedWords(Long v) { this.approvedWords = v; }
 
-    public Long getApprovedTM_Segments() { return approvedTM_Segments; }
-    public void setApprovedTM_Segments(Long approvedTM_Segments) { this.approvedTM_Segments = approvedTM_Segments; }
+    public Long getApprovedCharacters() { return approvedCharacters; }
+    public void setApprovedCharacters(Long v) { this.approvedCharacters = v; }
 
-    public Long getRepetitionTM_Words() { return repetitionTM_Words; }
-    public void setRepetitionTM_Words(Long repetitionTM_Words) { this.repetitionTM_Words = repetitionTM_Words; }
+    public Double getApprovedWeighted() { return approvedWeighted; }
+    public void setApprovedWeighted(Double v) { this.approvedWeighted = v; }
 
-    public Long getRepetitionTM_Characters() { return repetitionTM_Characters; }
-    public void setRepetitionTM_Characters(Long repetitionTM_Characters) { this.repetitionTM_Characters = repetitionTM_Characters; }
+    public Double getApprovedPercentage() { return approvedPercentage; }
+    public void setApprovedPercentage(Double v) { this.approvedPercentage = v; }
 
-    public Long getRepetitionTM_Segments() { return repetitionTM_Segments; }
-    public void setRepetitionTM_Segments(Long repetitionTM_Segments) { this.repetitionTM_Segments = repetitionTM_Segments; }
+    public Long getRepetitionSegments() { return repetitionSegments; }
+    public void setRepetitionSegments(Long v) { this.repetitionSegments = v; }
 
-    public Long getContext101TM_Words() { return context101TM_Words; }
-    public void setContext101TM_Words(Long context101TM_Words) { this.context101TM_Words = context101TM_Words; }
+    public Long getRepetitionWords() { return repetitionWords; }
+    public void setRepetitionWords(Long v) { this.repetitionWords = v; }
 
-    public Long getContext101TM_Characters() { return context101TM_Characters; }
-    public void setContext101TM_Characters(Long context101TM_Characters) { this.context101TM_Characters = context101TM_Characters; }
+    public Long getRepetitionCharacters() { return repetitionCharacters; }
+    public void setRepetitionCharacters(Long v) { this.repetitionCharacters = v; }
 
-    public Long getContext101TM_Segments() { return context101TM_Segments; }
-    public void setContext101TM_Segments(Long context101TM_Segments) { this.context101TM_Segments = context101TM_Segments; }
+    public Double getRepetitionWeighted() { return repetitionWeighted; }
+    public void setRepetitionWeighted(Double v) { this.repetitionWeighted = v; }
 
-    public Long getPerfect100TM_Words() { return perfect100TM_Words; }
-    public void setPerfect100TM_Words(Long perfect100TM_Words) { this.perfect100TM_Words = perfect100TM_Words; }
+    public Double getRepetitionPercentage() { return repetitionPercentage; }
+    public void setRepetitionPercentage(Double v) { this.repetitionPercentage = v; }
 
-    public Long getPerfect100TM_Characters() { return perfect100TM_Characters; }
-    public void setPerfect100TM_Characters(Long perfect100TM_Characters) { this.perfect100TM_Characters = perfect100TM_Characters; }
+    public Long getContext101Segments() { return context101Segments; }
+    public void setContext101Segments(Long v) { this.context101Segments = v; }
 
-    public Long getPerfect100TM_Segments() { return perfect100TM_Segments; }
-    public void setPerfect100TM_Segments(Long perfect100TM_Segments) { this.perfect100TM_Segments = perfect100TM_Segments; }
+    public Long getContext101Words() { return context101Words; }
+    public void setContext101Words(Long v) { this.context101Words = v; }
 
-    public Long getPerfect100NT_Words() { return perfect100NT_Words; }
-    public void setPerfect100NT_Words(Long perfect100NT_Words) { this.perfect100NT_Words = perfect100NT_Words; }
+    public Long getContext101Characters() { return context101Characters; }
+    public void setContext101Characters(Long v) { this.context101Characters = v; }
 
-    public Long getPerfect100NT_Characters() { return perfect100NT_Characters; }
-    public void setPerfect100NT_Characters(Long perfect100NT_Characters) { this.perfect100NT_Characters = perfect100NT_Characters; }
+    public Double getContext101Weighted() { return context101Weighted; }
+    public void setContext101Weighted(Double v) { this.context101Weighted = v; }
 
-    public Long getFuzzy95TM_Words() { return fuzzy95TM_Words; }
-    public void setFuzzy95TM_Words(Long fuzzy95TM_Words) { this.fuzzy95TM_Words = fuzzy95TM_Words; }
+    public Double getContext101Percentage() { return context101Percentage; }
+    public void setContext101Percentage(Double v) { this.context101Percentage = v; }
 
-    public Long getFuzzy95TM_Characters() { return fuzzy95TM_Characters; }
-    public void setFuzzy95TM_Characters(Long fuzzy95TM_Characters) { this.fuzzy95TM_Characters = fuzzy95TM_Characters; }
+    public Long getPerfect100Segments() { return perfect100Segments; }
+    public void setPerfect100Segments(Long v) { this.perfect100Segments = v; }
 
-    public Long getFuzzy95TM_Segments() { return fuzzy95TM_Segments; }
-    public void setFuzzy95TM_Segments(Long fuzzy95TM_Segments) { this.fuzzy95TM_Segments = fuzzy95TM_Segments; }
+    public Long getPerfect100Words() { return perfect100Words; }
+    public void setPerfect100Words(Long v) { this.perfect100Words = v; }
 
-    public Long getFuzzy95NT_Words() { return fuzzy95NT_Words; }
-    public void setFuzzy95NT_Words(Long fuzzy95NT_Words) { this.fuzzy95NT_Words = fuzzy95NT_Words; }
+    public Long getPerfect100Characters() { return perfect100Characters; }
+    public void setPerfect100Characters(Long v) { this.perfect100Characters = v; }
 
-    public Long getFuzzy95NT_Characters() { return fuzzy95NT_Characters; }
-    public void setFuzzy95NT_Characters(Long fuzzy95NT_Characters) { this.fuzzy95NT_Characters = fuzzy95NT_Characters; }
+    public Double getPerfect100Weighted() { return perfect100Weighted; }
+    public void setPerfect100Weighted(Double v) { this.perfect100Weighted = v; }
 
-    public Long getFuzzy85TM_Words() { return fuzzy85TM_Words; }
-    public void setFuzzy85TM_Words(Long fuzzy85TM_Words) { this.fuzzy85TM_Words = fuzzy85TM_Words; }
+    public Double getPerfect100Percentage() { return perfect100Percentage; }
+    public void setPerfect100Percentage(Double v) { this.perfect100Percentage = v; }
 
-    public Long getFuzzy85TM_Characters() { return fuzzy85TM_Characters; }
-    public void setFuzzy85TM_Characters(Long fuzzy85TM_Characters) { this.fuzzy85TM_Characters = fuzzy85TM_Characters; }
+    public Long getFuzzy95Segments() { return fuzzy95Segments; }
+    public void setFuzzy95Segments(Long v) { this.fuzzy95Segments = v; }
 
-    public Long getFuzzy85TM_Segments() { return fuzzy85TM_Segments; }
-    public void setFuzzy85TM_Segments(Long fuzzy85TM_Segments) { this.fuzzy85TM_Segments = fuzzy85TM_Segments; }
+    public Long getFuzzy95Words() { return fuzzy95Words; }
+    public void setFuzzy95Words(Long v) { this.fuzzy95Words = v; }
 
-    public Long getFuzzy85NT_Words() { return fuzzy85NT_Words; }
-    public void setFuzzy85NT_Words(Long fuzzy85NT_Words) { this.fuzzy85NT_Words = fuzzy85NT_Words; }
+    public Long getFuzzy95Characters() { return fuzzy95Characters; }
+    public void setFuzzy95Characters(Long v) { this.fuzzy95Characters = v; }
 
-    public Long getFuzzy85NT_Characters() { return fuzzy85NT_Characters; }
-    public void setFuzzy85NT_Characters(Long fuzzy85NT_Characters) { this.fuzzy85NT_Characters = fuzzy85NT_Characters; }
+    public Double getFuzzy95Weighted() { return fuzzy95Weighted; }
+    public void setFuzzy95Weighted(Double v) { this.fuzzy95Weighted = v; }
 
-    public Long getFuzzy75TM_Words() { return fuzzy75TM_Words; }
-    public void setFuzzy75TM_Words(Long fuzzy75TM_Words) { this.fuzzy75TM_Words = fuzzy75TM_Words; }
+    public Double getFuzzy95Percentage() { return fuzzy95Percentage; }
+    public void setFuzzy95Percentage(Double v) { this.fuzzy95Percentage = v; }
 
-    public Long getFuzzy75TM_Characters() { return fuzzy75TM_Characters; }
-    public void setFuzzy75TM_Characters(Long fuzzy75TM_Characters) { this.fuzzy75TM_Characters = fuzzy75TM_Characters; }
+    public Long getFuzzy85Segments() { return fuzzy85Segments; }
+    public void setFuzzy85Segments(Long v) { this.fuzzy85Segments = v; }
 
-    public Long getFuzzy75TM_Segments() { return fuzzy75TM_Segments; }
-    public void setFuzzy75TM_Segments(Long fuzzy75TM_Segments) { this.fuzzy75TM_Segments = fuzzy75TM_Segments; }
+    public Long getFuzzy85Words() { return fuzzy85Words; }
+    public void setFuzzy85Words(Long v) { this.fuzzy85Words = v; }
 
-    public Long getFuzzy75NT_Words() { return fuzzy75NT_Words; }
-    public void setFuzzy75NT_Words(Long fuzzy75NT_Words) { this.fuzzy75NT_Words = fuzzy75NT_Words; }
+    public Long getFuzzy85Characters() { return fuzzy85Characters; }
+    public void setFuzzy85Characters(Long v) { this.fuzzy85Characters = v; }
 
-    public Long getFuzzy75NT_Characters() { return fuzzy75NT_Characters; }
-    public void setFuzzy75NT_Characters(Long fuzzy75NT_Characters) { this.fuzzy75NT_Characters = fuzzy75NT_Characters; }
+    public Double getFuzzy85Weighted() { return fuzzy85Weighted; }
+    public void setFuzzy85Weighted(Double v) { this.fuzzy85Weighted = v; }
 
-    public Long getFuzzy50TM_Words() { return fuzzy50TM_Words; }
-    public void setFuzzy50TM_Words(Long fuzzy50TM_Words) { this.fuzzy50TM_Words = fuzzy50TM_Words; }
+    public Double getFuzzy85Percentage() { return fuzzy85Percentage; }
+    public void setFuzzy85Percentage(Double v) { this.fuzzy85Percentage = v; }
 
-    public Long getFuzzy50TM_Characters() { return fuzzy50TM_Characters; }
-    public void setFuzzy50TM_Characters(Long fuzzy50TM_Characters) { this.fuzzy50TM_Characters = fuzzy50TM_Characters; }
+    public Long getFuzzy75Segments() { return fuzzy75Segments; }
+    public void setFuzzy75Segments(Long v) { this.fuzzy75Segments = v; }
 
-    public Long getFuzzy50TM_Segments() { return fuzzy50TM_Segments; }
-    public void setFuzzy50TM_Segments(Long fuzzy50TM_Segments) { this.fuzzy50TM_Segments = fuzzy50TM_Segments; }
+    public Long getFuzzy75Words() { return fuzzy75Words; }
+    public void setFuzzy75Words(Long v) { this.fuzzy75Words = v; }
 
-    public Long getFuzzy50NT_Words() { return fuzzy50NT_Words; }
-    public void setFuzzy50NT_Words(Long fuzzy50NT_Words) { this.fuzzy50NT_Words = fuzzy50NT_Words; }
+    public Long getFuzzy75Characters() { return fuzzy75Characters; }
+    public void setFuzzy75Characters(Long v) { this.fuzzy75Characters = v; }
 
-    public Long getFuzzy50NT_Characters() { return fuzzy50NT_Characters; }
-    public void setFuzzy50NT_Characters(Long fuzzy50NT_Characters) { this.fuzzy50NT_Characters = fuzzy50NT_Characters; }
+    public Double getFuzzy75Weighted() { return fuzzy75Weighted; }
+    public void setFuzzy75Weighted(Double v) { this.fuzzy75Weighted = v; }
 
-    public Long getNoMatchTM_Words() { return noMatchTM_Words; }
-    public void setNoMatchTM_Words(Long noMatchTM_Words) { this.noMatchTM_Words = noMatchTM_Words; }
+    public Double getFuzzy75Percentage() { return fuzzy75Percentage; }
+    public void setFuzzy75Percentage(Double v) { this.fuzzy75Percentage = v; }
 
-    public Long getNoMatchTM_Characters() { return noMatchTM_Characters; }
-    public void setNoMatchTM_Characters(Long noMatchTM_Characters) { this.noMatchTM_Characters = noMatchTM_Characters; }
+    public Long getFuzzy50Segments() { return fuzzy50Segments; }
+    public void setFuzzy50Segments(Long v) { this.fuzzy50Segments = v; }
 
-    public Long getNoMatchTM_Segments() { return noMatchTM_Segments; }
-    public void setNoMatchTM_Segments(Long noMatchTM_Segments) { this.noMatchTM_Segments = noMatchTM_Segments; }
+    public Long getFuzzy50Words() { return fuzzy50Words; }
+    public void setFuzzy50Words(Long v) { this.fuzzy50Words = v; }
 
-    public Double getApprovedTM_Weighted() { return approvedTM_Weighted; }
-    public void setApprovedTM_Weighted(Double v) { this.approvedTM_Weighted = v; }
+    public Long getFuzzy50Characters() { return fuzzy50Characters; }
+    public void setFuzzy50Characters(Long v) { this.fuzzy50Characters = v; }
 
-    public Double getApprovedNT_Weighted() { return approvedNT_Weighted; }
-    public void setApprovedNT_Weighted(Double v) { this.approvedNT_Weighted = v; }
+    public Double getFuzzy50Weighted() { return fuzzy50Weighted; }
+    public void setFuzzy50Weighted(Double v) { this.fuzzy50Weighted = v; }
 
-    public Double getRepetitionTM_Weighted() { return repetitionTM_Weighted; }
-    public void setRepetitionTM_Weighted(Double v) { this.repetitionTM_Weighted = v; }
+    public Double getFuzzy50Percentage() { return fuzzy50Percentage; }
+    public void setFuzzy50Percentage(Double v) { this.fuzzy50Percentage = v; }
 
-    public Double getRepetitionNT_Weighted() { return repetitionNT_Weighted; }
-    public void setRepetitionNT_Weighted(Double v) { this.repetitionNT_Weighted = v; }
+    public Long getNoMatchSegments() { return noMatchSegments; }
+    public void setNoMatchSegments(Long v) { this.noMatchSegments = v; }
 
-    public Double getContext101TM_Weighted() { return context101TM_Weighted; }
-    public void setContext101TM_Weighted(Double v) { this.context101TM_Weighted = v; }
+    public Long getNoMatchWords() { return noMatchWords; }
+    public void setNoMatchWords(Long v) { this.noMatchWords = v; }
 
-    public Double getContext101NT_Weighted() { return context101NT_Weighted; }
-    public void setContext101NT_Weighted(Double v) { this.context101NT_Weighted = v; }
+    public Long getNoMatchCharacters() { return noMatchCharacters; }
+    public void setNoMatchCharacters(Long v) { this.noMatchCharacters = v; }
 
-    public Double getPerfect100TM_Weighted() { return perfect100TM_Weighted; }
-    public void setPerfect100TM_Weighted(Double v) { this.perfect100TM_Weighted = v; }
+    public Double getNoMatchWeighted() { return noMatchWeighted; }
+    public void setNoMatchWeighted(Double v) { this.noMatchWeighted = v; }
 
-    public Double getPerfect100NT_Weighted() { return perfect100NT_Weighted; }
-    public void setPerfect100NT_Weighted(Double v) { this.perfect100NT_Weighted = v; }
+    public Double getNoMatchPercentage() { return noMatchPercentage; }
+    public void setNoMatchPercentage(Double v) { this.noMatchPercentage = v; }
 
-    public Double getFuzzy95TM_Weighted() { return fuzzy95TM_Weighted; }
-    public void setFuzzy95TM_Weighted(Double v) { this.fuzzy95TM_Weighted = v; }
+    public Long getTotalSegments() { return totalSegments; }
+    public void setTotalSegments(Long v) { this.totalSegments = v; }
 
-    public Double getFuzzy95NT_Weighted() { return fuzzy95NT_Weighted; }
-    public void setFuzzy95NT_Weighted(Double v) { this.fuzzy95NT_Weighted = v; }
+    public Long getTotalWords() { return totalWords; }
+    public void setTotalWords(Long v) { this.totalWords = v; }
 
-    public Double getFuzzy85TM_Weighted() { return fuzzy85TM_Weighted; }
-    public void setFuzzy85TM_Weighted(Double v) { this.fuzzy85TM_Weighted = v; }
-
-    public Double getFuzzy85NT_Weighted() { return fuzzy85NT_Weighted; }
-    public void setFuzzy85NT_Weighted(Double v) { this.fuzzy85NT_Weighted = v; }
-
-    public Double getFuzzy75TM_Weighted() { return fuzzy75TM_Weighted; }
-    public void setFuzzy75TM_Weighted(Double v) { this.fuzzy75TM_Weighted = v; }
-
-    public Double getFuzzy75NT_Weighted() { return fuzzy75NT_Weighted; }
-    public void setFuzzy75NT_Weighted(Double v) { this.fuzzy75NT_Weighted = v; }
-
-    public Double getFuzzy50TM_Weighted() { return fuzzy50TM_Weighted; }
-    public void setFuzzy50TM_Weighted(Double v) { this.fuzzy50TM_Weighted = v; }
-
-    public Double getFuzzy50NT_Weighted() { return fuzzy50NT_Weighted; }
-    public void setFuzzy50NT_Weighted(Double v) { this.fuzzy50NT_Weighted = v; }
-
-    public Double getNoMatchTM_Weighted() { return noMatchTM_Weighted; }
-    public void setNoMatchTM_Weighted(Double v) { this.noMatchTM_Weighted = v; }
-
-    public Double getNoMatchNT_Weighted() { return noMatchNT_Weighted; }
-    public void setNoMatchNT_Weighted(Double v) { this.noMatchNT_Weighted = v; }
+    public Long getTotalCharacters() { return totalCharacters; }
+    public void setTotalCharacters(Long v) { this.totalCharacters = v; }
 
     public Double getTotalWeighted() { return totalWeighted; }
     public void setTotalWeighted(Double v) { this.totalWeighted = v; }
 
     public Double getTotalWeightedPercentage() { return totalWeightedPercentage; }
     public void setTotalWeightedPercentage(Double v) { this.totalWeightedPercentage = v; }
-
-    public Long getAllWords() { return allWords; }
-    public void setAllWords(Long v) { this.allWords = v; }
-
-    public Long getAllCharacters() { return allCharacters; }
-    public void setAllCharacters(Long v) { this.allCharacters = v; }
 }
