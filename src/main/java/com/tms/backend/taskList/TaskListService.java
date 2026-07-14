@@ -116,4 +116,26 @@ public class TaskListService {
             .map(TaskListDTO::from)
             .collect(Collectors.toList());
     }
+
+    @Transactional(readOnly = true)
+    public List<TaskListDTO> getAllTaskLists() {
+        return taskListRepo.findAllByOrderByCreateDateDesc().stream()
+            .map(TaskListDTO::from)
+            .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<TaskListDTO> getTaskListsByAssignee(String assigneeUid) {
+        return taskListRepo.findByAssignee_UidOrderByCreateDateDesc(assigneeUid).stream()
+            .map(TaskListDTO::from)
+            .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void deleteTaskList(Long id) {
+        if (!taskListRepo.existsById(id)) {
+            throw new ResourceNotFoundException("Task list not found with id: " + id);
+        }
+        taskListRepo.deleteById(id);
+    }
 }
