@@ -1,15 +1,19 @@
 package com.tms.backend.user;
 import java.time.ZoneId;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.tms.backend.dto.AdminResetPasswordDTO;
 import com.tms.backend.dto.ChangePasswordDTO;
 import com.tms.backend.dto.CreateUserDTO;
 import com.tms.backend.dto.OwnerDTO;
@@ -20,6 +24,8 @@ import com.tms.backend.dto.UpdateUserDTO;
 import com.tms.backend.dto.UserDTO;
 import com.tms.backend.email.EmailService;
 import com.tms.backend.exception.ResourceNotFoundException;
+import com.tms.backend.group.Group;
+import com.tms.backend.group.GroupRepository;
 import com.tms.backend.role.Role;
 import com.tms.backend.role.RoleRepository;
 import com.tms.backend.verificationToken.VerificationToken;
@@ -35,14 +41,16 @@ public class UserService {
     private RoleRepository roleRepo;
     private EmailService emailService;
     private VerificationTokenRepository tokenRepo;
+    private GroupRepository groupRepo;
 
     public UserService(PasswordEncoder passwordEncoder, UserRepository userRepo, RoleRepository roleRepo, EmailService emailService,
-                       VerificationTokenRepository tokenRepo) {
+                       VerificationTokenRepository tokenRepo, GroupRepository groupRepo) {
         this.passwordEncoder = passwordEncoder;
         this.userRepo = userRepo;
         this.roleRepo = roleRepo;
         this.emailService = emailService;
         this.tokenRepo = tokenRepo;
+        this.groupRepo = groupRepo;
     }
 
     @Transactional
@@ -241,16 +249,39 @@ public class UserService {
         userRepo.save(user);
     }
 
+    @Transactional
+    public void adminResetPassword(Long userId, AdminResetPasswordDTO dto) {
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
+
+        user.setPassword(passwordEncoder.encode(dto.newPassword()));
+        userRepo.save(user);
+    }
+
     public List<UserDTO> getAllUsers() {
+        Map<Long, Set<ReferenceDTO>> groupsByUserId = buildGroupsByUserId();
         return userRepo.findAll().stream()
-                .map(this::toDTO)
+                .map(user -> toDTO(user, groupsByUserId))
                 .toList();
     }
 
     public List<UserDTO> getAllActiveUsers() {
+        Map<Long, Set<ReferenceDTO>> groupsByUserId = buildGroupsByUserId();
         return userRepo.findByIsActiveTrue().stream()
-                .map(this::toDTO)
+                .map(user -> toDTO(user, groupsByUserId))
                 .toList();
+    }
+
+    private Map<Long, Set<ReferenceDTO>> buildGroupsByUserId() {
+        Map<Long, Set<ReferenceDTO>> groupsByUserId = new HashMap<>();
+        for (Group group : groupRepo.findAllWithDetails()) {
+            ReferenceDTO groupRef = new ReferenceDTO(group.getId(), group.getName());
+            groupsByUserId.computeIfAbsent(group.getTeamLeader().getId(), id -> new HashSet<>()).add(groupRef);
+            for (var member : group.getTeamMembers()) {
+                groupsByUserId.computeIfAbsent(member.getId(), id -> new HashSet<>()).add(groupRef);
+            }
+        }
+        return groupsByUserId;
     }
 
     public User getUserById(Long id) {
@@ -321,7 +352,7 @@ public class UserService {
         return userRepo.findByUid(uid);
     }
 
-    private UserDTO toDTO(User user) {
+    private UserDTO toDTO(User user, Map<Long, Set<ReferenceDTO>> groupsByUserId) {
         return new UserDTO(
                 user.getId(),
                 user.getUid(),
@@ -336,6 +367,7 @@ public class UserService {
                 user.getOrganizationSize(),
                 user.getUsername(),
                 user.isActive(),
-                user.getRole() != null ? new ReferenceDTO(user.getRole().getId(), user.getRole().getName()) : null);
+                user.getRole() != null ? new ReferenceDTO(user.getRole().getId(), user.getRole().getName()) : null,
+                groupsByUserId.getOrDefault(user.getId(), Set.of()));
     }
 }

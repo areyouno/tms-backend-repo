@@ -1,5 +1,7 @@
 package com.tms.backend.dto;
 
+import java.util.Set;
+
 public record UserDTO(
     Long id,
     String uid,
@@ -14,5 +16,6 @@ public record UserDTO(
     String organizationSize,
     String username,
     boolean isActive,
-    ReferenceDTO role
+    ReferenceDTO role,
+    Set<ReferenceDTO> groups
 ) {}
