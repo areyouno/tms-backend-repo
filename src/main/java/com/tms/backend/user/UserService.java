@@ -13,7 +13,6 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.tms.backend.dto.AdminResetPasswordDTO;
 import com.tms.backend.dto.ChangePasswordDTO;
 import com.tms.backend.dto.CreateUserDTO;
 import com.tms.backend.dto.OwnerDTO;
@@ -244,15 +243,6 @@ public class UserService {
         if (!passwordEncoder.matches(dto.currentPassword(), user.getPassword())) {
             throw new RuntimeException("Current password is incorrect");
         }
-
-        user.setPassword(passwordEncoder.encode(dto.newPassword()));
-        userRepo.save(user);
-    }
-
-    @Transactional
-    public void adminResetPassword(Long userId, AdminResetPasswordDTO dto) {
-        User user = userRepo.findById(userId)
-                .orElseThrow(() -> new EntityNotFoundException("User not found with id: " + userId));
 
         user.setPassword(passwordEncoder.encode(dto.newPassword()));
         userRepo.save(user);
