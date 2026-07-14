@@ -8,9 +8,11 @@ import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
@@ -50,7 +52,7 @@ import jakarta.persistence.EntityNotFoundException;
 
 @Service
 public class JobService {
-    
+
     private final JobRepository jobRepo;
     private final ProjectRepository projectRepo;
     private final UserRepository userRepo;
@@ -88,20 +90,28 @@ public class JobService {
     }
 
     @Transactional
-    public JobDTO createJob(MultipartFile file, JobDTO jobDTO, String uid) throws IOException {
+    public List<JobDTO> createJob(MultipartFile file, JobDTO jobDTO, String uid) throws IOException {
         return createJob(file, jobDTO, uid, null, false, false);
     }
 
     @Transactional
-    public JobDTO createJob(MultipartFile file, JobDTO jobDTO, String uid, String projectFolder, Boolean useSizingApi) throws IOException {
+    public List<JobDTO> createJob(MultipartFile file, JobDTO jobDTO, String uid, String projectFolder, Boolean useSizingApi) throws IOException {
         return createJob(file, jobDTO, uid, projectFolder, useSizingApi, false);
     }
 
+    // Fans out into one Job per target language: the first (alphabetically) target language gets a
+    // full upload/conversion, and every additional target language gets its own sibling Job whose
+    // files are copied from the first rather than re-converted. This keeps JobWorkflowStep (provider,
+    // due date, status) independent per language, since it's scoped to a whole Job.
     @Transactional
-    public JobDTO createJob(MultipartFile file, JobDTO jobDTO, String uid, String projectFolder, Boolean useSizingApi, Boolean performSizingDuringCreation) throws IOException {
+    public List<JobDTO> createJob(MultipartFile file, JobDTO jobDTO, String uid, String projectFolder, Boolean useSizingApi, Boolean performSizingDuringCreation) throws IOException {
 
         User currentUser = userRepo.findByUid(uid)
             .orElseThrow(() -> new ResourceNotFoundException("User not found: " + uid));
+
+        if (jobDTO.targetLangs() == null || jobDTO.targetLangs().isEmpty()) {
+            throw new IllegalArgumentException("Job must have at least one target language");
+        }
 
         TomatoSizingResponse sizingApiResponse = null;
         String tomatoSizingJobId = null;
@@ -119,8 +129,11 @@ public class JobService {
             sizingApiResponse = sizingService.sendFilesToTomatoAPI(List.of(file));
         }
 
-        // Create job entity with sizing stats (if any) and persist to get the generated ID
-        Job job = createJobFromDTO(jobDTO, currentUser, file.getOriginalFilename(), file.getSize(), sizingApiResponse);
+        List<String> sortedLangs = jobDTO.targetLangs().stream().sorted().toList();
+        String firstLang = sortedLangs.get(0);
+
+        // Create the first job entity (deterministic language) and persist to get the generated ID
+        Job job = createJobFromDTO(jobDTO, currentUser, file.getOriginalFilename(), file.getSize(), sizingApiResponse, firstLang);
         Job savedJob = jobRepo.save(job);
 
         String projectFolderName = String.valueOf(jobDTO.projectId());
@@ -141,10 +154,71 @@ public class JobService {
         List<JobWorkflowStep> savedSteps = jobWfRepo.saveAll(jobSteps);
         savedJob.setWorkflowSteps(new HashSet<>(savedSteps));
 
+        // This is the first job of its upload: it is its own source group
+        savedJob.setSourceGroupId(savedJob.getId());
+
         // Persist file paths, sizing stats, and workflow steps
         savedJob = jobRepo.save(savedJob);
 
-        return convertToDTO(savedJob, tomatoSizingJobId);
+        List<JobDTO> createdJobs = new ArrayList<>();
+        createdJobs.add(convertToDTO(savedJob, tomatoSizingJobId));
+
+        // Remaining target languages each get their own sibling job
+        for (int i = 1; i < sortedLangs.size(); i++) {
+            Job sibling = createSiblingJobForLanguage(savedJob, sortedLangs.get(i));
+            createdJobs.add(convertToDTO(sibling));
+        }
+
+        return createdJobs;
+    }
+
+    // Creates a new Job for an additional target language of an existing "document" (identified by
+    // sourceGroupId), copying the representative job's original/converted files instead of re-running
+    // the conversion API, and cloning its workflow step definitions unassigned (fresh provider/status).
+    // Used both by createJob's fan-out above and by ProjectService when a project gains a target language.
+    @Transactional
+    public Job createSiblingJobForLanguage(Job representative, String newLang) throws IOException {
+        Job sibling = new Job();
+        sibling.setSourceLang(representative.getSourceLang());
+        sibling.setTargetLangs(new HashSet<>(Set.of(newLang)));
+        sibling.setSubject(representative.getSubject());
+        sibling.setContentType(representative.getContentType());
+        sibling.setFileName(representative.getFileName());
+        sibling.setFileSize(representative.getFileSize());
+        sibling.setProgress(representative.getProgress());
+        sibling.setSegmentCount(representative.getSegmentCount());
+        sibling.setPageCount(representative.getPageCount());
+        sibling.setWordCount(representative.getWordCount());
+        sibling.setCharacterCount(representative.getCharacterCount());
+        sibling.setJobOwner(representative.getJobOwner());
+        sibling.setProject(representative.getProject());
+        sibling.setSourceGroupId(representative.getSourceGroupId() != null
+                ? representative.getSourceGroupId() : representative.getId());
+
+        Job savedSibling = jobRepo.save(sibling);
+
+        String projectFolderName = String.valueOf(representative.getProject().getId());
+        String siblingJobFolder = String.valueOf(savedSibling.getId());
+
+        fileConversionService.copySourceFilesToSiblingJob(representative, savedSibling, projectFolderName, siblingJobFolder);
+
+        List<JobWorkflowStep> siblingSteps = new ArrayList<>();
+        for (JobWorkflowStep repStep : representative.getWorkflowSteps()) {
+            JobWorkflowStep step = new JobWorkflowStep();
+            step.setJob(savedSibling);
+            step.setWorkflowStep(repStep.getWorkflowStep());
+            step.setDueDate(repStep.getDueDate());
+            // provider intentionally left unset, status defaults to NEW: each language is assigned independently
+            siblingSteps.add(step);
+        }
+        List<JobWorkflowStep> savedSiblingSteps = jobWfRepo.saveAll(siblingSteps);
+        savedSibling.setWorkflowSteps(new HashSet<>(savedSiblingSteps));
+
+        savedSibling = jobRepo.save(savedSibling);
+        logger.info("Created sibling job {} (source group {}) for language {}",
+                savedSibling.getId(), savedSibling.getSourceGroupId(), newLang);
+
+        return savedSibling;
     }
 
     /**
@@ -191,8 +265,7 @@ public class JobService {
             Boolean useSizingApi, Boolean performSizingDuringCreation) throws IOException {
         List<JobDTO> createdJobs = new ArrayList<>();
         for (MultipartFile file : files) {
-            JobDTO created = createJob(file, jobDTO, uid, projectFolder, useSizingApi, performSizingDuringCreation);
-            createdJobs.add(created);
+            createdJobs.addAll(createJob(file, jobDTO, uid, projectFolder, useSizingApi, performSizingDuringCreation));
         }
         return createdJobs;
     }
@@ -218,6 +291,7 @@ public class JobService {
                 null,
                 jobDTO.sourceLang(),
                 jobDTO.targetLangs(),
+                jobDTO.subject(),
                 currentUser.getUid(),
                 currentUser.getFirstName() + " " + currentUser.getLastName(),
                 null,
@@ -237,7 +311,8 @@ public class JobService {
                 LocalDateTime.now(),
                 null,  // tomatoSizingJobId
                 null, null, null, // checkoutUserId, checkoutUserName, checkoutAt
-                null // fileUpdatedAt
+                null, // fileUpdatedAt
+                null // sourceGroupId
         );
 
         String dateTimeFolder = java.time.LocalDateTime.now()
@@ -251,8 +326,7 @@ public class JobService {
         List<JobDTO> createdJobs = new ArrayList<>();
         for (MultipartFile file : files) {
             if (!file.isEmpty()) {
-                JobDTO createdJob = createJob(file, updatedJobDTO, uid, projectFolder, true);
-                createdJobs.add(createdJob);
+                createdJobs.addAll(createJob(file, updatedJobDTO, uid, projectFolder, true));
             }
         }
 
@@ -276,7 +350,7 @@ public class JobService {
     /**
      * Upload a translated XLIFF file and save it to the translated directory.
      * Updates the job's translatedFilePath in the database.
-     * 
+     *
      * @param file  The translated XLIFF file
      * @param jobId The job ID
      * @return Path to the saved translated file
@@ -311,7 +385,7 @@ public class JobService {
 
     /**
      * Save the translated XLIFF file to the local filesystem.
-     * 
+     *
      * @param file              The translated XLIFF file
      * @param projectFolderName The project folder name
      * @param jobFolderName     The job folder name
@@ -322,19 +396,14 @@ public class JobService {
     private Path saveTranslatedFile(
         MultipartFile file,
         String projectFolderName,
-        String jobFolderName, 
-        Job job) 
+        String jobFolderName,
+        Job job)
         throws IOException {
         // Get base directory
         Path baseDir = Paths.get(baseUploadDir);
 
-        String convertedPath = job.getConvertedFilePath();
-        Path convertedFullPath = Paths.get(convertedPath);
-        // Get parent directory (removing "converted/filename.xliff")
-        Path jobDirectory = convertedFullPath.getParent().getParent();
-    
         // Create translated directory path
-        Path outputDir = baseDir.resolve(jobDirectory).resolve("translated");
+        Path outputDir = baseDir.resolve(resolveJobDirectory(job)).resolve("translated");
 
         // Create directory if it doesn't exist
         if (!Files.exists(outputDir)) {
@@ -368,10 +437,11 @@ public class JobService {
         return outputPath;
     }
 
-    private Job createJobFromDTO(JobDTO jobDTO, User currentUser, String fileName, Long fileSize, TomatoSizingResponse tomatoSizingStats) {
+    private Job createJobFromDTO(JobDTO jobDTO, User currentUser, String fileName, Long fileSize, TomatoSizingResponse tomatoSizingStats, String targetLang) {
         Job job = new Job();
         job.setSourceLang(jobDTO.sourceLang());
-        job.setTargetLangs(jobDTO.targetLangs());
+        job.setTargetLangs(new HashSet<>(Set.of(targetLang)));
+        job.setSubject(jobDTO.subject());
         job.setContentType(jobDTO.contentType());
         job.setFileName(fileName);
         job.setFileSize(fileSize);
@@ -473,15 +543,12 @@ public class JobService {
         );
     }
 
-    // Resolve the job's storage folder (".../{projectId}/{jobId}") from any of its known file paths
+    // Resolve the job's storage folder (".../{projectId}/{jobId}") from its original file path
     private Path resolveJobDirectory(Job job) {
-        String referencePath = job.getConvertedFilePath() != null
-                ? job.getConvertedFilePath()
-                : job.getOriginalFilePath();
-        if (referencePath == null) {
+        if (job.getOriginalFilePath() == null) {
             throw new ResourceNotFoundException("Job has no files on disk: " + job.getId());
         }
-        return Paths.get(referencePath).getParent().getParent();
+        return Paths.get(job.getOriginalFilePath()).getParent().getParent();
     }
 
     // Delete a checkout's working copy from disk and DB, and clear the job's cached lock fields
@@ -520,7 +587,7 @@ public class JobService {
     public List<JobSoftDeleteDTO> getDeletedJobsByUser(String uid) {
     // Find all deleted jobs owned by this user
     List<Job> deletedJobs = jobRepo.findByJobOwnerUidAndDeletedTrue(uid);
-    
+
     return deletedJobs.stream()
         .map(JobSoftDeleteDTO::from)
         .collect(Collectors.toList());
@@ -538,7 +605,7 @@ public class JobService {
                 job.getId().toString()
             );
 
-        // save 
+        // save
         jobRepo.save(job);
 
         return relativeTargetPath;
@@ -838,53 +905,32 @@ public class JobService {
         if (!jobRepo.existsById(id)){
             throw new ResourceNotFoundException("Job not found with id: " + id);
         }
-        
+
         Job job = getJobById(id);
-        
-        Path baseDir = Paths.get(baseUploadDir);
-    
-        // Delete original file from disk
+
+        // Delete the whole job folder tree (original/, converted/, translated/, working-copy/, target/)
+        // rather than individual known files
         if (job.getOriginalFilePath() != null) {
-            Path originalPath = baseDir.resolve(job.getOriginalFilePath());
-            Files.deleteIfExists(originalPath);
-            logger.info("Deleted original file: {}", originalPath);
+            Path baseDir = Paths.get(baseUploadDir);
+            Path jobFolder = baseDir.resolve(resolveJobDirectory(job));
+            deleteDirectoryRecursively(jobFolder);
+            logger.info("Deleted job folder: {}", jobFolder);
         }
 
-        // Delete converted file from disk
-        if (job.getConvertedFilePath() != null) {
-            Path convertedPath = baseDir.resolve(job.getConvertedFilePath());
-            Files.deleteIfExists(convertedPath);
-            logger.info("Deleted converted file: {}", convertedPath);
-        }
-
-        // Optional: Delete the entire job folder if it's empty
-        if (job.getOriginalFilePath() != null) {
-            Path jobFolder = baseDir.resolve(job.getOriginalFilePath()).getParent().getParent();
-            deleteEmptyDirectories(jobFolder);
-        }
-
-        // Delete the job from database (this will cascade to related entities if
-        // configured)
-        // jobRepo.deleteById(id);
+        // Delete the job from database (cascades to workflow steps)
         jobRepo.delete(job);
         logger.info("Deleted job with id: {}", id);
     }
 
-    // Helper method to clean up empty directories
-    private void deleteEmptyDirectories(Path directory) throws IOException {
-        if (Files.exists(directory) && Files.isDirectory(directory)) {
-            // Check if directory is empty
-            try (var stream = Files.list(directory)) {
-                if (stream.findAny().isEmpty()) {
-                    Files.delete(directory);
-                    logger.info("Deleted empty directory: {}", directory);
-
-                    // Recursively delete parent if empty
-                    Path parent = directory.getParent();
-                    if (parent != null && !parent.equals(Paths.get(baseUploadDir))) {
-                        deleteEmptyDirectories(parent);
-                    }
-                }
+    // Helper method to recursively delete a directory and everything under it
+    private void deleteDirectoryRecursively(Path directory) throws IOException {
+        if (!Files.exists(directory)) {
+            return;
+        }
+        try (var stream = Files.walk(directory)) {
+            List<Path> paths = stream.sorted(Comparator.reverseOrder()).collect(Collectors.toList());
+            for (Path path : paths) {
+                Files.delete(path);
             }
         }
     }
@@ -895,7 +941,7 @@ public class JobService {
             .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
 
         // Optional: Check if user owns the job or the project
-        // if (!job.getJobOwner().getUid().equals(uid) && 
+        // if (!job.getJobOwner().getUid().equals(uid) &&
         //     !job.getProject().getOwner().getUid().equals(uid)) {
         //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot delete this job");
         // }
@@ -917,7 +963,7 @@ public class JobService {
             .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
 
         // Optional: Check if user owns the job or the project
-        // if (!job.getJobOwner().getUid().equals(uid) && 
+        // if (!job.getJobOwner().getUid().equals(uid) &&
         //     !job.getProject().getOwner().getUid().equals(uid)) {
         //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "You cannot restore this job");
         // }
@@ -928,7 +974,7 @@ public class JobService {
 
         // Check if parent project is deleted
         if (job.getProject().isDeleted()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, 
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                 "Cannot restore job because its project is deleted. Restore the project first.");
         }
 
@@ -961,6 +1007,7 @@ public class JobService {
                 job.getId(),
                 job.getSourceLang(),
                 job.getTargetLangs(),
+                job.getSubject(),
                 ownerUid,
                 ownerName,
                 job.getFileName(),
@@ -982,7 +1029,8 @@ public class JobService {
                 job.getCheckoutUserId(),
                 job.getCheckoutUserName(),
                 job.getCheckoutAt(),
-                job.getFileUpdatedAt()
+                job.getFileUpdatedAt(),
+                job.getSourceGroupId()
         );
     }
 
@@ -993,50 +1041,50 @@ public class JobService {
     // Get original file path
     public Path getOriginalFilePath(Long jobId) {
         Job job = getJobById(jobId);
-        
+
         if (job.getOriginalFilePath() == null) {
             throw new ResourceNotFoundException("No original file found for job: " + jobId);
         }
-        
+
         Path baseDir = Paths.get(baseUploadDir);
         Path filePath = baseDir.resolve(job.getOriginalFilePath());
-        
+
         if (!Files.exists(filePath)) {
             throw new ResourceNotFoundException("Original file not found on disk: " + filePath);
         }
-        
+
         return filePath;
     }
-    
+
     // Get converted file path
     public Path getConvertedFilePath(Long jobId) {
         Job job = getJobById(jobId);
-        
+
         if (job.getConvertedFilePath() == null) {
             throw new ResourceNotFoundException("No converted file found for job: " + jobId);
         }
-        
+
         Path baseDir = Paths.get(baseUploadDir);
         Path filePath = baseDir.resolve(job.getConvertedFilePath());
-        
+
         if (!Files.exists(filePath)) {
             throw new ResourceNotFoundException("Converted file not found on disk: " + filePath);
         }
-        
+
         return filePath;
     }
 
     // Get translated file path
     public Path getTranslatedFilePath(Long jobId) {
         Job job = getJobById(jobId);
-        
+
         if (job.getTranslatedFilePath() == null) {
             throw new ResourceNotFoundException("No translated file found for job: " + jobId);
         }
-        
+
         Path baseDir = Paths.get(baseUploadDir);
         Path filePath = baseDir.resolve(job.getTranslatedFilePath());
-        
+
         if (!Files.exists(filePath)) {
             throw new ResourceNotFoundException("Translated file not found on disk: " + filePath);
         }
@@ -1048,27 +1096,27 @@ public class JobService {
     public FileDownloadDTO getOriginalFileForDownload(Long jobId, String uid) {
         Job job = jobRepo.findById(jobId)
             .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
-        
+
         // Check authorization: user must own the job or the project
-        // if (!job.getJobOwner().getUid().equals(uid) && 
+        // if (!job.getJobOwner().getUid().equals(uid) &&
         //     !job.getProject().getOwner().getUid().equals(uid)) {
-        //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, 
+        //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
         //         "You are not authorized to download this file");
         // }
-        
+
         // Check if file path exists
         if (job.getOriginalFilePath() == null) {
             throw new ResourceNotFoundException("No original file found for job: " + jobId);
         }
-        
+
         // Verify file exists on disk
         Path baseDir = Paths.get(baseUploadDir);
         Path filePath = baseDir.resolve(job.getOriginalFilePath());
-        
+
         if (!Files.exists(filePath)) {
             throw new ResourceNotFoundException("Original file not found on disk: " + filePath);
         }
-        
+
         return new FileDownloadDTO(
             job.getOriginalFileName() != null ? job.getOriginalFileName() : job.getFileName(),
             job.getContentType(),
@@ -1081,9 +1129,9 @@ public class JobService {
             .orElseThrow(() -> new ResourceNotFoundException("Job not found with id: " + jobId));
 
         // Check authorization
-        // if (!job.getJobOwner().getUid().equals(uid) && 
+        // if (!job.getJobOwner().getUid().equals(uid) &&
         //     !job.getProject().getOwner().getUid().equals(uid)) {
-        //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, 
+        //     throw new ResponseStatusException(HttpStatus.UNAUTHORIZED,
         //         "You are not authorized to download this file");
         // }
 

@@ -100,10 +100,11 @@ public class JobController {
                 CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
                 String uid = userDetails.getUid();
 
-                JobDTO savedJob = jobService.createJob(file, jobDTO, uid, null, false, performSizingDuringCreation);
+                List<JobDTO> savedJobs = jobService.createJob(file, jobDTO, uid, null, false, performSizingDuringCreation);
                 Map<String, Object> response = new HashMap<>();
                 response.put("message", "File uploaded successfully");
-                response.put("job", savedJob);
+                // One upload can produce multiple jobs (one per target language)
+                response.put("jobs", savedJobs);
 
                 return ResponseEntity.ok(response);
             } catch (IOException e) {

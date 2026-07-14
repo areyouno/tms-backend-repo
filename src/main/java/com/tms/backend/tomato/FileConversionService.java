@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 
 import org.slf4j.Logger;
@@ -40,8 +41,8 @@ public class FileConversionService {
     private String outputDirectory;
 
     @Value("${file.upload-dir}")
-    private String uploadDir; 
-    
+    private String uploadDir;
+
 
     public FileConversionService(RestTemplateBuilder builder) {
         this.restTemplate = builder.build();
@@ -50,16 +51,16 @@ public class FileConversionService {
     /**
      * Upload a MultipartFile to the conversion API and save the converted file locally.
      * Uses the original filename for the output file.
-     * 
+     *
      * @param file The MultipartFile to convert (xml to xliff OR sdlxliff to xliff)
-     * @return Path to the saved converted file 
+     * @return Path to the saved converted file
      * @throws IOException if file operations fail
      */
     public Path uploadAndConvertFile(MultipartFile file, String projectFolderName, String jobFolderName, Job job) throws IOException {
         try {
             String originalName = file.getOriginalFilename();
             logger.info("Uploading file {} to conversion API", originalName);
-            
+
             // Determine file extension
             FileType fileType = detectFileType(file);
 
@@ -97,38 +98,38 @@ public class FileConversionService {
             // Set headers
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-            
+
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-            
+
             // Make API request with retry
             ResponseEntity<byte[]> response = callWithRetry(endpoint, requestEntity, 3, 5000);
-            
+
             logger.info("Successfully received converted file from API. Status: {}", response.getStatusCode());
-            
+
             // Save the converted file using the original filename
             Path savedPath = saveConvertedFile(
                 response.getBody(),
                 originalName,
                 projectFolderName,
-                jobFolderName, 
+                jobFolderName,
                 file,
                 job,
                 fileType
             );
 
             logger.info("Converted file saved to: {}", savedPath.toAbsolutePath());
-            
+
             return savedPath;
-            
+
         } catch (RestClientException e) {
             logger.error("Failed to send file to conversion API: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to send file to conversion API", e);
         }
     }
-    
+
     /**
      * Save the converted file bytes to the local filesystem.
-     * 
+     *
      * @param fileBytes The file content as bytes
      * @param fileName The name for the saved file
      * @return Path to the saved file
@@ -144,15 +145,15 @@ public class FileConversionService {
         FileType detectedFileType
         ) throws IOException {
         // Get user's downloads folder
-        Path baseDir = Paths.get(uploadDir); 
-        
+        Path baseDir = Paths.get(uploadDir);
+
         // Create full output directory: downloads/tomato/projects/projectId/jobs/jobsId
         Path outputDir = baseDir
-                    .resolve("projects") 
+                    .resolve("projects")
                     .resolve(projectFolderName)
                     .resolve("jobs")
                     .resolve(jobFolderName);
-        
+
         if (!Files.exists(outputDir)) {
             Files.createDirectories(outputDir);
             logger.info("Created output directory: {}", outputDir.toAbsolutePath());
@@ -172,10 +173,10 @@ public class FileConversionService {
 
         // Replace the file extension with .xliff
         String xliffFileName = fileName.replaceFirst("\\.[^.]+$", ".xliff");
-        
+
         // Create full output path
         Path outputPath = convertedDir.resolve(xliffFileName);
-        
+
         // Write the file
         Files.write(outputPath, fileBytes);
 
@@ -184,7 +185,7 @@ public class FileConversionService {
         // Calculate relative paths
         Path relativeOriginalPath = baseDir.relativize(originalFilePath);
         Path relativeConvertedPath = baseDir.relativize(outputPath);
-    
+
         // Update job with file information
         job.setOriginalFileName(fileName);
         job.setOriginalFilePath(relativeOriginalPath.toString().replace("\\", "/"));
@@ -205,7 +206,7 @@ public class FileConversionService {
             job.getOriginalFilePath(),
             job.getConvertedFilePath()
         );
-        
+
         return outputPath;
     }
 
@@ -290,6 +291,64 @@ public class FileConversionService {
         return outputPath;
     }
 
+    /**
+     * Copies the original (and, if present, converted) file from an already-created job into a
+     * newly-created sibling job's own folder, without re-calling the conversion API. Used when a
+     * job is fanned out into one Job per target language: every sibling job needs its own copy of
+     * the same source content, but only the first job's upload actually goes through conversion.
+     *
+     * Note: if the source job's conversion was deferred (DITA sizing-during-creation, not yet
+     * resolved via saveXliffFromSizing), only the original file is copied here; siblings created
+     * before the source job's XLIFF is fetched won't automatically pick it up afterward.
+     */
+    public void copySourceFilesToSiblingJob(
+            Job sourceJob,
+            Job siblingJob,
+            String projectFolderName,
+            String siblingJobFolderName) throws IOException {
+
+        Path baseDir = Paths.get(uploadDir);
+
+        Path siblingOutputDir = baseDir
+                .resolve("projects")
+                .resolve(projectFolderName)
+                .resolve("jobs")
+                .resolve(siblingJobFolderName);
+
+        if (sourceJob.getOriginalFilePath() != null) {
+            Path sourceOriginalPath = baseDir.resolve(sourceJob.getOriginalFilePath());
+            if (Files.exists(sourceOriginalPath)) {
+                Path siblingOriginalDir = siblingOutputDir.resolve("original");
+                Files.createDirectories(siblingOriginalDir);
+                Path siblingOriginalPath = siblingOriginalDir.resolve(sourceJob.getOriginalFileName());
+                Files.copy(sourceOriginalPath, siblingOriginalPath, StandardCopyOption.REPLACE_EXISTING);
+
+                siblingJob.setOriginalFileName(sourceJob.getOriginalFileName());
+                siblingJob.setOriginalFilePath(baseDir.relativize(siblingOriginalPath).toString().replace("\\", "/"));
+            }
+        }
+
+        if (sourceJob.getConvertedFilePath() != null) {
+            Path sourceConvertedPath = baseDir.resolve(sourceJob.getConvertedFilePath());
+            if (Files.exists(sourceConvertedPath)) {
+                Path siblingConvertedDir = siblingOutputDir.resolve("converted");
+                Files.createDirectories(siblingConvertedDir);
+                Path siblingConvertedPath = siblingConvertedDir.resolve(sourceJob.getConvertedFileName());
+                Files.copy(sourceConvertedPath, siblingConvertedPath, StandardCopyOption.REPLACE_EXISTING);
+
+                siblingJob.setConvertedFileName(sourceJob.getConvertedFileName());
+                siblingJob.setConvertedFilePath(baseDir.relativize(siblingConvertedPath).toString().replace("\\", "/"));
+            }
+        }
+
+        siblingJob.setFileUploadDate(sourceJob.getFileUploadDate());
+        siblingJob.setFileSize(sourceJob.getFileSize());
+        siblingJob.setContentType(sourceJob.getContentType());
+        siblingJob.setOriginalFileFormat(sourceJob.getOriginalFileFormat());
+
+        logger.info("Copied source files from job {} to sibling job {}", sourceJob.getId(), siblingJob.getId());
+    }
+
     public Path convertXliffBackToOriginalFormat(
         Job job,
         String projectFolderName,
@@ -339,7 +398,7 @@ public class FileConversionService {
 
         HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-        // Call conversion API 
+        // Call conversion API
         ResponseEntity<byte[]> response = restTemplate.postForEntity(
                 endpoint,
                 requestEntity,
@@ -349,7 +408,7 @@ public class FileConversionService {
             throw new RuntimeException("Reverse conversion failed. Status: " + response.getStatusCode());
         }
 
-        // Save target file 
+        // Save target file
         Path targetDir = baseDir
                 .resolve("projects")
                 .resolve(projectFolderName)

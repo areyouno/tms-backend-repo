@@ -8,6 +8,7 @@ public record JobDTO(
     Long id,
     String sourceLang,
     Set<String> targetLangs,
+    String subject,
     String jobOwnerUid,
     String jobOwnerName,
     String fileName,
@@ -29,6 +30,7 @@ public record JobDTO(
     String checkoutUserId,
     String checkoutUserName,
     LocalDateTime checkoutAt,
-    LocalDateTime fileUpdatedAt
+    LocalDateTime fileUpdatedAt,
+    Long sourceGroupId
 )
 {}

@@ -2,18 +2,22 @@ package com.tms.backend.project;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.context.annotation.Lazy;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.tms.backend.businessUnit.BusinessUnit;
 import com.tms.backend.businessUnit.BusinessUnitRepository;
@@ -244,12 +248,14 @@ public class ProjectService {
                 null,
                 createDTO.sourceLang(),
                 createDTO.targetLang(),
+                createDTO.subject(),
                 null, null, null, null, null, null, null, null, null,
                 projectDTO.id(),
                 jobWfSteps,
                 null, null, null, null, null, null, null,
                 null, null, null, // checkoutUserId, checkoutUserName, checkoutAt
-                null // fileUpdatedAt
+                null, // fileUpdatedAt
+                null // sourceGroupId
         );
 
         // 3. Get user uid from email
@@ -438,7 +444,47 @@ public class ProjectService {
         }
 
         if (updatedData.targetLang() != null) {
-            project.setTargetLanguages(updatedData.targetLang());
+            Set<String> oldLangs = new HashSet<>(project.getTargetLanguages());
+            Set<String> newLangs = updatedData.targetLang();
+            project.setTargetLanguages(newLangs);
+
+            Set<String> added = new HashSet<>(newLangs);
+            added.removeAll(oldLangs);
+            Set<String> removed = new HashSet<>(oldLangs);
+            removed.removeAll(newLangs);
+
+            if (!added.isEmpty() || !removed.isEmpty()) {
+                // Sync target-language changes onto the project's jobs: each target language is its
+                // own Job (so workflow assignment stays independent per language)
+                List<Job> projectJobs = jobRepo.findByProjectIdAndDeletedFalse(id);
+
+                // Removed languages: soft-delete every job in that language (existing recycle-bin path)
+                for (Job job : projectJobs) {
+                    if (!Collections.disjoint(job.getTargetLangs(), removed)) {
+                        jobService.softDeleteJob(job.getId(), uid);
+                    }
+                }
+
+                // Added languages: one new sibling job per existing source document, cloned from
+                // whichever surviving job represents that document (not itself being removed)
+                Map<Long, Job> representativeJobBySourceGroup = projectJobs.stream()
+                        .filter(job -> Collections.disjoint(job.getTargetLangs(), removed))
+                        .collect(Collectors.toMap(
+                                job -> job.getSourceGroupId() != null ? job.getSourceGroupId() : job.getId(),
+                                job -> job,
+                                (a, b) -> a));
+
+                try {
+                    for (Job representative : representativeJobBySourceGroup.values()) {
+                        for (String lang : added) {
+                            jobService.createSiblingJobForLanguage(representative, lang);
+                        }
+                    }
+                } catch (IOException e) {
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                            "Failed to create job(s) for new target language(s): " + e.getMessage());
+                }
+            }
         }
 
         if (updatedData.netRateSchemeId() != null) {

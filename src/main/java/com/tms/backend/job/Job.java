@@ -38,11 +38,18 @@ public class Job {
 
     private Double confirmPct;
     private String sourceLang;
+    private String subject;
 
     @ElementCollection(fetch = FetchType.EAGER)
-    @CollectionTable(name = "job_target_languages", 
+    @CollectionTable(name = "job_target_languages",
                     joinColumns = @JoinColumn(name = "job_id"))
     private Set<String> targetLangs;
+
+    // Identifies sibling jobs created from the same uploaded source file (one Job per target language).
+    // The first job of an upload has sourceGroupId == its own id;
+    // every sibling job created for an additional target language shares that same value.
+    @Column(name = "source_group_id")
+    private Long sourceGroupId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "job_owner_id", referencedColumnName = "user_id")
@@ -86,9 +93,6 @@ public class Job {
     private String checkoutUserName;
     private LocalDateTime checkoutAt;
     private LocalDateTime fileUpdatedAt;
-
-    private int versionMajor = 0;
-    private int versionMinor = 0;
 
     public enum OriginalFileFormat {
         XML,
@@ -149,8 +153,14 @@ public class Job {
     public String getSourceLang() { return sourceLang; }
     public void setSourceLang(String sourceLang) { this.sourceLang = sourceLang; }
 
+    public String getSubject() { return subject; }
+    public void setSubject(String subject) { this.subject = subject; }
+
     public Set<String> getTargetLangs() { return targetLangs; }
     public void setTargetLangs(Set<String> targetLangs) { this.targetLangs = targetLangs; }
+
+    public Long getSourceGroupId() { return sourceGroupId; }
+    public void setSourceGroupId(Long sourceGroupId) { this.sourceGroupId = sourceGroupId; }
 
     public User getJobOwner() { return jobOwner; }
     public void setJobOwner(User jobOwner) { this.jobOwner = jobOwner; }
@@ -205,10 +215,4 @@ public class Job {
 
     public LocalDateTime getFileUpdatedAt() { return fileUpdatedAt; }
     public void setFileUpdatedAt(LocalDateTime fileUpdatedAt) { this.fileUpdatedAt = fileUpdatedAt; }
-
-    public int getVersionMajor() { return versionMajor; }
-    public void setVersionMajor(int versionMajor) { this.versionMajor = versionMajor; }
-
-    public int getVersionMinor() { return versionMinor; }
-    public void setVersionMinor(int versionMinor) { this.versionMinor = versionMinor; }
 }
