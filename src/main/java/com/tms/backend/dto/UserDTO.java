@@ -1,5 +1,6 @@
 package com.tms.backend.dto;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 public record UserDTO(
@@ -17,5 +18,6 @@ public record UserDTO(
     String username,
     boolean isActive,
     ReferenceDTO role,
-    Set<ReferenceDTO> groups
+    Set<ReferenceDTO> groups,
+    LocalDateTime lastLoginAt
 ) {}

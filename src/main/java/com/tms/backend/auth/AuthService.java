@@ -1,5 +1,7 @@
 package com.tms.backend.auth;
 
+import java.time.LocalDateTime;
+
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.AuthenticationException;
@@ -38,6 +40,9 @@ public class AuthService {
         User user = userRepository.findByEmail(identifier)
                 .or(() -> userRepository.findByUsername(identifier))
                 .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setLastLoginAt(LocalDateTime.now());
+        userRepository.save(user);
 
         // Generate JWT
         String token = jwtService.generateToken(user);

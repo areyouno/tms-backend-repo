@@ -1,5 +1,6 @@
 package com.tms.backend.user;
 
+import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.Set;
@@ -86,6 +87,8 @@ public class User {
 
     @Column(columnDefinition = "TEXT")
     private String note;
+
+    private LocalDateTime lastLoginAt;
 
     @PrePersist
     private void generateUid() {
@@ -277,5 +280,13 @@ public class User {
 
     public void setNote(String note) {
         this.note = note;
+    }
+
+    public LocalDateTime getLastLoginAt() {
+        return lastLoginAt;
+    }
+
+    public void setLastLoginAt(LocalDateTime lastLoginAt) {
+        this.lastLoginAt = lastLoginAt;
     }
 }

@@ -368,6 +368,7 @@ public class UserService {
                 user.getUsername(),
                 user.isActive(),
                 user.getRole() != null ? new ReferenceDTO(user.getRole().getId(), user.getRole().getName()) : null,
-                groupsByUserId.getOrDefault(user.getId(), Set.of()));
+                groupsByUserId.getOrDefault(user.getId(), Set.of()),
+                user.getLastLoginAt());
     }
 }
