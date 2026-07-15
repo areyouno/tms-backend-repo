@@ -1,5 +1,7 @@
 package com.tms.backend.user;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -289,10 +291,12 @@ public class UserService {
     public void softDeleteUser(Long id) {
         User user = userRepo.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
-        if (user.isActive()) {
-            user.setEmail("deleted_" + System.currentTimeMillis() + "_" + user.getEmail());
+        if (!user.isDeleted()) {
+            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm"));
+            user.setEmail("deleted_" + timestamp + "_" + user.getEmail());
+            user.setActive(false);
+            user.setDeleted(true);
         }
-        user.setActive(false);
         userRepo.save(user);
     }
 
@@ -360,6 +364,7 @@ public class UserService {
                 user.getOrganizationSize(),
                 user.getUsername(),
                 user.isActive(),
+                user.isDeleted(),
                 user.getRole() != null ? new ReferenceDTO(user.getRole().getId(), user.getRole().getName()) : null,
                 groupsByUserId.getOrDefault(user.getId(), Set.of()),
                 user.getLastLoginAt());

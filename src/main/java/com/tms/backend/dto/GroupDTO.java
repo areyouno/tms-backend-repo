@@ -15,9 +15,9 @@ public record GroupDTO(
     boolean isGroupActive
 ) {
     private static String displayName(User user) {
-        return user.isActive()
-            ? (user.getFirstName() + " " + user.getLastName())
-            : user.getLastName() + " (deleted user)";
+        return user.isDeleted()
+            ? user.getLastName() + " (deleted user)"
+            : (user.getFirstName() + " " + user.getLastName());
     }
 
     public static GroupDTO fromEntity(Group group) {

@@ -17,6 +17,7 @@ public record UserDTO(
     String organizationSize,
     String username,
     boolean isActive,
+    boolean isDeleted,
     ReferenceDTO role,
     Set<ReferenceDTO> groups,
     LocalDateTime lastLoginAt

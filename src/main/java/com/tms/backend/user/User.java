@@ -60,6 +60,7 @@ public class User {
 
     private String username;
     private boolean isActive;
+    private boolean isDeleted = false;
 
     @ManyToOne
     @JoinColumn(name = "role_id", nullable = true)
@@ -247,7 +248,18 @@ public class User {
     }
 
     public void setActive(boolean isActive) {
+        if (this.isDeleted) {
+            throw new IllegalStateException("Cannot change active status of a deleted user");
+        }
         this.isActive = isActive;
+    }
+
+    public boolean isDeleted() {
+        return isDeleted;
+    }
+
+    public void setDeleted(boolean isDeleted) {
+        this.isDeleted = isDeleted;
     }
 
     public ZoneId getTimeZone() {
