@@ -289,6 +289,9 @@ public class UserService {
     public void softDeleteUser(Long id) {
         User user = userRepo.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
+        if (user.isActive()) {
+            user.setEmail("deleted_" + System.currentTimeMillis() + "_" + user.getEmail());
+        }
         user.setActive(false);
         userRepo.save(user);
     }

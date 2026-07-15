@@ -36,6 +36,7 @@ public record JobWorkflowStepDTO(
         if (user == null) return null;
         String firstName = user.getFirstName() != null ? user.getFirstName() : "";
         String lastName = user.getLastName() != null ? user.getLastName() : "";
+        if (!user.isActive()) return (lastName + " (deleted user)").trim();
         return (lastName + " " + firstName).trim();
     }
 }

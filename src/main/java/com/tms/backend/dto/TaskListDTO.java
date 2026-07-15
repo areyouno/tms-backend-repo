@@ -46,7 +46,11 @@ public record TaskListDTO(
             taskList.getDueDate(),
             taskList.getDescription(),
             assignee != null ? assignee.getUid() : null,
-            assignee != null ? (assignee.getFirstName() + " " + assignee.getLastName()) : null,
+            assignee != null
+                ? (assignee.isActive()
+                    ? (assignee.getFirstName() + " " + assignee.getLastName())
+                    : assignee.getLastName() + " (deleted user)")
+                : null,
             taskList.getCreatedBy(),
             taskList.getCreateDate()
         );

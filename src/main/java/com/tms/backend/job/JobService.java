@@ -1000,7 +1000,9 @@ public class JobService {
         String ownerName = null;
         if (job.getJobOwner() != null) {
             ownerUid = job.getJobOwner().getUid();
-            ownerName = job.getJobOwner().getFirstName() + " " + job.getJobOwner().getLastName();
+            ownerName = job.getJobOwner().isActive()
+                    ? job.getJobOwner().getFirstName() + " " + job.getJobOwner().getLastName()
+                    : job.getJobOwner().getLastName() + " (deleted user)";
         }
 
         return new JobDTO(

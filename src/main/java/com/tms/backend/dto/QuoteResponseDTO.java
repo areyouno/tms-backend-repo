@@ -36,7 +36,11 @@ public record QuoteResponseDTO(
             quote.getSourceLanguage(),
             quote.getTargetLanguage(),
             quote.getProvider() != null ? quote.getProvider().getId() : null,
-            quote.getProvider() != null ? quote.getProvider().getUsername() : null,
+            quote.getProvider() != null
+                ? (quote.getProvider().isActive()
+                    ? quote.getProvider().getUsername()
+                    : quote.getProvider().getLastName() + " (deleted user)")
+                : null,
             quote.getPriceList() != null ? quote.getPriceList().getId() : null,
             quote.getPriceList() != null ? quote.getPriceList().getName() : null,
             quote.getCurrency() != null ? quote.getCurrency().getId() : null,
