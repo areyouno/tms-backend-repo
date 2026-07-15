@@ -2,16 +2,15 @@ package com.tms.backend.dto;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 import com.tms.backend.job.Job;
-import com.tms.backend.job.JobWorkflowStatus;
 import com.tms.backend.project.Project;
 import com.tms.backend.taskList.TaskList;
 import com.tms.backend.user.User;
 
-public record TaskListDTO(
+public record TaskListSummaryDTO(
     Long id,
+    List<Long> jobIds,
     Long projectId,
     String projectName,
     String sourceLangCode,
@@ -26,10 +25,11 @@ public record TaskListDTO(
     String assigneeUid,
     String assigneeName,
     String createdBy,
-    LocalDateTime createDate,
-    List<TaskListItemDTO> items
+    LocalDateTime createDate
 ) {
-    public static TaskListDTO from(TaskList taskList, Map<Long, JobWorkflowStatus> statusByJobId) {
+    public static TaskListSummaryDTO from(TaskList taskList) {
+        List<Long> jobIds = taskList.getJobs().stream().map(Job::getId).toList();
+
         Project project = taskList.getJobs().stream()
             .findFirst()
             .map(Job::getProject)
@@ -37,12 +37,9 @@ public record TaskListDTO(
 
         User assignee = taskList.getAssignee();
 
-        List<TaskListItemDTO> items = taskList.getJobs().stream()
-            .map(job -> TaskListItemDTO.from(job, statusByJobId.get(job.getId())))
-            .toList();
-
-        return new TaskListDTO(
+        return new TaskListSummaryDTO(
             taskList.getId(),
+            jobIds,
             project != null ? project.getId() : null,
             project != null ? project.getName() : null,
             project != null ? project.getSourceLang() : null,
@@ -61,8 +58,7 @@ public record TaskListDTO(
                     : (assignee.getFirstName() + " " + assignee.getLastName()))
                 : null,
             taskList.getCreatedBy(),
-            taskList.getCreateDate(),
-            items
+            taskList.getCreateDate()
         );
     }
 }

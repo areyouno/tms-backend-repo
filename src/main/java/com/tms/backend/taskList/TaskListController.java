@@ -11,10 +11,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.tms.backend.dto.TaskListCreateDTO;
 import com.tms.backend.dto.TaskListDTO;
+import com.tms.backend.dto.TaskListSummaryDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.security.AccessRolesConstants;
 import com.tms.backend.user.CustomUserDetails;
@@ -40,8 +42,11 @@ public class TaskListController {
 
     @GetMapping
     @PreAuthorize(AccessRolesConstants.AUTHENTICATED)
-    public List<TaskListDTO> getAllTaskLists() {
-        return taskListService.getAllTaskLists();
+    public List<TaskListSummaryDTO> getAllTaskLists(
+        @RequestParam(required = false) Long projectId,
+        @RequestParam(required = false) String targetLanguageCode,
+        @RequestParam(required = false) Long workflowStepId) {
+        return taskListService.getAllTaskLists(projectId, targetLanguageCode, workflowStepId);
     }
 
     @GetMapping("/{id}")
@@ -54,15 +59,9 @@ public class TaskListController {
         }
     }
 
-    @GetMapping("/project/{projectId}")
-    @PreAuthorize(AccessRolesConstants.AUTHENTICATED)
-    public List<TaskListDTO> getTaskListsByProject(@PathVariable Long projectId) {
-        return taskListService.getTaskListsByProject(projectId);
-    }
-
     @GetMapping("/assignee/{assigneeUid}")
     @PreAuthorize(AccessRolesConstants.AUTHENTICATED)
-    public List<TaskListDTO> getTaskListsByAssignee(@PathVariable String assigneeUid) {
+    public List<TaskListSummaryDTO> getTaskListsByAssignee(@PathVariable String assigneeUid) {
         return taskListService.getTaskListsByAssignee(assigneeUid);
     }
 
