@@ -293,7 +293,7 @@ public class UserService {
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
         if (!user.isDeleted()) {
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmm"));
-            user.setEmail("deleted_" + timestamp + "_" + user.getEmail());
+            user.setEmail(user.getEmail() + " (" + timestamp + ")");
             user.setActive(false);
             user.setDeleted(true);
         }
