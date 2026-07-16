@@ -89,6 +89,13 @@ public class TaskListService {
             taskList.setTargetLang(targetLang);
         }
 
+        User assignee = null;
+        if (createDTO.assigneeUid() != null) {
+            assignee = userRepo.findByUid(createDTO.assigneeUid())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with uid: " + createDTO.assigneeUid()));
+            taskList.setAssignee(assignee);
+        }
+
         if (createDTO.workflowStepId() != null) {
             List<Long> jobIds = jobs.stream().map(Job::getId).toList();
             List<JobWorkflowStep> jobWorkflowSteps = jobWorkflowStepRepo
@@ -102,12 +109,13 @@ public class TaskListService {
             }
 
             taskList.setWorkflowStep(jobWorkflowSteps.get(0).getWorkflowStep());
-        }
 
-        if (createDTO.assigneeUid() != null) {
-            User assignee = userRepo.findByUid(createDTO.assigneeUid())
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with uid: " + createDTO.assigneeUid()));
-            taskList.setAssignee(assignee);
+            if (assignee != null) {
+                for (JobWorkflowStep jobWorkflowStep : jobWorkflowSteps) {
+                    jobWorkflowStep.setProvider(assignee);
+                }
+                jobWorkflowStepRepo.saveAll(jobWorkflowSteps);
+            }
         }
 
         User creator = userRepo.findByUid(creatorUid)
