@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.tms.backend.job.Job;
-import com.tms.backend.job.JobWorkflowStatus;
+import com.tms.backend.job.JobWorkflowStep;
 import com.tms.backend.project.Project;
 import com.tms.backend.taskList.TaskList;
 import com.tms.backend.user.User;
@@ -29,7 +29,7 @@ public record TaskListDTO(
     LocalDateTime createDate,
     List<TaskListItemDTO> items
 ) {
-    public static TaskListDTO from(TaskList taskList, Map<Long, JobWorkflowStatus> statusByJobId) {
+    public static TaskListDTO from(TaskList taskList, Map<Long, JobWorkflowStep> jobWorkflowStepByJobId) {
         Project project = taskList.getJobs().stream()
             .findFirst()
             .map(Job::getProject)
@@ -38,7 +38,7 @@ public record TaskListDTO(
         User assignee = taskList.getAssignee();
 
         List<TaskListItemDTO> items = taskList.getJobs().stream()
-            .map(job -> TaskListItemDTO.from(job, statusByJobId.get(job.getId())))
+            .map(job -> TaskListItemDTO.from(job, jobWorkflowStepByJobId.get(job.getId())))
             .toList();
 
         return new TaskListDTO(

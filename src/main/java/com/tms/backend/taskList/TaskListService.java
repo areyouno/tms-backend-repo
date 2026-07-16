@@ -14,15 +14,12 @@ import com.tms.backend.dto.TaskListSummaryDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.job.Job;
 import com.tms.backend.job.JobRepository;
-import com.tms.backend.job.JobWorkflowStatus;
 import com.tms.backend.job.JobWorkflowStep;
 import com.tms.backend.job.JobWorkflowStepRepository;
 import com.tms.backend.language.Language;
 import com.tms.backend.language.LanguageRepository;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
-import com.tms.backend.workflowSteps.WorkflowStep;
-import com.tms.backend.workflowSteps.WorkflowStepRepository;
 
 @Service
 public class TaskListService {
@@ -30,7 +27,6 @@ public class TaskListService {
     private final TaskListRepository taskListRepo;
     private final JobRepository jobRepo;
     private final LanguageRepository languageRepo;
-    private final WorkflowStepRepository workflowStepRepo;
     private final UserRepository userRepo;
     private final JobWorkflowStepRepository jobWorkflowStepRepo;
 
@@ -38,13 +34,11 @@ public class TaskListService {
         TaskListRepository taskListRepo,
         JobRepository jobRepo,
         LanguageRepository languageRepo,
-        WorkflowStepRepository workflowStepRepo,
         UserRepository userRepo,
         JobWorkflowStepRepository jobWorkflowStepRepo) {
         this.taskListRepo = taskListRepo;
         this.jobRepo = jobRepo;
         this.languageRepo = languageRepo;
-        this.workflowStepRepo = workflowStepRepo;
         this.userRepo = userRepo;
         this.jobWorkflowStepRepo = jobWorkflowStepRepo;
     }
@@ -53,6 +47,10 @@ public class TaskListService {
     public TaskListDTO createTaskList(TaskListCreateDTO createDTO, String creatorUid) {
         if (createDTO.jobIds() == null || createDTO.jobIds().isEmpty()) {
             throw new IllegalArgumentException("Task list must reference at least one job");
+        }
+
+        if (createDTO.workflowStepId() == null) {
+            throw new IllegalArgumentException("Task list must reference a workflow step");
         }
 
         List<Job> jobs = jobRepo.findAllById(createDTO.jobIds());
@@ -92,9 +90,18 @@ public class TaskListService {
         }
 
         if (createDTO.workflowStepId() != null) {
-            WorkflowStep workflowStep = workflowStepRepo.findById(createDTO.workflowStepId())
-                .orElseThrow(() -> new ResourceNotFoundException("Workflow step not found with id: " + createDTO.workflowStepId()));
-            taskList.setWorkflowStep(workflowStep);
+            List<Long> jobIds = jobs.stream().map(Job::getId).toList();
+            List<JobWorkflowStep> jobWorkflowSteps = jobWorkflowStepRepo
+                .findByJob_IdInAndWorkflowStep_Id(jobIds, createDTO.workflowStepId());
+
+            List<Long> jobIdsWithStep = jobWorkflowSteps.stream().map(jws -> jws.getJob().getId()).toList();
+            List<Long> missingJobIds = jobIds.stream().filter(id -> !jobIdsWithStep.contains(id)).toList();
+            if (!missingJobIds.isEmpty()) {
+                throw new IllegalArgumentException(
+                    "Jobs " + missingJobIds + " do not have workflow step with id: " + createDTO.workflowStepId());
+            }
+
+            taskList.setWorkflowStep(jobWorkflowSteps.get(0).getWorkflowStep());
         }
 
         if (createDTO.assigneeUid() != null) {
@@ -141,13 +148,13 @@ public class TaskListService {
     }
 
     private TaskListDTO toDetailDto(TaskList taskList) {
-        Map<Long, JobWorkflowStatus> statusByJobId = Map.of();
+        Map<Long, JobWorkflowStep> jobWorkflowStepByJobId = Map.of();
         if (taskList.getWorkflowStep() != null && !taskList.getJobs().isEmpty()) {
             List<Long> jobIds = taskList.getJobs().stream().map(Job::getId).toList();
-            statusByJobId = jobWorkflowStepRepo
+            jobWorkflowStepByJobId = jobWorkflowStepRepo
                 .findByJob_IdInAndWorkflowStep_Id(jobIds, taskList.getWorkflowStep().getId()).stream()
-                .collect(Collectors.toMap(jws -> jws.getJob().getId(), JobWorkflowStep::getStatus));
+                .collect(Collectors.toMap(jws -> jws.getJob().getId(), jws -> jws));
         }
-        return TaskListDTO.from(taskList, statusByJobId);
+        return TaskListDTO.from(taskList, jobWorkflowStepByJobId);
     }
 }
