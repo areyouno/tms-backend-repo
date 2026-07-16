@@ -308,8 +308,8 @@ public class UserService {
     }
 
     public List<User> getProviders() {
-        List<String> providerRoles = Arrays.asList("linguist", "vendor");
-        return userRepo.findByRoleNameIn(providerRoles);
+        List<String> providerRoles = Arrays.asList("reviewer", "translator");
+        return userRepo.findByRoleNameInAndIsActiveTrue(providerRoles);
     }
 
     public List<OwnerDTO> getOwners(){
