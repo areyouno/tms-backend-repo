@@ -8,7 +8,9 @@ public record ProjectTmAssignmentDTO(
     boolean write,
     Long penalty,
     Long priorityOrder,
-    Long workflowStepId
+    Long workflowStepId,
+    String sourceLang,
+    String targetLang
 ) {
     public static ProjectTmAssignmentDTO fromEntity(ProjectTmAssignment a) {
         return new ProjectTmAssignmentDTO(
@@ -17,7 +19,9 @@ public record ProjectTmAssignmentDTO(
             a.isWriteAccess(),
             a.getPenalty(),
             a.getPriorityOrder(),
-            a.getWorkflowStep().getId()
+            a.getWorkflowStep().getId(),
+            a.getSourceLang(),
+            a.getTargetLang()
         );
     }
 }

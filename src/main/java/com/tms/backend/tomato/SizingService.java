@@ -91,7 +91,7 @@ public class SizingService {
      * Submits files to the Tomato sizing API and returns the Tomato jobId immediately.
      * Use fetchSizingResultOnce(jobId) to check progress.
      */
-    public String sendFilesToTomatoAPIByPath(List<String> filePaths, String sizingRequestJson, Long tmId,
+    public String sendFilesToTomatoAPIByPath(List<String> filePaths, String sizingRequestJson, List<Long> tmIds,
             String sourceLanguage, String targetLanguage) {
         String firstFilename = Paths.get(filePaths.get(0)).getFileName().toString();
         boolean isXliff = firstFilename.endsWith(".xliff") || firstFilename.endsWith(".xlf");
@@ -120,8 +120,10 @@ public class SizingService {
         }
 
         try {
-            if (tmId != null) {
-                body.add("tmId", String.valueOf(tmId));
+            if (tmIds != null) {
+                for (Long tmId : tmIds) {
+                    body.add("tmId", String.valueOf(tmId));
+                }
             }
             if (sizingRequestJson != null) {
                 body.add("sizingRequestJson", sizingRequestJson);
@@ -195,7 +197,7 @@ public class SizingService {
             ResponseEntity<String> resultResponse = restTemplate.getForEntity(
                     baseUrl + "/api/Sizing/sizing-result/" + tomatoJobId, String.class
             );
-            log.info("sizing success {}", resultResponse);
+
             JsonNode resultRoot = mapper.readTree(resultResponse.getBody());
             ObjectNode resultNode = (ObjectNode) resultRoot.path("result").deepCopy();
             resultNode.put("status", "completed");

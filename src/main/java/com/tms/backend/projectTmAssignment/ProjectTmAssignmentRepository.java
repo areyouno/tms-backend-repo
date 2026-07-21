@@ -23,5 +23,10 @@ public interface ProjectTmAssignmentRepository
             Long workflowStepId
         );
 
-    Optional<ProjectTmAssignment> findFirstByProjectIdAndReadAccessTrue(Long projectId);
+    List<ProjectTmAssignment>
+        findByProjectIdAndSourceLangAndTargetLangAndReadAccessTrue(
+            Long projectId,
+            String sourceLang,
+            String targetLang
+        );
 }

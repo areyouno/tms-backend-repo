@@ -66,13 +66,26 @@ public class JobAnalysisService {
 
         NetRateSchemeResponseDTO scheme = resolveSchemeForProject(project);
 
-        Long tmId = tmAssignmentRepo
-                .findFirstByProjectIdAndReadAccessTrue(projectId)
-                .map(ProjectTmAssignment::getTmId)
-                .orElseThrow(() -> new RuntimeException(
-                        "No TM with read access found for project " + projectId));
+        String sourceLanguage = primaryJob.getSourceLang();
+        String targetLanguage = primaryJob.getTargetLangs() != null
+                ? primaryJob.getTargetLangs().stream().findFirst().orElse(null)
+                : null;
 
-        log.info("Sizing request for project {} using tmId: {}", projectId, tmId);
+        List<Long> tmIds = tmAssignmentRepo
+                .findByProjectIdAndSourceLangAndTargetLangAndReadAccessTrue(
+                        projectId, sourceLanguage, targetLanguage)
+                .stream()
+                .map(ProjectTmAssignment::getTmId)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (tmIds.isEmpty()) {
+            throw new RuntimeException(
+                    "No TM with read access found for project " + projectId
+                            + " with language pair " + sourceLanguage + " -> " + targetLanguage);
+        }
+
+        log.info("Sizing request for project {} using tmIds: {}", projectId, tmIds);
 
         String sizingRequestJson = buildSizingRequestJson(scheme, projectId);
 
@@ -80,13 +93,8 @@ public class JobAnalysisService {
                 .map(Job::getOriginalFilePath)
                 .collect(Collectors.toList());
 
-        String sourceLanguage = primaryJob.getSourceLang();
-        String targetLanguage = primaryJob.getTargetLangs() != null
-                ? primaryJob.getTargetLangs().stream().findFirst().orElse(null)
-                : null;
-
         String tomatoJobId = sizingService.sendFilesToTomatoAPIByPath(
-                filePaths, sizingRequestJson, tmId, sourceLanguage, targetLanguage);
+                filePaths, sizingRequestJson, tmIds, sourceLanguage, targetLanguage);
 
         pendingSizingJobRepository.save(new PendingSizingJob(tomatoJobId, jobIds, projectId, user));
         sizingPollService.startPolling(tomatoJobId);

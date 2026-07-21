@@ -48,7 +48,8 @@ public class ProjectTmAssignmentService {
                 for (WorkflowStep step : project.getWorkflowSteps()) {
                     expandedAssignments.add(new ProjectTmAssignmentDTO(
                             tmDto.tmId(), tmDto.read(), tmDto.write(),
-                            tmDto.penalty(), tmDto.priorityOrder(), step.getId()));
+                            tmDto.penalty(), tmDto.priorityOrder(), step.getId(),
+                            tmDto.sourceLang(), tmDto.targetLang()));
                 }
             } else {
                 expandedAssignments.add(tmDto);
@@ -98,6 +99,8 @@ public class ProjectTmAssignmentService {
             assignment.setWriteAccess(tmDto.write());
             assignment.setPenalty(tmDto.penalty());
             assignment.setPriorityOrder(tmDto.priorityOrder());
+            assignment.setSourceLang(tmDto.sourceLang());
+            assignment.setTargetLang(tmDto.targetLang());
 
             savedAssignments.add(assignment);
         }
@@ -115,7 +118,9 @@ public class ProjectTmAssignmentService {
                 assignment.isWriteAccess(),
                 assignment.getPenalty(),
                 assignment.getPriorityOrder(),
-                assignment.getWorkflowStep().getId()
+                assignment.getWorkflowStep().getId(),
+                assignment.getSourceLang(),
+                assignment.getTargetLang()
         );
     }
 }

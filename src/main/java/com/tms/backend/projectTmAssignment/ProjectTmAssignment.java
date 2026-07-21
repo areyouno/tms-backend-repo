@@ -38,6 +38,9 @@ public class ProjectTmAssignment {
     @Column(name = "translation_memory_id", nullable = false)
     private Long tmId;
 
+    private String sourceLang;
+    private String targetLang;
+
     // Workflow step
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "workflow_step_id", nullable = false)
@@ -56,6 +59,12 @@ public class ProjectTmAssignment {
 
     public Long getTmId() { return tmId; }
     public void setTmId(Long tmId) { this.tmId = tmId; }
+
+    public String getSourceLang() { return sourceLang; }
+    public void setSourceLang(String sourceLang) { this.sourceLang = sourceLang; }
+
+    public String getTargetLang() { return targetLang; }
+    public void setTargetLang(String targetLang) { this.targetLang = targetLang; }
 
     public WorkflowStep getWorkflowStep() { return workflowStep; }
     public void setWorkflowStep(WorkflowStep workflowStep) { this.workflowStep = workflowStep; }
