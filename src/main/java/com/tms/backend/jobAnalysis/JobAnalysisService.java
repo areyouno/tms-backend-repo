@@ -54,7 +54,7 @@ public class JobAnalysisService {
      * Returns the Tomato jobId immediately so the caller can check status later.
      */
     @Transactional
-    public String initiateSizing(List<Long> jobIds, User user) {
+    public String initiateSizing(List<Long> jobIds, User user, Boolean preTranslate, Integer minSimilarity) {
         List<Job> jobs = jobIds.stream()
                 .map(id -> jobRepository.findById(id)
                         .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
@@ -93,8 +93,10 @@ public class JobAnalysisService {
                 .map(Job::getOriginalFilePath)
                 .collect(Collectors.toList());
 
+        Integer effectiveMinSimilarity = Boolean.TRUE.equals(preTranslate) ? minSimilarity : null;
+
         String tomatoJobId = sizingService.sendFilesToTomatoAPIByPath(
-                filePaths, sizingRequestJson, tmIds, sourceLanguage, targetLanguage);
+                filePaths, sizingRequestJson, tmIds, sourceLanguage, targetLanguage, effectiveMinSimilarity);
 
         pendingSizingJobRepository.save(new PendingSizingJob(tomatoJobId, jobIds, projectId, user));
         sizingPollService.startPolling(tomatoJobId);

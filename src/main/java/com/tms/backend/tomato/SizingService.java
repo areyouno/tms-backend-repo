@@ -84,7 +84,7 @@ public class SizingService {
     }
 
     public String sendFilesToTomatoAPIByPath(List<String> filePaths) {
-        return sendFilesToTomatoAPIByPath(filePaths, null, null, null, null);
+        return sendFilesToTomatoAPIByPath(filePaths, null, null, null, null, null);
     }
 
     /**
@@ -92,7 +92,7 @@ public class SizingService {
      * Use fetchSizingResultOnce(jobId) to check progress.
      */
     public String sendFilesToTomatoAPIByPath(List<String> filePaths, String sizingRequestJson, List<Long> tmIds,
-            String sourceLanguage, String targetLanguage) {
+            String sourceLanguage, String targetLanguage, Integer minSimilarity) {
         String firstFilename = Paths.get(filePaths.get(0)).getFileName().toString();
         boolean isXliff = firstFilename.endsWith(".xliff") || firstFilename.endsWith(".xlf");
         String fileKey = isXliff ? "xliffFiles" : "ditaFiles";
@@ -133,6 +133,9 @@ public class SizingService {
             }
             if (targetLanguage != null) {
                 body.add("targetLanguage", targetLanguage);
+            }
+            if (minSimilarity != null) {
+                body.add("minSimilarity", minSimilarity);
             }
 
             HttpHeaders headers = new HttpHeaders();

@@ -52,7 +52,9 @@ public class JobAnalysisController {
 
         String tomatoJobId = jobAnalysisService.initiateSizing(
                 request.jobIds(),
-                currentUser
+                currentUser,
+                request.preTranslate(),
+                request.minSimilarity()
         );
 
         return ResponseEntity.accepted().body(Map.of("tomatoJobId", tomatoJobId));

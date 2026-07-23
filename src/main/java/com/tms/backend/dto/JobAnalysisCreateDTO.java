@@ -7,5 +7,7 @@ import com.tms.backend.jobAnalysis.JobAnalysisType;
 public record JobAnalysisCreateDTO(
     List<Long> jobIds,
     JobAnalysisType type,
-    String name
+    String name,
+    Boolean preTranslate,
+    Integer minSimilarity
 ) {}
