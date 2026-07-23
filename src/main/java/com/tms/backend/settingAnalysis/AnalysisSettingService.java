@@ -25,7 +25,7 @@ public class AnalysisSettingService {
         AnalysisSetting defaultSetting = new AnalysisSetting();
         defaultSetting.setUser(null);
         defaultSetting.setAnalysisType(AnalysisType.DEFAULT);
-        defaultSetting.setName("Analysis {projectName}");
+        defaultSetting.setName("Analysis {projectName}_{targetLang}");
 
         defaultSetting.setTransMemMatch(true);
         defaultSetting.setInternalFuzz(true);

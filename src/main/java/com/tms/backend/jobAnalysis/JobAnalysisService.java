@@ -2,13 +2,18 @@ package com.tms.backend.jobAnalysis;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -48,28 +53,42 @@ public class JobAnalysisService {
     private final NetRateSchemeService netRateSchemeService;
     private final ProjectTmAssignmentRepository tmAssignmentRepo;
     private final PendingSizingJobRepository pendingSizingJobRepository;
+    private final PlatformTransactionManager transactionManager;
 
     /**
      * Resolves all context needed for sizing, submits files to Tomato, and starts background polling.
-     * Returns the Tomato jobId immediately so the caller can check status later.
+     * Jobs are grouped by language pair so each pair is sized in its own Tomato call
+     * (mixing pairs in one call would size every file against the wrong TM/language pair).
+     * Returns one Tomato jobId per language-pair group so the caller can check status later.
      */
     @Transactional
-    public String initiateSizing(List<Long> jobIds, User user, Boolean preTranslate, Integer minSimilarity) {
+    public List<String> initiateSizing(List<Long> jobIds, User user, Boolean preTranslate, Integer minSimilarity) {
         List<Job> jobs = jobIds.stream()
                 .map(id -> jobRepository.findById(id)
                         .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
                 .collect(Collectors.toList());
 
+        Integer effectiveMinSimilarity = Boolean.TRUE.equals(preTranslate) ? minSimilarity : null;
+
+        Map<LanguagePair, List<Job>> jobsByLanguagePair = jobs.stream()
+                .collect(Collectors.groupingBy(this::languagePairOf, LinkedHashMap::new, Collectors.toList()));
+
+        List<String> tomatoJobIds = new ArrayList<>();
+        for (Map.Entry<LanguagePair, List<Job>> entry : jobsByLanguagePair.entrySet()) {
+            tomatoJobIds.add(initiateSizingForGroup(entry.getKey(), entry.getValue(), user, effectiveMinSimilarity));
+        }
+        return tomatoJobIds;
+    }
+
+    private String initiateSizingForGroup(LanguagePair languagePair, List<Job> jobs, User user, Integer effectiveMinSimilarity) {
         Job primaryJob = jobs.get(0);
         Project project = primaryJob.getProject();
         Long projectId = project.getId();
 
         NetRateSchemeResponseDTO scheme = resolveSchemeForProject(project);
 
-        String sourceLanguage = primaryJob.getSourceLang();
-        String targetLanguage = primaryJob.getTargetLangs() != null
-                ? primaryJob.getTargetLangs().stream().findFirst().orElse(null)
-                : null;
+        String sourceLanguage = languagePair.source();
+        String targetLanguage = languagePair.target();
 
         List<Long> tmIds = tmAssignmentRepo
                 .findByProjectIdAndSourceLangAndTargetLangAndReadAccessTrue(
@@ -93,17 +112,26 @@ public class JobAnalysisService {
                 .map(Job::getOriginalFilePath)
                 .collect(Collectors.toList());
 
-        Integer effectiveMinSimilarity = Boolean.TRUE.equals(preTranslate) ? minSimilarity : null;
-
         String tomatoJobId = sizingService.sendFilesToTomatoAPIByPath(
                 filePaths, sizingRequestJson, tmIds, sourceLanguage, targetLanguage, effectiveMinSimilarity);
 
-        pendingSizingJobRepository.save(new PendingSizingJob(tomatoJobId, jobIds, projectId, user));
+        List<Long> groupJobIds = jobs.stream().map(Job::getId).collect(Collectors.toList());
+        pendingSizingJobRepository.save(new PendingSizingJob(tomatoJobId, groupJobIds, projectId, user));
         sizingPollService.startPolling(tomatoJobId);
 
-        log.info("Sizing initiated for tomatoJobId: {}", tomatoJobId);
+        log.info("Sizing initiated for tomatoJobId: {} ({} -> {}, {} job(s))",
+                tomatoJobId, sourceLanguage, targetLanguage, jobs.size());
         return tomatoJobId;
     }
+
+    private LanguagePair languagePairOf(Job job) {
+        String targetLanguage = job.getTargetLangs() != null
+                ? job.getTargetLangs().stream().findFirst().orElse(null)
+                : null;
+        return new LanguagePair(job.getSourceLang(), targetLanguage);
+    }
+
+    private record LanguagePair(String source, String target) {}
 
     /**
      * Called by the background polling thread when Tomato reports completion.
@@ -161,7 +189,9 @@ public class JobAnalysisService {
 
         JobAnalysis jobAnalysis = new JobAnalysis();
 
-        String resolvedName = resolveNameMacros(setting.getName(), job);
+        TomatoSizingResponse.Statistics stats = sizingResponse.statistics();
+
+        String resolvedName = resolveNameMacros(setting.getName(), job, stats.targetLanguage());
         jobAnalysis.setName(resolvedName);
         jobAnalysis.setTomatoJobId(tomatoJobId);
 
@@ -170,8 +200,6 @@ public class JobAnalysisService {
         jobAnalysis.setCreateDate(LocalDateTime.now());
         jobAnalysis.setCreatedBy(user.getUsername());
         jobAnalysis.setType(JobAnalysisType.DEFAULT);
-
-        TomatoSizingResponse.Statistics stats = sizingResponse.statistics();
 
         try {
             String prettyStats = new ObjectMapper().writerWithDefaultPrettyPrinter().writeValueAsString(stats);
@@ -348,20 +376,43 @@ public class JobAnalysisService {
         return saved;
     }
 
+    /**
+     * Resolves a single pending sizing job in its own isolated transaction, re-reading
+     * the row fresh so a concurrent finalizer (background poller vs. an on-demand list
+     * fetch) never operates on a stale/detached copy. Returns true if this job is no
+     * longer pending (either resolved here or already resolved by another thread).
+     */
+    private boolean resolvePendingSizingJobIfCompleted(String tomatoJobId) {
+        TransactionTemplate tt = new TransactionTemplate(transactionManager);
+        tt.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        return Boolean.TRUE.equals(tt.execute(status -> {
+            PendingSizingJob ctx = pendingSizingJobRepository.findById(tomatoJobId).orElse(null);
+            if (ctx == null) {
+                return true;
+            }
+
+            SizingPollStatus pollStatus = sizingService.fetchSizingResultOnce(tomatoJobId);
+            if (!pollStatus.isCompleted()) {
+                return false;
+            }
+
+            List<Job> jobs = ctx.getJobIds().stream()
+                    .map(id -> jobRepository.findById(id)
+                            .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
+                    .collect(Collectors.toList());
+            createJobAnalysis(jobs, ctx.getUser(), pollStatus.result(), tomatoJobId);
+            pendingSizingJobRepository.delete(ctx);
+            return true;
+        }));
+    }
+
     @Transactional
     public List<JobAnalysisResponseDTO> getAllJobAnalyses() {
         List<PendingSizingJob> stillPending = new ArrayList<>();
 
         for (PendingSizingJob ctx : pendingSizingJobRepository.findAll()) {
             try {
-                SizingPollStatus pollStatus = sizingService.fetchSizingResultOnce(ctx.getTomatoJobId());
-                if (pollStatus.isCompleted()) {
-                    List<Job> jobs = ctx.getJobIds().stream()
-                            .map(id -> jobRepository.findById(id)
-                                    .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
-                            .collect(Collectors.toList());
-                    createJobAnalysis(jobs, ctx.getUser(), pollStatus.result(), ctx.getTomatoJobId());
-                    pendingSizingJobRepository.delete(ctx);
+                if (resolvePendingSizingJobIfCompleted(ctx.getTomatoJobId())) {
                     log.info("Resolved pending sizing job {} during getAllJobAnalyses", ctx.getTomatoJobId());
                 } else {
                     stillPending.add(ctx);
@@ -391,14 +442,7 @@ public class JobAnalysisService {
 
         for (PendingSizingJob ctx : pendingSizingJobRepository.findByProjectId(projectId)) {
             try {
-                SizingPollStatus pollStatus = sizingService.fetchSizingResultOnce(ctx.getTomatoJobId());
-                if (pollStatus.isCompleted()) {
-                    List<Job> jobs = ctx.getJobIds().stream()
-                            .map(id -> jobRepository.findById(id)
-                                    .orElseThrow(() -> new RuntimeException("Job not found with id: " + id)))
-                            .collect(Collectors.toList());
-                    createJobAnalysis(jobs, ctx.getUser(), pollStatus.result(), ctx.getTomatoJobId());
-                    pendingSizingJobRepository.delete(ctx);
+                if (resolvePendingSizingJobIfCompleted(ctx.getTomatoJobId())) {
                     log.info("Resolved pending sizing job {} during getJobAnalysesByProjectId", ctx.getTomatoJobId());
                 } else {
                     stillPending.add(ctx);
@@ -458,7 +502,7 @@ public class JobAnalysisService {
         return netRateSchemeService.getDefaultScheme();
     }
 
-    private String resolveNameMacros(String template, Job job) {
+    private String resolveNameMacros(String template, Job job, String targetLanguage) {
         if (template == null) {
             return "Analysis";
         }
@@ -473,8 +517,9 @@ public class JobAnalysisService {
             resolved = resolved.replace("{sourceLang}", job.getSourceLang());
         }
 
-        if (job.getTargetLangs() != null && !job.getTargetLangs().isEmpty()) {
-            resolved = resolved.replace("{targetLangs}", String.join(", ", job.getTargetLangs()));
+        if (targetLanguage != null) {
+            resolved = resolved.replace("{targetLang}", targetLanguage);
+            resolved = resolved.replace("{targetLangs}", targetLanguage);
         }
 
         return resolved;

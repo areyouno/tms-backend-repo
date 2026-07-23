@@ -114,6 +114,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.POST,"/auth/login").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/jobs/upload-translated").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/jobAnalysis/sizing-sse/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/jobAnalysis/create").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/tm/import-tmx/jobs/*/stream").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/termbase/import/jobs/*/stream").permitAll()
                 .anyRequest().authenticated())
@@ -129,12 +130,14 @@ public class SecurityConfig {
         var config = new CorsConfiguration();
         config.setAllowedOriginPatterns(List.of(
                 "http://localhost:5173",
-                "https://xliffl10n.latispass.net"
+                "https://xliffl10n.latispass.net",
+                "http://192.168.100.244:5001"
         ));
         
         config.setAllowedMethods(List.of("GET","POST","PUT", "PATCH","DELETE","OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
+        // config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", config);

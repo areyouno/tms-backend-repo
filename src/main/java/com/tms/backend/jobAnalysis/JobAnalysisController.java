@@ -38,11 +38,13 @@ public class JobAnalysisController {
     private final SizingService sizingService;
 
     /**
-     * Submits files to Tomato for sizing and returns a Tomato jobId immediately.
-     * Poll GET /sizing-status/{tomatoJobId} to check when the result is ready.
+     * Submits files to Tomato for sizing and returns Tomato jobIds immediately.
+     * Jobs are grouped by language pair on the backend and sized in separate Tomato
+     * submissions, so Tomato returns one jobId per language pair among the submitted jobs.
+     * Poll GET /sizing-status/{tomatoJobId} to check when each is ready.
      */
     @PostMapping("/create")
-    public ResponseEntity<Map<String, String>> createJobAnalysis(
+    public ResponseEntity<Map<String, List<String>>> createJobAnalysis(
             @RequestBody JobAnalysisCreateDTO request,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
@@ -50,14 +52,14 @@ public class JobAnalysisController {
         User currentUser = userService.findByUid(uid)
                 .orElseThrow(() -> new RuntimeException("User not found with uid: " + uid));
 
-        String tomatoJobId = jobAnalysisService.initiateSizing(
+        List<String> tomatoJobIds = jobAnalysisService.initiateSizing(
                 request.jobIds(),
                 currentUser,
                 request.preTranslate(),
                 request.minSimilarity()
         );
 
-        return ResponseEntity.accepted().body(Map.of("tomatoJobId", tomatoJobId));
+        return ResponseEntity.accepted().body(Map.of("tomatoJobIds", tomatoJobIds));
     }
 
     /**
