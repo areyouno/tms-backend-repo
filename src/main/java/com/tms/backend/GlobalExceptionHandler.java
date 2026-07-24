@@ -2,6 +2,7 @@ package com.tms.backend;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.slf4j.Logger;
@@ -12,7 +13,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.server.ResponseStatusException;
+
+import com.tms.backend.exception.MissingTmAssignmentException;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,6 +25,25 @@ import jakarta.servlet.http.HttpServletRequest;
 public class GlobalExceptionHandler {
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+    // The client disconnected before the response finished writing (e.g. navigated
+    // away or aborted the request). The connection is already unusable, so there is
+    // nothing to write back - just note it at DEBUG instead of the ERROR-level
+    // catch-all below, which would otherwise log a full stack trace for routine
+    // client aborts.
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleAsyncRequestNotUsable(AsyncRequestNotUsableException ex, HttpServletRequest request) {
+        logger.debug("Client disconnected before response could be written at {}", request.getRequestURI());
+    }
+
+    @ExceptionHandler(MissingTmAssignmentException.class)
+    public ResponseEntity<Map<String, Object>> handleMissingTmAssignment(MissingTmAssignmentException ex, HttpServletRequest request) {
+        logger.warn("MissingTmAssignmentException at {}: {}", request.getRequestURI(), ex.getLanguagePairs());
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("message", ex.getMessage());
+        response.put("languagePairs", ex.getLanguagePairs());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
+    }
 
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, String>> handleRuntime(RuntimeException ex, HttpServletRequest request) {

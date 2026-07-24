@@ -23,6 +23,7 @@ import com.tms.backend.dto.MatchTypeRateResponseDTO;
 import com.tms.backend.dto.NetRateSchemeResponseDTO;
 import com.tms.backend.dto.SizingStatusDTO;
 import com.tms.backend.dto.TomatoSizingResponse;
+import com.tms.backend.exception.MissingTmAssignmentException;
 import com.tms.backend.job.Job;
 import com.tms.backend.job.JobRepository;
 import com.tms.backend.netRateScheme.NetRateScheme;
@@ -73,14 +74,43 @@ public class JobAnalysisService {
         Map<LanguagePair, List<Job>> jobsByLanguagePair = jobs.stream()
                 .collect(Collectors.groupingBy(this::languagePairOf, LinkedHashMap::new, Collectors.toList()));
 
+        Map<LanguagePair, List<Long>> tmIdsByLanguagePair = new LinkedHashMap<>();
+        List<MissingTmAssignmentException.MissingLanguagePair> missingLanguagePairs = new ArrayList<>();
+        for (Map.Entry<LanguagePair, List<Job>> entry : jobsByLanguagePair.entrySet()) {
+            LanguagePair languagePair = entry.getKey();
+            Long projectId = entry.getValue().get(0).getProject().getId();
+
+            List<Long> tmIds = tmAssignmentRepo
+                    .findByProjectIdAndSourceLangAndTargetLangAndReadAccessTrue(
+                            projectId, languagePair.source(), languagePair.target())
+                    .stream()
+                    .map(ProjectTmAssignment::getTmId)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            if (tmIds.isEmpty()) {
+                missingLanguagePairs.add(new MissingTmAssignmentException.MissingLanguagePair(
+                        languagePair.source(), languagePair.target()));
+            } else {
+                tmIdsByLanguagePair.put(languagePair, tmIds);
+            }
+        }
+
+        if (!missingLanguagePairs.isEmpty()) {
+            throw new MissingTmAssignmentException(missingLanguagePairs);
+        }
+
         List<String> tomatoJobIds = new ArrayList<>();
         for (Map.Entry<LanguagePair, List<Job>> entry : jobsByLanguagePair.entrySet()) {
-            tomatoJobIds.add(initiateSizingForGroup(entry.getKey(), entry.getValue(), user, effectiveMinSimilarity));
+            tomatoJobIds.add(initiateSizingForGroup(
+                    entry.getKey(), entry.getValue(), tmIdsByLanguagePair.get(entry.getKey()),
+                    user, effectiveMinSimilarity));
         }
         return tomatoJobIds;
     }
 
-    private String initiateSizingForGroup(LanguagePair languagePair, List<Job> jobs, User user, Integer effectiveMinSimilarity) {
+    private String initiateSizingForGroup(
+            LanguagePair languagePair, List<Job> jobs, List<Long> tmIds, User user, Integer effectiveMinSimilarity) {
         Job primaryJob = jobs.get(0);
         Project project = primaryJob.getProject();
         Long projectId = project.getId();
@@ -89,20 +119,6 @@ public class JobAnalysisService {
 
         String sourceLanguage = languagePair.source();
         String targetLanguage = languagePair.target();
-
-        List<Long> tmIds = tmAssignmentRepo
-                .findByProjectIdAndSourceLangAndTargetLangAndReadAccessTrue(
-                        projectId, sourceLanguage, targetLanguage)
-                .stream()
-                .map(ProjectTmAssignment::getTmId)
-                .distinct()
-                .collect(Collectors.toList());
-
-        if (tmIds.isEmpty()) {
-            throw new RuntimeException(
-                    "No TM with read access found for project " + projectId
-                            + " with language pair " + sourceLanguage + " -> " + targetLanguage);
-        }
 
         log.info("Sizing request for project {} using tmIds: {}", projectId, tmIds);
 
