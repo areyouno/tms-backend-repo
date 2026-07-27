@@ -2,12 +2,15 @@ package com.tms.backend.rolePermission;
 
 public enum PermissionCategory {
     PROJECT,
-    PROJECT_TEMPLATES,
+    ANALYSIS,
+    EDITOR,
+    TASK_LIST,
     TRANSLATION_MEMORIES,
     TERM_BASE,
+    SETTINGS,
+    PROJECT_TEMPLATES,
     USERS,
     CLIENT_DOMAIN_SUBDOMAIN,
-    VENDORS,
-    ANALYTICS,
-    SETTINGS
+    USER_PROFILE,
+    VENDORS
 }

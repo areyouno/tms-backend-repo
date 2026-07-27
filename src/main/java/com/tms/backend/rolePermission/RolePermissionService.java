@@ -38,15 +38,22 @@ public class RolePermissionService {
     private static final Map<String, Set<Permission>> ROLE_PERMISSIONS = Map.of(
             RoleConstants.PM, getPermissionsByCategories(
                     PermissionCategory.PROJECT,
-                    PermissionCategory.PROJECT_TEMPLATES,
+                    PermissionCategory.ANALYSIS,
+                    PermissionCategory.EDITOR,
+                    PermissionCategory.TASK_LIST,
                     PermissionCategory.TRANSLATION_MEMORIES,
                     PermissionCategory.TERM_BASE,
+                    PermissionCategory.SETTINGS,
+                    PermissionCategory.PROJECT_TEMPLATES,
                     PermissionCategory.USERS,
                     PermissionCategory.CLIENT_DOMAIN_SUBDOMAIN,
-                    PermissionCategory.VENDORS,
-                    PermissionCategory.ANALYTICS
+                    PermissionCategory.USER_PROFILE,
+                    PermissionCategory.VENDORS
             ),
-            RoleConstants.LINGUIST, EnumSet.of(
+            RoleConstants.TRANSLATOR, EnumSet.of(
+                    Permission.TASK_LIST_VIEW,
+                    Permission.TASK_LIST_EDIT_FILE,
+                    Permission.TASK_LIST_DELETE,
                     Permission.TB_UPDATE_TERM,
                     Permission.TM_UPDATE_TRANSLATION,
                     Permission.JOB_REJECT,
@@ -54,17 +61,12 @@ public class RolePermissionService {
             ),
             RoleConstants.GUEST, EnumSet.of(
                     Permission.PROJECT_VIEW,
-                    Permission.JOB_PROVIDER_VIEW,
-                    Permission.JOB_EDITOR_VIEW,
                     Permission.TM_VIEW,
-                    Permission.TM_UPDATE,
                     Permission.TM_EXPORT,
                     Permission.TM_IMPORT,
                     Permission.TB_VIEW,
-                    Permission.TB_UPDATE,
                     Permission.TB_EXPORT,
-                    Permission.TB_IMPORT,
-                    Permission.TB_APPROVE_TERMS
+                    Permission.TB_IMPORT
             )
     );
 

@@ -1,5 +1,7 @@
 package com.tms.backend.rolePermission;
 
+import java.time.LocalDateTime;
+
 import com.tms.backend.role.Role;
 
 import jakarta.persistence.Column;
@@ -13,6 +15,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
 @Entity
 @Table(name = "role_permissions")
 public class RolePermission {
@@ -25,15 +30,23 @@ public class RolePermission {
     private Role role;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(64)")
     private PermissionCategory category;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "VARCHAR(64)")
     private Permission permission;
 
     @Column(nullable = false)
     private boolean isActive = false;
+
+    @CreationTimestamp
+    @Column(name = "created_date", nullable = false, updatable = false)
+    private LocalDateTime createdDate;
+
+    @UpdateTimestamp
+    @Column(name = "updated_date", nullable = false)
+    private LocalDateTime updatedDate;
 
     public Long getId() {
         return id;
@@ -73,5 +86,13 @@ public class RolePermission {
 
     public void setActive(boolean active) {
         isActive = active;
+    }
+
+    public LocalDateTime getCreatedDate() {
+        return createdDate;
+    }
+
+    public LocalDateTime getUpdatedDate() {
+        return updatedDate;
     }
 }
