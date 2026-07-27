@@ -146,6 +146,18 @@ public class User {
         this.role = role;
     }
 
+    public boolean hasAnyRole(String... roleNames) {
+        if (role == null) {
+            return false;
+        }
+        for (String roleName : roleNames) {
+            if (role.getName().equals(roleName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public String getEmail() {
         return email;
     }

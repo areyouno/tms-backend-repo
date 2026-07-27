@@ -197,7 +197,7 @@ public class JobService {
 
         Job savedSibling = jobRepo.save(sibling);
 
-        String projectFolderName = String.valueOf(representative.getProject().getId());
+        String projectFolderName = String.valueOf(representative.getProjectId());
         String siblingJobFolder = String.valueOf(savedSibling.getId());
 
         fileConversionService.copySourceFilesToSiblingJob(representative, savedSibling, projectFolderName, siblingJobFolder);
@@ -234,7 +234,7 @@ public class JobService {
             throw new IllegalStateException("Job must be associated with a project");
         }
 
-        String projectFolderName = String.valueOf(job.getProject().getId());
+        String projectFolderName = String.valueOf(job.getProjectId());
         String jobFolderName = String.valueOf(job.getId());
 
         byte[] xliffBytes = sizingService.fetchXliffBytes(tomatoJobId);
@@ -370,7 +370,7 @@ public class JobService {
         }
 
         // Get project and job folder names
-        String projectFolderName = String.valueOf(job.getProject().getId());
+        String projectFolderName = String.valueOf(job.getProjectId());
         String jobFolderName = String.valueOf(job.getId());
 
         // Save the translated file
@@ -501,10 +501,10 @@ public class JobService {
     public List<JobDTO> getJobs(User user) {
         List<Job> jobs;
 
-        if (RoleConstants.ADMIN.equals(user.getRole().getName()) || RoleConstants.PM.equals(user.getRole().getName())) {
+        if (user.hasAnyRole(RoleConstants.ADMIN, RoleConstants.PM)) {
             jobs = jobRepo.findAllActive();
         } else {
-            // linguist (or any non-admin/PM role)
+            // translator (or any non-admin/PM role)
             jobs = jobRepo.findByJobOwnerIdAndDeletedFalse(user.getId());
         }
         return jobs.stream()
@@ -573,7 +573,7 @@ public class JobService {
     }
 
     public List<JobDTO> getJobsByProjectId(Long id) {
-        List<Job> jobs = jobRepo.findByProjectIdAndDeletedFalse(id);
+        List<Job> jobs = jobRepo.findByProject_IdAndDeletedFalse(id);
         return jobs.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
@@ -581,7 +581,7 @@ public class JobService {
 
     // return job entity
     List<Job> getJobEntitiesByProjectId(Long projectId) {
-        return jobRepo.findByProjectIdAndDeletedFalse(projectId);
+        return jobRepo.findByProject_IdAndDeletedFalse(projectId);
     }
 
     public List<JobSoftDeleteDTO> getDeletedJobsByUser(String uid) {
@@ -601,7 +601,7 @@ public class JobService {
         Path relativeTargetPath =
             fileConversionService.convertXliffBackToOriginalFormat(
                 job,
-                job.getProject().getId().toString(),
+                job.getProjectId().toString(),
                 job.getId().toString()
             );
 
@@ -647,10 +647,10 @@ public class JobService {
         jobRepo.save(job);
 
         // Send email notification if status changed
-        if (statusChanged && job.getJobOwner() != null && job.getJobOwner().getEmail() != null) {
-            logger.info("job owner id {}", job.getJobOwner().getEmail());
+        if (statusChanged && job.getOwnerEmail() != null) {
+            logger.info("job owner id {}", job.getOwnerEmail());
             emailService.sendJobStatusChangeEmail(
-                    job.getJobOwner().getEmail(),
+                    job.getOwnerEmail(),
                     job.getProject().getName(),
                     wfStep.getWorkflowStep().getName(),
                     previousStatus,
@@ -658,7 +658,7 @@ public class JobService {
         }
 
         // project status automation
-        projectService.checkAndUpdateProjectStatus(job.getProject().getId(), wfStep.getWorkflowStep().getName(), currentUserUid);
+        projectService.checkAndUpdateProjectStatus(job.getProjectId(), wfStep.getWorkflowStep().getName(), currentUserUid);
 
         return JobWorkflowStepDTO.from(wfStep);
     }
@@ -681,16 +681,16 @@ public class JobService {
         wfStep.setStatus(status);
         jobRepo.save(job);
 
-        if (job.getJobOwner() != null && job.getJobOwner().getEmail() != null) {
+        if (job.getOwnerEmail() != null) {
             emailService.sendJobStatusChangeEmail(
-                    job.getJobOwner().getEmail(),
+                    job.getOwnerEmail(),
                     job.getProject().getName(),
                     wfStep.getWorkflowStep().getName(),
                     previousStatus,
                     status);
         }
 
-        projectService.checkAndUpdateProjectStatus(job.getProject().getId(), wfStep.getWorkflowStep().getName(), currentUserUid);
+        projectService.checkAndUpdateProjectStatus(job.getProjectId(), wfStep.getWorkflowStep().getName(), currentUserUid);
 
         return JobWorkflowStepDTO.from(wfStep);
     }
@@ -1019,7 +1019,7 @@ public class JobService {
                 job.getTranslatedFilePath(),
                 job.getTargetFilePath(),
                 job.getContentType(),
-                job.getProject() != null ? job.getProject().getId() : null,
+                job.getProjectId(),
                 stepDTOs,
                 job.getSegmentCount(),
                 job.getPageCount(),

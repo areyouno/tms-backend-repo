@@ -410,10 +410,10 @@ public class ProjectService {
         List<Project> projects;
 
 
-        if (RoleConstants.ADMIN.equals(user.getRole().getName()) || RoleConstants.PM.equals(user.getRole().getName())) {
+        if (user.hasAnyRole(RoleConstants.ADMIN, RoleConstants.PM)) {
             projects = projectRepo.findAllActive();
         } else {
-            // linguist (or any non-admin/PM role)
+            // translator (or any non-admin/PM role)
             projects = projectRepo.findByOwnerId(user.getId());
         }
 
@@ -456,7 +456,7 @@ public class ProjectService {
             if (!added.isEmpty() || !removed.isEmpty()) {
                 // Sync target-language changes onto the project's jobs: each target language is its
                 // own Job (so workflow assignment stays independent per language)
-                List<Job> projectJobs = jobRepo.findByProjectIdAndDeletedFalse(id);
+                List<Job> projectJobs = jobRepo.findByProject_IdAndDeletedFalse(id);
 
                 // Removed languages: soft-delete every job in that language (existing recycle-bin path)
                 for (Job job : projectJobs) {
@@ -554,7 +554,7 @@ public class ProjectService {
             project.setWorkflowSteps(steps);
 
             // Sync workflow steps to all active jobs in this project
-            List<Job> jobs = jobRepo.findByProjectIdAndDeletedFalse(id);
+            List<Job> jobs = jobRepo.findByProject_IdAndDeletedFalse(id);
             for (Job job : jobs) {
                 Set<Long> existingStepIds = job.getWorkflowSteps().stream()
                     .map(jws -> jws.getWorkflowStep().getId())
@@ -599,7 +599,7 @@ public class ProjectService {
         projectRepo.save(project);
 
         // CASCADE: Soft delete all jobs under this project
-        List<Job> jobs = jobRepo.findByProjectIdAndDeletedFalse(id);
+        List<Job> jobs = jobRepo.findByProject_IdAndDeletedFalse(id);
         for (Job job : jobs) {
             if (!job.isDeleted()) { // Only delete if not already deleted
                 job.setDeleted(true);
@@ -643,7 +643,7 @@ public class ProjectService {
         Project restored = projectRepo.save(project);
 
         // CASCADE: Restore all deleted jobs under this project
-        List<Job> jobs = jobRepo.findByProjectIdAndDeletedTrue(id);
+        List<Job> jobs = jobRepo.findByProject_IdAndDeletedTrue(id);
         for (Job job : jobs) {
             job.setDeleted(false);
             job.setDeletedDate(null);

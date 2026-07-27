@@ -192,6 +192,10 @@ public class Job {
     public void setProject(Project project) { this.project = project; }
     public Project getProject() { return project; }
 
+    public Long getProjectId() { return project != null ? project.getId() : null; }
+
+    public String getOwnerEmail() { return jobOwner != null ? jobOwner.getEmail() : null; }
+
     public boolean isDeleted() { return deleted; }
     public void setDeleted(boolean deleted) { this.deleted = deleted; }
 
