@@ -7,6 +7,7 @@ import java.util.Set;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
 import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Positive;
@@ -50,5 +51,11 @@ public record ProjectCreateDTO(
     Long subdomainId,
     List<@Positive Long> workflowStepIds,
     String owner,
-    Set<String> automationRules
+    Set<String> automationRules,
+
+    Boolean preTranslate,
+    @Max(value = 100, message = "Minimum similarity cannot exceed 100")
+    Integer minSimilarity,
+    @Max(value = 100, message = "Auto apply score cannot exceed 100")
+    Integer autoApplyScore
 ) {}

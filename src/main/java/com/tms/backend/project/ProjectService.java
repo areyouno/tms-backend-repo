@@ -150,6 +150,9 @@ public class ProjectService {
 
         project.setPurchaseOrderNum(createDTO.purchaseOrder());
         project.setType(createDTO.type());
+        project.setPreTranslate(createDTO.preTranslate());
+        project.setMinSimilarity(createDTO.minSimilarity());
+        project.setAutoApplyScore(createDTO.autoApplyScore());
         
         if (createDTO.clientId() != null) {
             Client cl = clientRepo.findById(createDTO.clientId())
@@ -382,6 +385,9 @@ public class ProjectService {
                 project.getStatus(),
                 "0",
                 project.getFileHandover(),
+                project.getPreTranslate(),
+                project.getMinSimilarity(),
+                project.getAutoApplyScore(),
                 project.isDeleted(),
                 project.getDeletedBy(),
                 project.getDeletedDate(),
@@ -521,6 +527,18 @@ public class ProjectService {
 
         if (updatedData.purchaseOrder() != null) {
             project.setPurchaseOrderNum(updatedData.purchaseOrder());
+        }
+
+        if (updatedData.preTranslate() != null) {
+            project.setPreTranslate(updatedData.preTranslate());
+        }
+
+        if (updatedData.minSimilarity() != null) {
+            project.setMinSimilarity(updatedData.minSimilarity());
+        }
+
+        if (updatedData.autoApplyScore() != null) {
+            project.setAutoApplyScore(updatedData.autoApplyScore());
         }
 
         if (updatedData.ownerUid() != null) {

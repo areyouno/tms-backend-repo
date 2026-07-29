@@ -33,6 +33,7 @@ import com.tms.backend.dto.JobWorkflowStepDTO;
 import com.tms.backend.dto.JobWorkflowStepEditDTO;
 import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.dto.TomatoSizingResponse;
+import com.tms.backend.dto.TranslationMemoryDTO;
 import com.tms.backend.email.EmailService;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.mapper.ProjectMapper;
@@ -43,6 +44,7 @@ import com.tms.backend.role.RoleConstants;
 import com.tms.backend.tomato.FileConversionService;
 import com.tms.backend.tomato.SizingService;
 import com.tms.backend.tomato.SizingWithXliffResult;
+import com.tms.backend.translationMemory.TranslationMemoryService;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
 import com.tms.backend.workflowSteps.WorkflowStep;
@@ -63,6 +65,7 @@ public class JobService {
     private final FileConversionService fileConversionService;
     private final ProjectService projectService;
     private final EmailService emailService;
+    private final TranslationMemoryService tmService;
 
     private final ProjectMapper projectMapper;
 
@@ -75,7 +78,7 @@ public class JobService {
     private static final Logger logger = LoggerFactory.getLogger(JobService.class);
 
 
-    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, JobCheckoutRepository jobCheckoutRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService, EmailService emailService){
+    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, JobCheckoutRepository jobCheckoutRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService, EmailService emailService, TranslationMemoryService tmService){
         this.jobRepo = jobRepo;
         this.projectRepo = projectRepo;
         this.userRepo = userRepo;
@@ -87,6 +90,7 @@ public class JobService {
         this.fileConversionService = fileConversionService;
         this.projectService = projectService;
         this.emailService = emailService;
+        this.tmService = tmService;
     }
 
     @Transactional
@@ -99,10 +103,14 @@ public class JobService {
         return createJob(file, jobDTO, uid, projectFolder, useSizingApi, false);
     }
 
-    // Fans out into one Job per target language: the first (alphabetically) target language gets a
-    // full upload/conversion, and every additional target language gets its own sibling Job whose
-    // files are copied from the first rather than re-converted. This keeps JobWorkflowStep (provider,
-    // due date, status) independent per language, since it's scoped to a whole Job.
+    // Fans out into one Job per target language. When the project has preTranslate disabled, format
+    // conversion doesn't depend on the target language, so only the first (alphabetically) target
+    // language is actually converted and every additional language gets a sibling Job whose files are
+    // copied rather than re-converted. When preTranslate is enabled, pre-translation is specific to a
+    // source->target language pair (it depends on which TM matches that pair), so every target language
+    // is sent to Tomato separately with its own matched TM, producing its own distinct converted file.
+    // This also keeps JobWorkflowStep (provider, due date, status) independent per language, since it's
+    // scoped to a whole Job.
     @Transactional
     public List<JobDTO> createJob(MultipartFile file, JobDTO jobDTO, String uid, String projectFolder, Boolean useSizingApi, Boolean performSizingDuringCreation) throws IOException {
 
@@ -118,8 +126,9 @@ public class JobService {
 
         boolean isDitaFile = file.getOriginalFilename() != null
                 && file.getOriginalFilename().toLowerCase().endsWith(".xml");
+        boolean deferConversion = Boolean.TRUE.equals(performSizingDuringCreation) && isDitaFile;
 
-        if (Boolean.TRUE.equals(performSizingDuringCreation) && isDitaFile) {
+        if (deferConversion) {
             // Sizing path: submit to Tomato, poll for result, defer XLIFF save to user choice
             SizingWithXliffResult sizingWithXliff = sizingService.sendDitaFileAndGetXliff(file);
             sizingApiResponse = sizingWithXliff.sizingResponse();
@@ -139,11 +148,27 @@ public class JobService {
         String projectFolderName = String.valueOf(jobDTO.projectId());
         String jobFolder = String.valueOf(savedJob.getId());
 
-        if (Boolean.TRUE.equals(performSizingDuringCreation) && isDitaFile) {
+        Project project = savedJob.getProject();
+        Boolean preTranslate = project != null ? project.getPreTranslate() : null;
+        Integer effectiveMinSimilarity = Boolean.TRUE.equals(preTranslate) ? project.getMinSimilarity() : null;
+        Integer effectiveAutoApplyScore = Boolean.TRUE.equals(preTranslate) ? project.getAutoApplyScore() : null;
+        boolean perLanguagePreTranslation = Boolean.TRUE.equals(preTranslate) && !deferConversion;
+
+        // Read the upload once: a servlet-backed MultipartFile can only be safely persisted via
+        // transferTo() a single time (the container may move/delete its temp file on first use), but
+        // pre-translation needs to resend the same file to Tomato once per target language.
+        byte[] fileBytes = null;
+        if (deferConversion) {
             // Save only the original file; XLIFF will be saved when the user triggers it
             fileConversionService.saveOriginalFileOnly(file, projectFolderName, jobFolder, savedJob);
         } else {
-            fileConversionService.uploadAndConvertFile(file, projectFolderName, jobFolder, savedJob);
+            fileBytes = file.getBytes();
+            Long tmId = perLanguagePreTranslation
+                    ? resolveTmIdForLanguagePair(project, jobDTO.sourceLang(), firstLang)
+                    : null;
+            fileConversionService.uploadAndConvertFile(fileBytes, file.getOriginalFilename(), file.getContentType(), file.getSize(),
+                    projectFolderName, jobFolder, savedJob,
+                    effectiveMinSimilarity, preTranslate, effectiveAutoApplyScore, tmId);
         }
 
         List<JobWorkflowStep> jobSteps = new ArrayList<>();
@@ -165,19 +190,41 @@ public class JobService {
 
         // Remaining target languages each get their own sibling job
         for (int i = 1; i < sortedLangs.size(); i++) {
-            Job sibling = createSiblingJobForLanguage(savedJob, sortedLangs.get(i));
+            String lang = sortedLangs.get(i);
+            Job sibling;
+            if (perLanguagePreTranslation) {
+                Long tmId = resolveTmIdForLanguagePair(project, jobDTO.sourceLang(), lang);
+                sibling = createPreTranslatedSiblingJobForLanguage(savedJob, fileBytes, file.getOriginalFilename(),
+                        file.getContentType(), file.getSize(), lang, tmId,
+                        effectiveMinSimilarity, preTranslate, effectiveAutoApplyScore);
+            } else {
+                sibling = createSiblingJobForLanguage(savedJob, lang);
+            }
             createdJobs.add(convertToDTO(sibling));
         }
 
         return createdJobs;
     }
 
-    // Creates a new Job for an additional target language of an existing "document" (identified by
-    // sourceGroupId), copying the representative job's original/converted files instead of re-running
-    // the conversion API, and cloning its workflow step definitions unassigned (fresh provider/status).
-    // Used both by createJob's fan-out above and by ProjectService when a project gains a target language.
-    @Transactional
-    public Job createSiblingJobForLanguage(Job representative, String newLang) throws IOException {
+    // Finds the TM that matches the project's client for a given source->target language pair, for
+    // automatic pre-translation during file conversion. Returns null (no pre-translation applied) if
+    // the project has no client or no TM matches that exact pair.
+    private Long resolveTmIdForLanguagePair(Project project, String sourceLang, String targetLang) throws IOException {
+        if (project == null || project.getClient() == null) {
+            return null;
+        }
+        List<TranslationMemoryDTO> matches = tmService.getFilteredTMs(project.getClient().getName(), sourceLang, targetLang);
+        if (matches.isEmpty()) {
+            logger.warn("No matching TM found for client '{}', language pair {} -> {}",
+                    project.getClient().getName(), sourceLang, targetLang);
+            return null;
+        }
+        return matches.get(0).id();
+    }
+
+    // Builds (but doesn't persist file content for) a new Job for an additional target language of an
+    // existing "document" (identified by sourceGroupId). Shared by both sibling-creation strategies below.
+    private Job buildSiblingJobEntity(Job representative, String newLang) {
         Job sibling = new Job();
         sibling.setSourceLang(representative.getSourceLang());
         sibling.setTargetLangs(new HashSet<>(Set.of(newLang)));
@@ -194,7 +241,31 @@ public class JobService {
         sibling.setProject(representative.getProject());
         sibling.setSourceGroupId(representative.getSourceGroupId() != null
                 ? representative.getSourceGroupId() : representative.getId());
+        return sibling;
+    }
 
+    // Clones the representative job's workflow step definitions onto the sibling, unassigned (fresh
+    // provider/status): each language is assigned independently.
+    private void cloneWorkflowStepsUnassigned(Job representative, Job savedSibling) {
+        List<JobWorkflowStep> siblingSteps = new ArrayList<>();
+        for (JobWorkflowStep repStep : representative.getWorkflowSteps()) {
+            JobWorkflowStep step = new JobWorkflowStep();
+            step.setJob(savedSibling);
+            step.setWorkflowStep(repStep.getWorkflowStep());
+            step.setDueDate(repStep.getDueDate());
+            siblingSteps.add(step);
+        }
+        List<JobWorkflowStep> savedSiblingSteps = jobWfRepo.saveAll(siblingSteps);
+        savedSibling.setWorkflowSteps(new HashSet<>(savedSiblingSteps));
+    }
+
+    // Creates a new Job for an additional target language of an existing "document", copying the
+    // representative job's original/converted files instead of re-running the conversion API. Valid
+    // only when the converted output doesn't depend on the target language (preTranslate disabled).
+    // Used both by createJob's fan-out above and by ProjectService when a project gains a target language.
+    @Transactional
+    public Job createSiblingJobForLanguage(Job representative, String newLang) throws IOException {
+        Job sibling = buildSiblingJobEntity(representative, newLang);
         Job savedSibling = jobRepo.save(sibling);
 
         String projectFolderName = String.valueOf(representative.getProjectId());
@@ -202,21 +273,38 @@ public class JobService {
 
         fileConversionService.copySourceFilesToSiblingJob(representative, savedSibling, projectFolderName, siblingJobFolder);
 
-        List<JobWorkflowStep> siblingSteps = new ArrayList<>();
-        for (JobWorkflowStep repStep : representative.getWorkflowSteps()) {
-            JobWorkflowStep step = new JobWorkflowStep();
-            step.setJob(savedSibling);
-            step.setWorkflowStep(repStep.getWorkflowStep());
-            step.setDueDate(repStep.getDueDate());
-            // provider intentionally left unset, status defaults to NEW: each language is assigned independently
-            siblingSteps.add(step);
-        }
-        List<JobWorkflowStep> savedSiblingSteps = jobWfRepo.saveAll(siblingSteps);
-        savedSibling.setWorkflowSteps(new HashSet<>(savedSiblingSteps));
+        cloneWorkflowStepsUnassigned(representative, savedSibling);
 
         savedSibling = jobRepo.save(savedSibling);
         logger.info("Created sibling job {} (source group {}) for language {}",
                 savedSibling.getId(), savedSibling.getSourceGroupId(), newLang);
+
+        return savedSibling;
+    }
+
+    // Creates a new Job for an additional target language whose converted file is specific to that
+    // language pair (preTranslate enabled): re-sends the original file to Tomato with the TM matched
+    // for this pair instead of copying the representative job's converted file, since pre-translation
+    // output differs per target language.
+    @Transactional
+    public Job createPreTranslatedSiblingJobForLanguage(Job representative, byte[] fileBytes, String originalFilename,
+            String contentType, long fileSize, String newLang,
+            Long tmId, Integer minSimilarity, Boolean preTranslate, Integer autoApplyScore) throws IOException {
+        Job sibling = buildSiblingJobEntity(representative, newLang);
+        Job savedSibling = jobRepo.save(sibling);
+
+        String projectFolderName = String.valueOf(representative.getProjectId());
+        String siblingJobFolder = String.valueOf(savedSibling.getId());
+
+        fileConversionService.uploadAndConvertFile(fileBytes, originalFilename, contentType, fileSize,
+                projectFolderName, siblingJobFolder, savedSibling,
+                minSimilarity, preTranslate, autoApplyScore, tmId);
+
+        cloneWorkflowStepsUnassigned(representative, savedSibling);
+
+        savedSibling = jobRepo.save(savedSibling);
+        logger.info("Created pre-translated sibling job {} (source group {}) for language {} using TM {}",
+                savedSibling.getId(), savedSibling.getSourceGroupId(), newLang, tmId);
 
         return savedSibling;
     }

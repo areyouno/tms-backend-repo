@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -17,6 +18,8 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.tms.backend.dto.ImportTmxRequestDTO;
+import com.tms.backend.dto.TmFilterRequestDTO;
+import com.tms.backend.dto.TranslationMemoryDTO;
 
 @RestController
 @RequestMapping("/api/tm")
@@ -30,6 +33,11 @@ public class TranslationMemoryController {
         this.tmService = tmService;
         this.pollService = pollService;
         this.jobRepo = jobRepo;
+    }
+
+    @PostMapping("/match-client-language-pair")
+    public ResponseEntity<List<TranslationMemoryDTO>> getFilteredTMs(@RequestBody TmFilterRequestDTO filter) throws IOException {
+        return ResponseEntity.ok(tmService.getFilteredTMs(filter.clientId(), filter.sourceLang(), filter.targetLang()));
     }
 
     @PostMapping(value = "/{id}/import-tmx", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

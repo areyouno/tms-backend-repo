@@ -40,6 +40,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Size;
 
 @Table(name = "projects")
@@ -121,6 +122,14 @@ public class Project {
     private List<WorkflowStep> workflowSteps = new ArrayList<>();
 
     Boolean fileHandover;
+
+    private Boolean preTranslate;
+
+    @Max(value = 100, message = "Minimum similarity cannot exceed 100")
+    private Integer minSimilarity;
+
+    @Max(value = 100, message = "Auto apply score cannot exceed 100")
+    private Integer autoApplyScore;
 
     @OneToMany(mappedBy = "project", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Job> jobs = new HashSet<>();
@@ -233,6 +242,15 @@ public class Project {
 
     public Boolean getFileHandover() { return fileHandover; }
     public void setFileHandover(Boolean fileHandover) { this.fileHandover = fileHandover; }
+
+    public Boolean getPreTranslate() { return preTranslate; }
+    public void setPreTranslate(Boolean preTranslate) { this.preTranslate = preTranslate; }
+
+    public Integer getMinSimilarity() { return minSimilarity; }
+    public void setMinSimilarity(Integer minSimilarity) { this.minSimilarity = minSimilarity; }
+
+    public Integer getAutoApplyScore() { return autoApplyScore; }
+    public void setAutoApplyScore(Integer autoApplyScore) { this.autoApplyScore = autoApplyScore; }
 
     public BigDecimal getProgress() { return progress; }
     public void setProgress(BigDecimal progress) { this.progress = progress; }

@@ -56,13 +56,30 @@ public class FileConversionService {
      * @return Path to the saved converted file
      * @throws IOException if file operations fail
      */
-    public Path uploadAndConvertFile(MultipartFile file, String projectFolderName, String jobFolderName, Job job) throws IOException {
+    public Path uploadAndConvertFile(MultipartFile file, String projectFolderName, String jobFolderName, Job job,
+            Integer minSimilarity, Boolean preTranslate, Integer autoApplyScore, Long tmId) throws IOException {
+        return uploadAndConvertFile(file.getBytes(), file.getOriginalFilename(), file.getContentType(), file.getSize(),
+                projectFolderName, jobFolderName, job, minSimilarity, preTranslate, autoApplyScore, tmId);
+    }
+
+    /**
+     * Same as {@link #uploadAndConvertFile(MultipartFile, String, String, Job, Integer, Boolean, Integer, Long)},
+     * but takes the file content as an in-memory byte array instead of a MultipartFile. Use this when the same
+     * uploaded file needs to be sent to the conversion API more than once (e.g. once per target language): a
+     * servlet-backed MultipartFile can only be safely persisted via transferTo() a single time, since the
+     * container may move/delete its underlying temp file on first use.
+     *
+     * @return Path to the saved converted file
+     * @throws IOException if file operations fail
+     */
+    public Path uploadAndConvertFile(byte[] fileBytes, String originalFilename, String contentType, long fileSize,
+            String projectFolderName, String jobFolderName, Job job,
+            Integer minSimilarity, Boolean preTranslate, Integer autoApplyScore, Long tmId) throws IOException {
         try {
-            String originalName = file.getOriginalFilename();
-            logger.info("Uploading file {} to conversion API", originalName);
+            logger.info("Uploading file {} to conversion API", originalFilename);
 
             // Determine file extension
-            FileType fileType = detectFileType(file);
+            FileType fileType = detectFileType(fileBytes, originalFilename);
 
             // Select correct API endpoint
             String endpoint;
@@ -81,10 +98,10 @@ public class FileConversionService {
 
             // Build multipart request body
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-            body.add("file", new ByteArrayResource(file.getBytes()) {
+            body.add("file", new ByteArrayResource(fileBytes) {
                 @Override
                 public String getFilename() {
-                    return originalName;
+                    return originalFilename;
                 }
             });
 
@@ -94,6 +111,29 @@ public class FileConversionService {
             if (job.getTargetLangs() != null && !job.getTargetLangs().isEmpty()) {
                 body.add("targetLanguage", job.getTargetLangs().iterator().next());
             }
+            if (minSimilarity != null) {
+                body.add("minSimilarity", minSimilarity);
+            }
+            if (Boolean.TRUE.equals(preTranslate)) {
+                body.add("autoApplyPerfectMatches", "true");
+            }
+            if (autoApplyScore != null) {
+                body.add("autoApplyScore", autoApplyScore);
+            }
+            if (tmId != null) {
+                body.add("tmId", tmId);
+            }
+
+            logger.info("Sending conversion request to {} with body: file={} ({} bytes), sourceLanguage={}, targetLanguage={}, minSimilarity={}, autoApplyPerfectMatches={}, autoApplyScore={}, tmId={}",
+                    endpoint,
+                    originalFilename,
+                    fileSize,
+                    body.getFirst("sourceLanguage"),
+                    body.getFirst("targetLanguage"),
+                    body.getFirst("minSimilarity"),
+                    body.getFirst("autoApplyPerfectMatches"),
+                    body.getFirst("autoApplyScore"),
+                    body.getFirst("tmId"));
 
             // Set headers
             HttpHeaders headers = new HttpHeaders();
@@ -109,10 +149,12 @@ public class FileConversionService {
             // Save the converted file using the original filename
             Path savedPath = saveConvertedFile(
                 response.getBody(),
-                originalName,
+                originalFilename,
                 projectFolderName,
                 jobFolderName,
-                file,
+                fileBytes,
+                fileSize,
+                contentType,
                 job,
                 fileType
             );
@@ -140,7 +182,9 @@ public class FileConversionService {
         String fileName,
         String projectFolderName,
         String jobFolderName,
-        MultipartFile uploadedFile,
+        byte[] originalBytes,
+        long originalFileSize,
+        String originalContentType,
         Job job,
         FileType detectedFileType
         ) throws IOException {
@@ -168,7 +212,7 @@ public class FileConversionService {
 
         // Save the original uploaded file
         Path originalFilePath = originalDir.resolve(fileName);
-        uploadedFile.transferTo(originalFilePath.toFile());
+        Files.write(originalFilePath, originalBytes);
         logger.info("Saved original file: {}", originalFilePath.toAbsolutePath());
 
         // Replace the file extension with .xliff
@@ -192,8 +236,8 @@ public class FileConversionService {
         job.setConvertedFileName(xliffFileName);
         job.setConvertedFilePath(relativeConvertedPath.toString().replace("\\", "/"));
         job.setFileUploadDate(LocalDateTime.now());
-        job.setFileSize(uploadedFile.getSize());
-        job.setContentType(uploadedFile.getContentType());
+        job.setFileSize(originalFileSize);
+        job.setContentType(originalContentType);
 
         switch (detectedFileType) {
             case SDLXLIFF -> job.setOriginalFileFormat(OriginalFileFormat.SDLXLIFF);
@@ -482,12 +526,11 @@ public class FileConversionService {
         UNKNOWN
     }
 
-    private FileType detectFileType(MultipartFile file) throws IOException {
+    private FileType detectFileType(byte[] fileBytes, String filename) {
 
-        String name = file.getOriginalFilename();
-        String lowerName = name != null ? name.toLowerCase() : "";
+        String lowerName = filename != null ? filename.toLowerCase() : "";
 
-        String content = new String(file.getBytes(), StandardCharsets.UTF_8);
+        String content = new String(fileBytes, StandardCharsets.UTF_8);
 
         boolean hasSdlNamespace = content.contains("http://sdl.com/FileTypes/SdlXliff");
 

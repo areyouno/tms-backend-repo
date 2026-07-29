@@ -1,6 +1,8 @@
 package com.tms.backend.translationMemory;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -22,8 +24,10 @@ import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tms.backend.dto.ImportTmxRequestDTO;
+import com.tms.backend.dto.TmListResponseDTO;
 import com.tms.backend.dto.TmxImportJobStatusDTO;
 import com.tms.backend.dto.TmxImportStartResponseDTO;
+import com.tms.backend.dto.TranslationMemoryDTO;
 
 @Service
 public class TranslationMemoryService {
@@ -76,6 +80,36 @@ public class TranslationMemoryService {
         TmxImportStartResponseDTO dto = mapper.readValue(response.getBody(), TmxImportStartResponseDTO.class);
         log.info("TMX import submitted for TM {}, jobId: {}", id, dto.jobId());
         return dto.jobId();
+    }
+
+    public List<TranslationMemoryDTO> getFilteredTMs(String clientId, String sourceLang, String targetLang) throws IOException {
+        return fetchAllTMs().stream()
+                .filter(tm -> tm.file() != null)
+                .filter(tm -> clientId == null || clientId.equalsIgnoreCase(tm.client()))
+                .filter(tm -> sourceLang == null || sourceLang.equalsIgnoreCase(tm.sourceLanguage()))
+                .filter(tm -> targetLang == null || targetLang.equalsIgnoreCase(tm.targetLanguage()))
+                .toList();
+    }
+
+    private List<TranslationMemoryDTO> fetchAllTMs() throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+        List<TranslationMemoryDTO> allTms = new ArrayList<>();
+        int page = 1;
+        boolean hasNextPage;
+        do {
+            String url = tomatoBaseUrl + "/api/TM?page=" + page + "&pageSize=100";
+            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            TmListResponseDTO listResponse = mapper.readValue(response.getBody(), TmListResponseDTO.class);
+            if (listResponse.data() != null) {
+                allTms.addAll(listResponse.data());
+            }
+            hasNextPage = listResponse.pagination() != null && Boolean.TRUE.equals(listResponse.pagination().hasNextPage());
+            page++;
+        } while (hasNextPage);
+
+        return allTms;
     }
 
     public TmxImportJobStatusDTO fetchImportStatusOnce(String jobId) {
