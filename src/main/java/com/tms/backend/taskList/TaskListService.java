@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.tms.backend.dto.TaskListCreateDTO;
 import com.tms.backend.dto.TaskListDTO;
 import com.tms.backend.dto.TaskListSummaryDTO;
+import com.tms.backend.email.EmailService;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.job.Job;
 import com.tms.backend.job.JobRepository;
@@ -29,18 +30,21 @@ public class TaskListService {
     private final LanguageRepository languageRepo;
     private final UserRepository userRepo;
     private final JobWorkflowStepRepository jobWorkflowStepRepo;
+    private final EmailService emailService;
 
     public TaskListService(
         TaskListRepository taskListRepo,
         JobRepository jobRepo,
         LanguageRepository languageRepo,
         UserRepository userRepo,
-        JobWorkflowStepRepository jobWorkflowStepRepo) {
+        JobWorkflowStepRepository jobWorkflowStepRepo,
+        EmailService emailService) {
         this.taskListRepo = taskListRepo;
         this.jobRepo = jobRepo;
         this.languageRepo = languageRepo;
         this.userRepo = userRepo;
         this.jobWorkflowStepRepo = jobWorkflowStepRepo;
+        this.emailService = emailService;
     }
 
     @Transactional
@@ -123,6 +127,38 @@ public class TaskListService {
         taskList.setCreatedBy(creator.getFirstName() + " " + creator.getLastName());
 
         TaskList saved = taskListRepo.save(taskList);
+
+        if (assignee != null && assignee.getEmail() != null && saved.getWorkflowStep() != null) {
+            String sourceLangCode = saved.getJobs().stream()
+                .findFirst()
+                .map(Job::getSourceLang)
+                .orElse(null);
+            String sourceLang = sourceLangCode != null
+                ? languageRepo.findByRfcCode(sourceLangCode)
+                    .map(Language::getLanguageName)
+                    .orElse(sourceLangCode)
+                : null;
+
+            String targetLang = saved.getTargetLang() != null
+                ? saved.getTargetLang().getLanguageName()
+                : saved.getJobs().stream()
+                    .filter(job -> job.getTargetLangs() != null)
+                    .flatMap(job -> job.getTargetLangs().stream())
+                    .distinct()
+                    .collect(Collectors.joining(", "));
+
+            emailService.sendTaskAssignmentEmail(
+                    assignee.getEmail(),
+                    assignee.getFirstName(),
+                    saved.getTaskName(),
+                    saved.getWorkflowStep().getName(),
+                    sourceLang,
+                    targetLang,
+                    saved.getStartDate(),
+                    saved.getDueDate(),
+                    saved.getDescription());
+        }
+
         return toDetailDto(saved);
     }
 
@@ -149,10 +185,29 @@ public class TaskListService {
 
     @Transactional
     public void deleteTaskList(Long id) {
-        if (!taskListRepo.existsById(id)) {
-            throw new ResourceNotFoundException("Task list not found with id: " + id);
+        TaskList taskList = taskListRepo.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Task list not found with id: " + id));
+
+        User assignee = taskList.getAssignee();
+        if (assignee != null && taskList.getWorkflowStep() != null && !taskList.getJobs().isEmpty()) {
+            List<Long> jobIds = taskList.getJobs().stream().map(Job::getId).toList();
+            List<JobWorkflowStep> jobWorkflowSteps = jobWorkflowStepRepo
+                .findByJob_IdInAndWorkflowStep_Id(jobIds, taskList.getWorkflowStep().getId());
+
+            List<JobWorkflowStep> assignedSteps = jobWorkflowSteps.stream()
+                .filter(jws -> jws.getProvider() != null && jws.getProvider().getUid().equals(assignee.getUid()))
+                .toList();
+            for (JobWorkflowStep jobWorkflowStep : assignedSteps) {
+                jobWorkflowStep.setProvider(null);
+            }
+            jobWorkflowStepRepo.saveAll(assignedSteps);
         }
+
         taskListRepo.deleteById(id);
+
+        if (assignee != null && assignee.getEmail() != null) {
+            emailService.sendTaskUnassignmentEmail(assignee.getEmail(), assignee.getFirstName(), taskList.getTaskName());
+        }
     }
 
     private TaskListDTO toDetailDto(TaskList taskList) {

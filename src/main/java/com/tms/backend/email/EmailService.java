@@ -1,4 +1,7 @@
 package com.tms.backend.email;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -60,6 +63,7 @@ public class EmailService {
                 + "                  border-radius: 26px; min-width: 50px; text-align: center;\">\n"
                 + "          Verify email\n"
                 + "        </a>\n"
+                + "        <p style=\"margin-top: 25px; color: #999999; font-size: 12px;\">This is an automated message, please do not reply.</p>\n"
                 + "      </div>\n"
                 + "  </body>\n"
                 + "</html>".formatted(appName, verificationLink, verificationLink, appName);
@@ -87,6 +91,7 @@ public class EmailService {
                 + "                  border-radius: 26px; min-width: 50px; text-align: center;\">\n"
                 + "          Set up a new profile\n"
                 + "        </a>\n"
+                + "        <p style=\"margin-top: 25px; color: #999999; font-size: 12px;\">This is an automated message, please do not reply.</p>\n"
                 + "      </div>\n"
                 + "  </body>\n"
                 + "</html>".formatted(appName, invitationLink, invitationLink, appName);
@@ -135,9 +140,87 @@ public class EmailService {
         + "          <strong>Status Change:</strong> from <span style=\"color: rgb(61, 138, 206);\">" + previousStatus 
         + "</span> to <span style=\"color: rgb(236, 126, 53);\">" + newStatus + "</span>\n"
         + "        </p>\n"
+        + "        <p style=\"margin-top: 25px; color: #999999; font-size: 12px;\">This is an automated message, please do not reply.</p>\n"
         + "      </div>\n"
         + "    </div>\n"
         + "  </body>\n"
         + "</html>";
 }
+
+    public void sendTaskUnassignmentEmail(String toEmail, String assigneeFirstName, String taskName) {
+        String subject = appName + " - Task Unassigned: " + taskName;
+        String htmlContent = buildTaskUnassignmentEmailHTML(assigneeFirstName, taskName);
+        sendEmail(toEmail, subject, htmlContent);
+    }
+
+    private String buildTaskUnassignmentEmailHTML(String assigneeFirstName, String taskName) {
+        return "<!DOCTYPE html>\n"
+            + "<html>\n"
+            + "  <head>\n"
+            + "    <meta charset=\"UTF-8\">\n"
+            + "    <title>Task Unassigned</title>\n"
+            + "  </head>\n"
+            + "  <body style=\"margin: 0; padding: 0; background-color: #f9f9f9; font-family: sans-serif;\">\n"
+            + "    <div style=\"width: 100%; padding: 40px 20px; box-sizing: border-box;\">\n"
+            + "      <div style=\"max-width: 600px; padding: 30px; border-radius: 8px;\">\n"
+            + "        <p style=\"text-align: left; color: #555555; font-size: 16px; line-height: 1.6;\">\n"
+            + "          Hello " + assigneeFirstName + ",<br><br>\n"
+            + "          The task <strong>" + taskName + "</strong> that was assigned to you has been deleted.<br>\n"
+            + "          You have been unassigned from it. We apologize for any inconvenience.\n"
+            + "        </p>\n"
+            + "        <p style=\"margin-top: 25px; color: #999999; font-size: 12px;\">This is an automated message, please do not reply.</p>\n"
+            + "      </div>\n"
+            + "    </div>\n"
+            + "  </body>\n"
+            + "</html>";
+    }
+
+    public void sendTaskAssignmentEmail(String toEmail, String assigneeFirstName, String taskName, String workflowStepName,
+                                         String sourceLang, String targetLang,
+                                         LocalDateTime startDate, LocalDateTime dueDate, String description) {
+        String subject = appName + " - New Task Assigned: " + taskName;
+        String htmlContent = buildTaskAssignmentEmailHTML(assigneeFirstName, taskName, workflowStepName, sourceLang, targetLang, startDate, dueDate, description);
+        sendEmail(toEmail, subject, htmlContent);
+    }
+
+    private String buildTaskAssignmentEmailHTML(String assigneeFirstName, String taskName, String workflowStepName,
+                                                  String sourceLang, String targetLang,
+                                                  LocalDateTime startDate, LocalDateTime dueDate, String description) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM d, yyyy");
+        String startDateText = startDate != null ? startDate.format(formatter) : "Not specified";
+        String dueDateText = dueDate != null ? dueDate.format(formatter) : "Not specified";
+        String sourceLangText = (sourceLang != null && !sourceLang.isBlank()) ? sourceLang : "Not specified";
+        String targetLangText = (targetLang != null && !targetLang.isBlank()) ? targetLang : "Not specified";
+        String descriptionRow = (description != null && !description.isBlank())
+                ? "          <tr><td style=\"padding: 8px 12px; border: 1px solid #dddddd; vertical-align: top;\"><strong>Note:</strong></td><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\">" + description + "</td></tr>\n"
+                : "";
+
+        return "<!DOCTYPE html>\n"
+            + "<html>\n"
+            + "  <head>\n"
+            + "    <meta charset=\"UTF-8\">\n"
+            + "    <title>New Task Assigned</title>\n"
+            + "  </head>\n"
+            + "  <body style=\"margin: 0; padding: 0; background-color: #f9f9f9; font-family: sans-serif;\">\n"
+            + "    <div style=\"width: 100%; padding: 40px 20px; box-sizing: border-box;\">\n"
+            + "      <div style=\"max-width: 600px; padding: 30px; border-radius: 8px;\">\n"
+            + "        <p style=\"text-align: left; color: #555555; font-size: 16px; line-height: 1.6;\">\n"
+            + "          Hello " + assigneeFirstName + ",<br><br>\n"
+            + "          You have been assigned to a task.\n"
+            + "        </p>\n"
+            + "        <table style=\"border-collapse: collapse; border: 1px solid #dddddd; color: #555555; font-size: 16px; line-height: 1.6;\">\n"
+            + "          <tr><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\"><strong>Task:</strong></td><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\">" + taskName + "</td></tr>\n"
+            + "          <tr><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\"><strong>Workflow Step:</strong></td><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\">" + workflowStepName + "</td></tr>\n"
+            + "          <tr><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\"><strong>Source Language:</strong></td><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\">" + sourceLangText + "</td></tr>\n"
+            + "          <tr><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\"><strong>Target Language:</strong></td><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\">" + targetLangText + "</td></tr>\n"
+            + "          <tr><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\"><strong>Start Date:</strong></td><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\">" + startDateText + "</td></tr>\n"
+            + "          <tr><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\"><strong>Due Date:</strong></td><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\">" + dueDateText + "</td></tr>\n"
+            + descriptionRow
+            + "        </table>\n"
+            + "        <p style=\"margin-top: 25px; color: #999999; font-size: 12px;\">This is an automated message, please do not reply.</p>\n"
+            + "      </div>\n"
+            + "    </div>\n"
+            + "  </body>\n"
+            + "</html>";
+    }
 }
