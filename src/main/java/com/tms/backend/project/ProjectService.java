@@ -224,7 +224,7 @@ public class ProjectService {
         return convertToFullDTO(savedProject);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ProjectWithJobDTO createProjectWithJobs(
             ProjectCreateDTO createDTO,
             List<MultipartFile> files,

@@ -9,8 +9,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -93,12 +95,12 @@ public class JobService {
         this.tmService = tmService;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<JobDTO> createJob(MultipartFile file, JobDTO jobDTO, String uid) throws IOException {
         return createJob(file, jobDTO, uid, null, false, false);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<JobDTO> createJob(MultipartFile file, JobDTO jobDTO, String uid, String projectFolder, Boolean useSizingApi) throws IOException {
         return createJob(file, jobDTO, uid, projectFolder, useSizingApi, false);
     }
@@ -111,8 +113,16 @@ public class JobService {
     // is sent to Tomato separately with its own matched TM, producing its own distinct converted file.
     // This also keeps JobWorkflowStep (provider, due date, status) independent per language, since it's
     // scoped to a whole Job.
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<JobDTO> createJob(MultipartFile file, JobDTO jobDTO, String uid, String projectFolder, Boolean useSizingApi, Boolean performSizingDuringCreation) throws IOException {
+        return createJobInternal(file, jobDTO, uid, projectFolder, useSizingApi, performSizingDuringCreation, null);
+    }
+
+    // Same as createJob above, but takes a TM-id-per-target-language map resolved up front by the
+    // caller (see createJobs), instead of resolving one TM per language on every single-file call.
+    // Pass null to resolve on demand (used when creating a single job outside of a createJobs batch).
+    private List<JobDTO> createJobInternal(MultipartFile file, JobDTO jobDTO, String uid, String projectFolder,
+            Boolean useSizingApi, Boolean performSizingDuringCreation, Map<String, Long> tmIdsByLanguage) throws IOException {
 
         User currentUser = userRepo.findByUid(uid)
             .orElseThrow(() -> new ResourceNotFoundException("User not found: " + uid));
@@ -164,7 +174,7 @@ public class JobService {
         } else {
             fileBytes = file.getBytes();
             Long tmId = perLanguagePreTranslation
-                    ? resolveTmIdForLanguagePair(project, jobDTO.sourceLang(), firstLang)
+                    ? resolveTmId(tmIdsByLanguage, project, jobDTO.sourceLang(), firstLang)
                     : null;
             fileConversionService.uploadAndConvertFile(fileBytes, file.getOriginalFilename(), file.getContentType(), file.getSize(),
                     projectFolderName, jobFolder, savedJob,
@@ -193,7 +203,7 @@ public class JobService {
             String lang = sortedLangs.get(i);
             Job sibling;
             if (perLanguagePreTranslation) {
-                Long tmId = resolveTmIdForLanguagePair(project, jobDTO.sourceLang(), lang);
+                Long tmId = resolveTmId(tmIdsByLanguage, project, jobDTO.sourceLang(), lang);
                 sibling = createPreTranslatedSiblingJobForLanguage(savedJob, fileBytes, file.getOriginalFilename(),
                         file.getContentType(), file.getSize(), lang, tmId,
                         effectiveMinSimilarity, preTranslate, effectiveAutoApplyScore);
@@ -220,6 +230,36 @@ public class JobService {
             return null;
         }
         return matches.get(0).id();
+    }
+
+    // Looks up the TM for a language pair, preferring a value already resolved for this batch (see
+    // resolveTmIdsForBatch) over resolving it fresh. Every file in a single createJobs() call shares
+    // the same jobDTO, so re-resolving per file would re-fetch Tomato's whole TM catalog once per
+    // file instead of once per batch.
+    private Long resolveTmId(Map<String, Long> precomputed, Project project, String sourceLang, String targetLang) throws IOException {
+        if (precomputed != null) {
+            return precomputed.get(targetLang);
+        }
+        return resolveTmIdForLanguagePair(project, sourceLang, targetLang);
+    }
+
+    // Resolves the pre-translation TM for every target language once per batch of files, instead of
+    // once per file. Returns an empty map (nothing to resolve) unless the project has preTranslate
+    // enabled. A language with no matching TM is still present in the map, mapped to null, so callers
+    // can distinguish "resolved, no match" from "not resolved yet".
+    private Map<String, Long> resolveTmIdsForBatch(JobDTO jobDTO) throws IOException {
+        if (jobDTO.projectId() == null) {
+            return Map.of();
+        }
+        Project project = projectRepo.findById(jobDTO.projectId()).orElse(null);
+        if (project == null || !Boolean.TRUE.equals(project.getPreTranslate())) {
+            return Map.of();
+        }
+        Map<String, Long> tmIdsByLanguage = new HashMap<>();
+        for (String targetLang : jobDTO.targetLangs()) {
+            tmIdsByLanguage.put(targetLang, resolveTmIdForLanguagePair(project, jobDTO.sourceLang(), targetLang));
+        }
+        return tmIdsByLanguage;
     }
 
     // Builds (but doesn't persist file content for) a new Job for an additional target language of an
@@ -263,7 +303,7 @@ public class JobService {
     // representative job's original/converted files instead of re-running the conversion API. Valid
     // only when the converted output doesn't depend on the target language (preTranslate disabled).
     // Used both by createJob's fan-out above and by ProjectService when a project gains a target language.
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Job createSiblingJobForLanguage(Job representative, String newLang) throws IOException {
         Job sibling = buildSiblingJobEntity(representative, newLang);
         Job savedSibling = jobRepo.save(sibling);
@@ -286,7 +326,7 @@ public class JobService {
     // language pair (preTranslate enabled): re-sends the original file to Tomato with the TM matched
     // for this pair instead of copying the representative job's converted file, since pre-translation
     // output differs per target language.
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Job createPreTranslatedSiblingJobForLanguage(Job representative, byte[] fileBytes, String originalFilename,
             String contentType, long fileSize, String newLang,
             Long tmId, Integer minSimilarity, Boolean preTranslate, Integer autoApplyScore) throws IOException {
@@ -337,29 +377,32 @@ public class JobService {
     }
 
     //create multiple jobs
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<JobDTO> createJobs(List<MultipartFile> files, JobDTO jobDTO, String uid) throws IOException {
         return createJobs(files, jobDTO, uid, null, false, false);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<JobDTO> createJobs(List<MultipartFile> files, JobDTO jobDTO, String uid, String projectFolder,
             Boolean useSizingApi) throws IOException {
         return createJobs(files, jobDTO, uid, projectFolder, useSizingApi, false);
     }
 
-    @Transactional
+    // Every file in this batch shares the same jobDTO (same source/target languages), so the TM match
+    // per target language is resolved once here rather than once per file inside createJobInternal.
+    @Transactional(rollbackFor = Exception.class)
     public List<JobDTO> createJobs(List<MultipartFile> files, JobDTO jobDTO, String uid, String projectFolder,
             Boolean useSizingApi, Boolean performSizingDuringCreation) throws IOException {
+        Map<String, Long> tmIdsByLanguage = resolveTmIdsForBatch(jobDTO);
         List<JobDTO> createdJobs = new ArrayList<>();
         for (MultipartFile file : files) {
-            createdJobs.addAll(createJob(file, jobDTO, uid, projectFolder, useSizingApi, performSizingDuringCreation));
+            createdJobs.addAll(createJobInternal(file, jobDTO, uid, projectFolder, useSizingApi, performSizingDuringCreation, tmIdsByLanguage));
         }
         return createdJobs;
     }
 
     // for submitter portal
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public ProjectWithJobDTO createProjectWithJobs(
             List<MultipartFile> files,
             String note,
