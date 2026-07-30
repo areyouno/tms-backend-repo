@@ -46,6 +46,7 @@ public class RolePermissionController {
     }
 
     @GetMapping("/role/{roleId}")
+    @PreAuthorize("hasAnyAuthority('administrator', 'project_manager', 'customer', 'translator', 'guest')")
     public RolePermissionGroupDTO getRolePermissionsByRoleId(@PathVariable Long roleId) {
         return rolePermissionService.getRolePermissionsByRoleId(roleId);
     }
