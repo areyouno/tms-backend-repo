@@ -3,9 +3,9 @@ package com.tms.backend.rolePermission;
 public enum Permission {
     // Project
     PROJECT_CREATE(PermissionCategory.PROJECT, "Create Project", "Create a new project"),
-    PROJECT_VIEW(PermissionCategory.PROJECT, "View Projects", "View projects created by other users"),
+    PROJECT_VIEW(PermissionCategory.PROJECT, "View Projects", "View projects "),
     PROJECT_UPDATE(PermissionCategory.PROJECT, "Update Project", "Modify projects created by other user"),
-    PROJECT_DELETE(PermissionCategory.PROJECT, "Delete Project", "Delete projects created by other users"),
+    PROJECT_DELETE(PermissionCategory.PROJECT, "Delete Project", "Delete projects "),
     WORKFLOW_UPDATE(PermissionCategory.PROJECT, "Update Workflow", "Update workflow assigned in the project"),
 
     PROJECT_FILE_EDIT(PermissionCategory.PROJECT, "Edit file", "Edit file in the CAT Editor"),
@@ -68,29 +68,30 @@ public enum Permission {
     EDITOR_ABOUT(PermissionCategory.EDITOR, "About", "View about information"),
 
     // Task list
-    TASK_LIST_VIEW(PermissionCategory.TASK_LIST, "View Task List", "View task list created by other users"),
+    TASK_LIST_VIEW(PermissionCategory.TASK_LIST, "View Task List", "View a list of tasks"),
     TASK_LIST_EDIT_FILE(PermissionCategory.TASK_LIST, "Edit Task List File", "Edit files in the task list"),
-    TASK_LIST_DELETE(PermissionCategory.TASK_LIST, "Delete Task List", "Delete task list created by other users"),
+    TASK_LIST_DELETE(PermissionCategory.TASK_LIST, "Delete Task List", "Delete task list"),
+    JOB_VIEW(PermissionCategory.TASK_LIST, "View Job List", "View a list of jobs"),
 
     JOB_REJECT(PermissionCategory.TASK_LIST, "Reject Job", "Reject job"),
 
     // Translation Memories
     TM_CREATE(PermissionCategory.TRANSLATION_MEMORIES, "Create Translation Memories", "Create TMs"),
-    TM_VIEW(PermissionCategory.TRANSLATION_MEMORIES, "View Translation Memories", "View TMs created by other users"),
-    TM_UPDATE(PermissionCategory.TRANSLATION_MEMORIES, "Update Translation Memories", "Modify TMs created by other users"),
-    TM_DELETE(PermissionCategory.TRANSLATION_MEMORIES, "Delete Translation Memories", "Delete TMs created by other users"),
-    TM_EXPORT(PermissionCategory.TRANSLATION_MEMORIES, "Export Translation Memories", "Export TMs created by other users"),
-    TM_IMPORT(PermissionCategory.TRANSLATION_MEMORIES, "Import Translation Memories", "Import into TMs created by other users"),
+    TM_VIEW(PermissionCategory.TRANSLATION_MEMORIES, "View Translation Memories", "View TMs"),
+    TM_UPDATE(PermissionCategory.TRANSLATION_MEMORIES, "Update Translation Memories", "Modify TMs"),
+    TM_DELETE(PermissionCategory.TRANSLATION_MEMORIES, "Delete Translation Memories", "Delete TMs"),
+    TM_EXPORT(PermissionCategory.TRANSLATION_MEMORIES, "Export Translation Memories", "Export TMs"),
+    TM_IMPORT(PermissionCategory.TRANSLATION_MEMORIES, "Import Translation Memories", "Import into TMs"),
     TM_UPDATE_TRANSLATION(PermissionCategory.TRANSLATION_MEMORIES, "Update Translations", "Edit translations in TM"),
 
     // Term Base
     TB_CREATE(PermissionCategory.TERM_BASE, "Create Term Bases", "Create TBs"),
-    TB_VIEW(PermissionCategory.TERM_BASE, "View Term Bases", "View TBs created by other users"),
-    TB_UPDATE(PermissionCategory.TERM_BASE, "Update Term Bases", "Modify TBs created by other users"),
-    TB_DELETE(PermissionCategory.TERM_BASE, "Delete Term Bases", "Delete TBs created by other users"),
-    TB_EXPORT(PermissionCategory.TERM_BASE, "Export Term Bases", "Export TBs created by other users"),
-    TB_IMPORT(PermissionCategory.TERM_BASE, "Import Term Bases", "Import into TBs created by other users"),
-    TB_APPROVE_TERMS(PermissionCategory.TERM_BASE, "Approve Terms", "Approve terms in TBs created by other users"),
+    TB_VIEW(PermissionCategory.TERM_BASE, "View Term Bases", "View TBs"),
+    TB_UPDATE(PermissionCategory.TERM_BASE, "Update Term Bases", "Modify TBs"),
+    TB_DELETE(PermissionCategory.TERM_BASE, "Delete Term Bases", "Delete TBs"),
+    TB_EXPORT(PermissionCategory.TERM_BASE, "Export Term Bases", "Export TBs"),
+    TB_IMPORT(PermissionCategory.TERM_BASE, "Import Term Bases", "Import into TBs"),
+    TB_APPROVE_TERMS(PermissionCategory.TERM_BASE, "Approve Terms", "Approve terms in TBs"),
     TB_UPDATE_TERM(PermissionCategory.TERM_BASE, "Update Terms", "Edit all terms in TB"),
 
     // Settings
@@ -99,21 +100,21 @@ public enum Permission {
 
     // Project Templates
     PROJECT_TEMP_CREATE(PermissionCategory.PROJECT_TEMPLATES, "Create Project Templates", "Create project templates"),
-    PROJECT_TEMP_VIEW(PermissionCategory.PROJECT_TEMPLATES, "View Project Templates", "View project templates created by other users"),
-    PROJECT_TEMP_UPDATE(PermissionCategory.PROJECT_TEMPLATES, "Update Project Templates", "Modify project templates created by other users"),
-    PROJECT_TEMP_DELETE(PermissionCategory.PROJECT_TEMPLATES, "Delete Project Templates", "Delete project templates created by other users"),
+    PROJECT_TEMP_VIEW(PermissionCategory.PROJECT_TEMPLATES, "View Project Templates", "View project templates "),
+    PROJECT_TEMP_UPDATE(PermissionCategory.PROJECT_TEMPLATES, "Update Project Templates", "Modify project templates"),
+    PROJECT_TEMP_DELETE(PermissionCategory.PROJECT_TEMPLATES, "Delete Project Templates", "Delete project templates"),
 
     // Users
     USER_CREATE(PermissionCategory.USERS, "Create Users", "Create users"),
-    USER_VIEW(PermissionCategory.USERS, "View Users", "View users created by other users"),
-    USER_UPDATE(PermissionCategory.USERS, "Update Users", "Modify users created by other users"),
-    USER_DELETE(PermissionCategory.USERS, "Delete Users", "Delete users created by other users"),
+    USER_VIEW(PermissionCategory.USERS, "View Users", "View users"),
+    USER_UPDATE(PermissionCategory.USERS, "Update Users", "Modify users"),
+    USER_DELETE(PermissionCategory.USERS, "Delete Users", "Delete users"),
 
     // Client / Domain / Subdomain
     CDS_CREATE(PermissionCategory.CLIENT_DOMAIN_SUBDOMAIN, "Create Client/Domain/Subdomain", "Create clients, domains, subdomains"),
-    CDS_VIEW(PermissionCategory.CLIENT_DOMAIN_SUBDOMAIN, "View Client/Domain/Subdomain", "View clients, domains, subdomains created by other users"),
-    CDS_UPDATE(PermissionCategory.CLIENT_DOMAIN_SUBDOMAIN, "Update Client/Domain/Subdomain", "Modify clients, domains, subdomains created by other users"),
-    CDS_DELETE(PermissionCategory.CLIENT_DOMAIN_SUBDOMAIN, "Delete Client/Domain/Subdomain", "Delete clients, domains, subdomains created by other users"),
+    CDS_VIEW(PermissionCategory.CLIENT_DOMAIN_SUBDOMAIN, "View Client/Domain/Subdomain", "View clients, domains, subdomains"),
+    CDS_UPDATE(PermissionCategory.CLIENT_DOMAIN_SUBDOMAIN, "Update Client/Domain/Subdomain", "Modify clients, domains, subdomains"),
+    CDS_DELETE(PermissionCategory.CLIENT_DOMAIN_SUBDOMAIN, "Delete Client/Domain/Subdomain", "Delete clients, domains, subdomains"),
 
     // User Profile
     VIEW_PROFILE(PermissionCategory.USER_PROFILE, "View Profile", "View own user profile"),
@@ -122,9 +123,9 @@ public enum Permission {
 
     // Vendors
     VENDOR_CREATE(PermissionCategory.VENDORS, "Create Vendors", "Create vendors"),
-    VENDOR_VIEW(PermissionCategory.VENDORS, "View Vendors", "View vendors created by other users"),
-    VENDOR_UPDATE(PermissionCategory.VENDORS, "Update Vendors", "Modify vendors created by other users"),
-    VENDOR_DELETE(PermissionCategory.VENDORS, "Delete Vendors", "Delete vendors created by other users");
+    VENDOR_VIEW(PermissionCategory.VENDORS, "View Vendors", "View vendors"),
+    VENDOR_UPDATE(PermissionCategory.VENDORS, "Update Vendors", "Modify vendors"),
+    VENDOR_DELETE(PermissionCategory.VENDORS, "Delete Vendors", "Delete vendors");
 
     
 
