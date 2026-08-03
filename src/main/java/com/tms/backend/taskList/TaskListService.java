@@ -156,7 +156,8 @@ public class TaskListService {
                     targetLang,
                     saved.getStartDate(),
                     saved.getDueDate(),
-                    saved.getDescription());
+                    saved.getDescription(),
+                    saved.getId());
         }
 
         return toDetailDto(saved);

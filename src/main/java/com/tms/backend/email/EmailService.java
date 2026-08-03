@@ -25,6 +25,9 @@ public class EmailService {
     @Value("${app.name:TransTree}")
     private String appName;
 
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
      public EmailService(JavaMailSender mailSender) {
         this.mailSender = mailSender;
     }
@@ -177,15 +180,17 @@ public class EmailService {
 
     public void sendTaskAssignmentEmail(String toEmail, String assigneeFirstName, String taskName, String workflowStepName,
                                          String sourceLang, String targetLang,
-                                         LocalDateTime startDate, LocalDateTime dueDate, String description) {
+                                         LocalDateTime startDate, LocalDateTime dueDate, String description, Long taskListId) {
         String subject = appName + " - New Task Assigned: " + taskName;
-        String htmlContent = buildTaskAssignmentEmailHTML(assigneeFirstName, taskName, workflowStepName, sourceLang, targetLang, startDate, dueDate, description);
+        String taskListLink = frontendUrl + "/tms/tasklist/" + taskListId;
+        String htmlContent = buildTaskAssignmentEmailHTML(assigneeFirstName, taskName, workflowStepName, sourceLang, targetLang, startDate, dueDate, description, taskListLink);
         sendEmail(toEmail, subject, htmlContent);
     }
 
     private String buildTaskAssignmentEmailHTML(String assigneeFirstName, String taskName, String workflowStepName,
                                                   String sourceLang, String targetLang,
-                                                  LocalDateTime startDate, LocalDateTime dueDate, String description) {
+                                                  LocalDateTime startDate, LocalDateTime dueDate, String description,
+                                                  String taskListLink) {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMM d, yyyy");
         String startDateText = startDate != null ? startDate.format(formatter) : "Not specified";
         String dueDateText = dueDate != null ? dueDate.format(formatter) : "Not specified";
@@ -217,6 +222,12 @@ public class EmailService {
             + "          <tr><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\"><strong>Due Date:</strong></td><td style=\"padding: 8px 12px; border: 1px solid #dddddd;\">" + dueDateText + "</td></tr>\n"
             + descriptionRow
             + "        </table>\n"
+            + "        <a href=\"" + taskListLink + "\"\n"
+            + "           style=\"display: inline-block; margin-top: 25px; padding: 13px 16px; font-size: 14px; font-weight: 600;\n"
+            + "                  color: #f5f9fc; background-color:rgb(61, 138, 206); text-decoration: none;\n"
+            + "                  border-radius: 26px; min-width: 50px; text-align: center;\">\n"
+            + "          View Task\n"
+            + "        </a>\n"
             + "        <p style=\"margin-top: 25px; color: #999999; font-size: 12px;\">This is an automated message, please do not reply.</p>\n"
             + "      </div>\n"
             + "    </div>\n"
