@@ -3,7 +3,9 @@ package com.tms.backend.client;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.tms.backend.dto.ClientResponseDTO;
 import com.tms.backend.dto.CreateClientRequest;
@@ -24,6 +26,10 @@ public class ClientService {
 
     @Transactional
     public ClientResponseDTO createClient(CreateClientRequest req) {
+        if (repo.existsByNameIgnoreCase(req.name())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Client name already exists");
+        }
+
         Client client = new Client();
         client.setName(req.name());
         client.setExternalId(req.externalId());
@@ -59,6 +65,10 @@ public class ClientService {
         Client client = repo.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Client not found"));
 
+        if (repo.existsByNameIgnoreCaseAndIdNot(req.name(), id)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Client name already exists");
+        }
+
         client.setName(req.name());
         client.setExternalId(req.externalId());
 
@@ -71,6 +81,13 @@ public class ClientService {
         }
 
         return toDTO(repo.save(client));
+    }
+
+    @Transactional
+    public boolean nameExists(String name, Long excludeId) {
+        return excludeId == null
+            ? repo.existsByNameIgnoreCase(name)
+            : repo.existsByNameIgnoreCaseAndIdNot(name, excludeId);
     }
 
     public void softDeleteClient(Long id) {

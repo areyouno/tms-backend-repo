@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tms.backend.dto.CheckClientNameRequest;
 import com.tms.backend.dto.ClientResponseDTO;
 import com.tms.backend.dto.CreateClientRequest;
 import com.tms.backend.dto.UpdateClientRequest;
@@ -47,6 +48,11 @@ public class ClientController {
     @GetMapping("/{id}")
     public ResponseEntity<ClientResponseDTO> getClientById(@PathVariable Long id) {
         return ResponseEntity.ok(clientService.getClientById(id));
+    }
+
+    @PostMapping("/exists")
+    public ResponseEntity<Boolean> nameExists(@Valid @RequestBody CheckClientNameRequest request) {
+        return ResponseEntity.ok(clientService.nameExists(request.name(), request.excludeId()));
     }
 
     @PutMapping("/{id}")

@@ -24,6 +24,10 @@ public interface ClientRepository extends JpaRepository<Client, Long>{
 
     Optional<Client> findByNetRateScheme(NetRateScheme netRateScheme);
 
+    boolean existsByNameIgnoreCase(String name);
+
+    boolean existsByNameIgnoreCaseAndIdNot(String name, Long id);
+
     @Modifying
     @Query("UPDATE Client cl SET cl.netRateScheme = null WHERE cl.netRateScheme.id IN :ids")
     void clearNetRateSchemeByIds(@Param("ids") List<Long> ids);
