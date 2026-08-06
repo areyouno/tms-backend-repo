@@ -191,7 +191,7 @@ public class FileConversionService {
         // Get user's downloads folder
         Path baseDir = Paths.get(uploadDir);
 
-        // Create full output directory: downloads/tomato/projects/projectId/jobs/jobsId
+        // Create full output directory: projects/{projectId}-{name}/jobs/file{N}/{jobId}-{langPair}
         Path outputDir = baseDir
                     .resolve("projects")
                     .resolve(projectFolderName)
@@ -298,11 +298,12 @@ public class FileConversionService {
      * Saves the XLIFF bytes (produced by the sizing API) to the job's converted directory
      * and updates the job's converted-file fields.
      * Call this when the user explicitly triggers XLIFF retrieval after sizing.
+     *
+     * @param jobDirectory the job's storage folder, relative to the upload dir (see JobService#resolveJobDirectory)
      */
     public Path saveXliffToConvertedDir(
             byte[] xliffBytes,
-            String projectFolderName,
-            String jobFolderName,
+            Path jobDirectory,
             Job job) throws IOException {
 
         String originalName = job.getOriginalFileName();
@@ -312,12 +313,7 @@ public class FileConversionService {
 
         Path baseDir = Paths.get(uploadDir);
 
-        Path convertedDir = baseDir
-                .resolve("projects")
-                .resolve(projectFolderName)
-                .resolve("jobs")
-                .resolve(jobFolderName)
-                .resolve("converted");
+        Path convertedDir = baseDir.resolve(jobDirectory).resolve("converted");
 
         Files.createDirectories(convertedDir);
 
@@ -395,8 +391,7 @@ public class FileConversionService {
 
     public Path convertXliffBackToOriginalFormat(
         Job job,
-        String projectFolderName,
-        String jobFolderName
+        Path jobDirectory
         ) throws IOException {
 
         if (job.getOriginalFileFormat() == null) {
@@ -453,12 +448,7 @@ public class FileConversionService {
         }
 
         // Save target file
-        Path targetDir = baseDir
-                .resolve("projects")
-                .resolve(projectFolderName)
-                .resolve("jobs")
-                .resolve(jobFolderName)
-                .resolve("target");
+        Path targetDir = baseDir.resolve(jobDirectory).resolve("target");
 
         Files.createDirectories(targetDir);
 

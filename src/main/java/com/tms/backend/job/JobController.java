@@ -355,6 +355,94 @@ public class JobController {
     }
 
 
+    // Download translated files for multiple jobs at once
+    @PostMapping("/download/translated/multiple")
+    public ResponseEntity<StreamingResponseBody> downloadTranslatedByJobs(@RequestBody DownloadJobsRequest request) {
+        if (request.getJobIds() == null || request.getJobIds().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        if (request.getJobIds().size() == 1) {
+            return downloadSingleTranslatedFile(request.getJobIds().get(0));
+        }
+
+        return downloadMultipleTranslatedJobsAsZip(request.getJobIds());
+    }
+
+    private ResponseEntity<StreamingResponseBody> downloadSingleTranslatedFile(Long jobId) {
+        try {
+            Job job = jobService.getJobById(jobId);
+            Path filePath = jobService.getTranslatedFilePath(jobId);
+
+            if (!Files.exists(filePath) || !Files.isReadable(filePath)) {
+                logger.error("Translated file not readable: {}", filePath);
+                return ResponseEntity.notFound().build();
+            }
+
+            StreamingResponseBody stream = outputStream -> {
+                Files.copy(filePath, outputStream);
+            };
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.parseMediaType("application/xml"))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + job.getTranslatedFileName() + "\"")
+                    .body(stream);
+        } catch (Exception e) {
+            logger.error("Error downloading translated file for job {}", jobId, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    private ResponseEntity<StreamingResponseBody> downloadMultipleTranslatedJobsAsZip(List<Long> jobIds) {
+
+        String projectName = "project"; // Default fallback
+
+        try {
+            if (!jobIds.isEmpty()) {
+                // Get project name from the first job
+                Job firstJob = jobService.getJobById(jobIds.get(0));
+                projectName = firstJob.getProject().getName();
+            }
+        } catch (Exception e) {
+            logger.error("Error getting project name, using default", e);
+        }
+
+        final String finalProjectName = sanitizeFolderName(projectName);
+
+        StreamingResponseBody stream = outputStream -> {
+            try (ZipOutputStream zipOut = new ZipOutputStream(outputStream)) {
+                for (Long jobId : jobIds) {
+                    try {
+                        Job job = jobService.getJobById(jobId);
+                        Path filePath = jobService.getTranslatedFilePath(jobId);
+
+                        if (!Files.exists(filePath) || !Files.isReadable(filePath)) {
+                            logger.warn("Skipping job {}: translated file not found or not readable", jobId);
+                            continue;
+                        }
+
+                        String zipEntryName = groupFolderName(job) + "/" + appendTargetLang(job.getTranslatedFileName(), job);
+                        ZipEntry zipEntry = new ZipEntry(zipEntryName);
+                        zipOut.putNextEntry(zipEntry);
+                        Files.copy(filePath, zipOut);
+                        zipOut.closeEntry();
+                    } catch (Exception e) {
+                        logger.warn("Skipping translated file for job {}: {}", jobId, e.getMessage());
+                    }
+                }
+            }
+        };
+
+        String zipFileName = finalProjectName + "-translated.zip";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + zipFileName + "\"")
+                .body(stream);
+    }
+
     private boolean isJobCompleted(Job job, Long workflowStepId) {
         if (workflowStepId == null) {
             return false;
@@ -438,6 +526,90 @@ public class JobController {
                         "attachment; filename=\"" + absolutePath.getFileName() + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
                 .body(resource);
+    }
+
+    // Download target files for multiple jobs at once
+    @PostMapping("/download/target/multiple")
+    public ResponseEntity<StreamingResponseBody> downloadTargetFilesByJobs(@RequestBody DownloadJobsRequest request) {
+        if (request.getJobIds() == null || request.getJobIds().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        if (request.getJobIds().size() == 1) {
+            return downloadSingleTargetFile(request.getJobIds().get(0));
+        }
+
+        return downloadMultipleTargetFilesAsZip(request.getJobIds());
+    }
+
+    private ResponseEntity<StreamingResponseBody> downloadSingleTargetFile(Long jobId) {
+        try {
+            Path relativeTargetPath = jobService.generateTargetFile(jobId);
+            Path absolutePath = Paths.get(baseUploadDir).resolve(relativeTargetPath);
+
+            StreamingResponseBody stream = outputStream -> {
+                Files.copy(absolutePath, outputStream);
+            };
+
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + absolutePath.getFileName() + "\"")
+                    .body(stream);
+        } catch (Exception e) {
+            logger.error("Error downloading target file for job {}", jobId, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    private ResponseEntity<StreamingResponseBody> downloadMultipleTargetFilesAsZip(List<Long> jobIds) {
+
+        String projectName = "project"; // Default fallback
+
+        try {
+            if (!jobIds.isEmpty()) {
+                // Get project name from the first job
+                Job firstJob = jobService.getJobById(jobIds.get(0));
+                projectName = firstJob.getProject().getName();
+            }
+        } catch (Exception e) {
+            logger.error("Error getting project name, using default", e);
+        }
+
+        final String finalProjectName = sanitizeFolderName(projectName);
+
+        StreamingResponseBody stream = outputStream -> {
+            try (ZipOutputStream zipOut = new ZipOutputStream(outputStream)) {
+                for (Long jobId : jobIds) {
+                    try {
+                        Job job = jobService.getJobById(jobId);
+                        Path relativeTargetPath = jobService.generateTargetFile(jobId);
+                        Path absolutePath = Paths.get(baseUploadDir).resolve(relativeTargetPath);
+
+                        if (!Files.exists(absolutePath) || !Files.isReadable(absolutePath)) {
+                            logger.warn("Skipping job {}: target file not found or not readable", jobId);
+                            continue;
+                        }
+
+                        String zipEntryName = groupFolderName(job) + "/" + appendTargetLang(absolutePath.getFileName().toString(), job);
+                        ZipEntry zipEntry = new ZipEntry(zipEntryName);
+                        zipOut.putNextEntry(zipEntry);
+                        Files.copy(absolutePath, zipOut);
+                        zipOut.closeEntry();
+                    } catch (Exception e) {
+                        logger.warn("Skipping target file for job {}: {}", jobId, e.getMessage());
+                    }
+                }
+            }
+        };
+
+        String zipFileName = finalProjectName + "-target.zip";
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + zipFileName + "\"")
+                .body(stream);
     }
 
     // Download by project IDs
@@ -674,6 +846,38 @@ public class JobController {
         }
         // Remove or replace special characters that aren't allowed in file paths
         return name.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
+    }
+
+    // Zip folder name for a job's sibling group (jobs created from the same uploaded
+    // source file, one per target language). Falls back to the job's own id if the
+    // job has no sourceGroupId or fileName for some reason.
+    private String groupFolderName(Job job) {
+        Long groupId = job.getSourceGroupId() != null ? job.getSourceGroupId() : job.getId();
+        String fileName = job.getFileName() != null ? sanitizeFolderName(job.getFileName()) : "job" + job.getId();
+        return groupId + "-" + fileName;
+    }
+
+    // Inserts the job's target language(s) before the file extension so sibling jobs
+    // sharing the same source file (and therefore the same group folder/base filename)
+    // don't collide in the zip, e.g. "Document.xliff" -> "Document_ko-KR.xliff".
+    private String appendTargetLang(String fileName, Job job) {
+        if (fileName == null) {
+            return "job" + job.getId();
+        }
+
+        String targetLang = (job.getTargetLangs() != null && !job.getTargetLangs().isEmpty())
+                ? job.getTargetLangs().stream().sorted().collect(Collectors.joining("-"))
+                : "";
+
+        if (targetLang.isEmpty()) {
+            return fileName;
+        }
+
+        int dotIndex = fileName.lastIndexOf('.');
+        String baseName = dotIndex != -1 ? fileName.substring(0, dotIndex) : fileName;
+        String extension = dotIndex != -1 ? fileName.substring(dotIndex) : "";
+
+        return baseName + "_" + targetLang + extension;
     }
 
     // Uploads or updates the translated file

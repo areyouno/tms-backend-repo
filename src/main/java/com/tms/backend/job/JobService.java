@@ -155,11 +155,19 @@ public class JobService {
         Job job = createJobFromDTO(jobDTO, currentUser, file.getOriginalFilename(), file.getSize(), sizingApiResponse, firstLang);
         Job savedJob = jobRepo.save(job);
 
-        String projectFolderName = String.valueOf(jobDTO.projectId());
-        String jobFolder = String.valueOf(savedJob.getId());
+        // This is the first job of its upload: it is its own source group. Set and persist this
+        // before building the storage path, since the path's "file{N}" segment is derived from it.
+        savedJob.setSourceGroupId(savedJob.getId());
+        savedJob = jobRepo.save(savedJob);
 
         Project project = savedJob.getProject();
-        Boolean preTranslate = project != null ? project.getPreTranslate() : null;
+        if (project == null) {
+            throw new IllegalStateException("Job must be associated with a project");
+        }
+        String projectFolderName = buildProjectFolderName(project);
+        String jobFolder = buildJobFolderPath(savedJob);
+
+        Boolean preTranslate = project.getPreTranslate();
         Integer effectiveMinSimilarity = Boolean.TRUE.equals(preTranslate) ? project.getMinSimilarity() : null;
         Integer effectiveAutoApplyScore = Boolean.TRUE.equals(preTranslate) ? project.getAutoApplyScore() : null;
         boolean perLanguagePreTranslation = Boolean.TRUE.equals(preTranslate) && !deferConversion;
@@ -188,9 +196,6 @@ public class JobService {
 
         List<JobWorkflowStep> savedSteps = jobWfRepo.saveAll(jobSteps);
         savedJob.setWorkflowSteps(new HashSet<>(savedSteps));
-
-        // This is the first job of its upload: it is its own source group
-        savedJob.setSourceGroupId(savedJob.getId());
 
         // Persist file paths, sizing stats, and workflow steps
         savedJob = jobRepo.save(savedJob);
@@ -308,8 +313,11 @@ public class JobService {
         Job sibling = buildSiblingJobEntity(representative, newLang);
         Job savedSibling = jobRepo.save(sibling);
 
-        String projectFolderName = String.valueOf(representative.getProjectId());
-        String siblingJobFolder = String.valueOf(savedSibling.getId());
+        if (representative.getProject() == null) {
+            throw new IllegalStateException("Job must be associated with a project");
+        }
+        String projectFolderName = buildProjectFolderName(representative.getProject());
+        String siblingJobFolder = buildJobFolderPath(savedSibling);
 
         fileConversionService.copySourceFilesToSiblingJob(representative, savedSibling, projectFolderName, siblingJobFolder);
 
@@ -333,8 +341,11 @@ public class JobService {
         Job sibling = buildSiblingJobEntity(representative, newLang);
         Job savedSibling = jobRepo.save(sibling);
 
-        String projectFolderName = String.valueOf(representative.getProjectId());
-        String siblingJobFolder = String.valueOf(savedSibling.getId());
+        if (representative.getProject() == null) {
+            throw new IllegalStateException("Job must be associated with a project");
+        }
+        String projectFolderName = buildProjectFolderName(representative.getProject());
+        String siblingJobFolder = buildJobFolderPath(savedSibling);
 
         fileConversionService.uploadAndConvertFile(fileBytes, originalFilename, contentType, fileSize,
                 projectFolderName, siblingJobFolder, savedSibling,
@@ -362,11 +373,12 @@ public class JobService {
             throw new IllegalStateException("Job must be associated with a project");
         }
 
-        String projectFolderName = String.valueOf(job.getProjectId());
-        String jobFolderName = String.valueOf(job.getId());
+        // The original file is already on disk (saved by saveOriginalFileOnly during creation);
+        // reuse its folder rather than rebuilding the path, so the XLIFF lands alongside it.
+        Path jobDirectory = resolveJobDirectory(job);
 
         byte[] xliffBytes = sizingService.fetchXliffBytes(tomatoJobId);
-        fileConversionService.saveXliffToConvertedDir(xliffBytes, projectFolderName, jobFolderName, job);
+        fileConversionService.saveXliffToConvertedDir(xliffBytes, jobDirectory, job);
 
         job = jobRepo.save(job);
         logger.info("Saved XLIFF for job {} from tomatoJobId {}", jobId, tomatoJobId);
@@ -500,12 +512,8 @@ public class JobService {
             throw new IllegalStateException("Job must be associated with a project");
         }
 
-        // Get project and job folder names
-        String projectFolderName = String.valueOf(job.getProjectId());
-        String jobFolderName = String.valueOf(job.getId());
-
         // Save the translated file
-        Path savedPath = saveTranslatedFile(file, projectFolderName, jobFolderName, job);
+        Path savedPath = saveTranslatedFile(file, job);
 
         // Save the updated job to database
         jobRepo.save(job);
@@ -517,17 +525,13 @@ public class JobService {
     /**
      * Save the translated XLIFF file to the local filesystem.
      *
-     * @param file              The translated XLIFF file
-     * @param projectFolderName The project folder name
-     * @param jobFolderName     The job folder name
-     * @param job               The job entity to update
+     * @param file The translated XLIFF file
+     * @param job  The job entity to update
      * @return Path to the saved file
      * @throws IOException if file operations fail
      */
     private Path saveTranslatedFile(
         MultipartFile file,
-        String projectFolderName,
-        String jobFolderName,
         Job job)
         throws IOException {
         // Get base directory
@@ -674,12 +678,40 @@ public class JobService {
         );
     }
 
-    // Resolve the job's storage folder (".../{projectId}/{jobId}") from its original file path
+    // Resolve the job's storage folder (".../{projectId}-{name}/jobs/file{N}/{jobId}-{langPair}")
+    // from its original file path
     private Path resolveJobDirectory(Job job) {
         if (job.getOriginalFilePath() == null) {
             throw new ResourceNotFoundException("Job has no files on disk: " + job.getId());
         }
         return Paths.get(job.getOriginalFilePath()).getParent().getParent();
+    }
+
+    // Builds the "{projectId}-{sanitizedProjectName}" folder name for a project's storage root.
+    private String buildProjectFolderName(Project project) {
+        return project.getId() + "-" + sanitizeForPath(project.getName());
+    }
+
+    // Builds the "file{N}/{jobId}-{sourceLang}-{targetLang}" folder path for a job's own storage
+    // root, where N is the 1-based upload order of the source file (job.sourceGroupId) within its
+    // project. Every language-pair sibling of the same source file resolves to the same N, since
+    // they all share sourceGroupId. Requires job.getSourceGroupId() to already be persisted.
+    private String buildJobFolderPath(Job job) {
+        long fileIndex = jobRepo.countSourceFileGroupsUpTo(job.getProjectId(), job.getSourceGroupId());
+        String targetLang = job.getTargetLangs() != null && !job.getTargetLangs().isEmpty()
+                ? job.getTargetLangs().iterator().next() : "unknown";
+        String languagePair = job.getSourceLang() + "-" + targetLang;
+        return "file" + fileIndex + "/" + job.getId() + "-" + sanitizeForPath(languagePair);
+    }
+
+    // Strips characters that are unsafe as a filesystem path segment and collapses whitespace, so
+    // project names / language codes can be embedded directly in a storage folder name.
+    private static String sanitizeForPath(String input) {
+        if (input == null || input.isBlank()) {
+            return "untitled";
+        }
+        String sanitized = input.trim().replaceAll("[\\\\/:*?\"<>|]", "_").replaceAll("\\s+", "_");
+        return sanitized.isEmpty() ? "untitled" : sanitized;
     }
 
     // Delete a checkout's working copy from disk and DB, and clear the job's cached lock fields
@@ -729,12 +761,12 @@ public class JobService {
         Job job = jobRepo.findById(jobId)
             .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
 
+        // Reuse the job's existing folder (derived from its original file path) rather than
+        // rebuilding it, so the target file lands alongside the job's other files.
+        Path jobDirectory = resolveJobDirectory(job);
+
         Path relativeTargetPath =
-            fileConversionService.convertXliffBackToOriginalFormat(
-                job,
-                job.getProjectId().toString(),
-                job.getId().toString()
-            );
+            fileConversionService.convertXliffBackToOriginalFormat(job, jobDirectory);
 
         // save
         jobRepo.save(job);
