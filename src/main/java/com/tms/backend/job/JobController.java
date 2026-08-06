@@ -1,12 +1,17 @@
 package com.tms.backend.job;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -357,7 +362,7 @@ public class JobController {
 
     // Download translated files for multiple jobs at once
     @PostMapping("/download/translated/multiple")
-    public ResponseEntity<StreamingResponseBody> downloadTranslatedByJobs(@RequestBody DownloadJobsRequest request) {
+    public ResponseEntity<?> downloadTranslatedByJobs(@RequestBody DownloadJobsRequest request) {
         if (request.getJobIds() == null || request.getJobIds().isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -394,7 +399,7 @@ public class JobController {
         }
     }
 
-    private ResponseEntity<StreamingResponseBody> downloadMultipleTranslatedJobsAsZip(List<Long> jobIds) {
+    private ResponseEntity<?> downloadMultipleTranslatedJobsAsZip(List<Long> jobIds) {
 
         String projectName = "project"; // Default fallback
 
@@ -410,37 +415,38 @@ public class JobController {
 
         final String finalProjectName = sanitizeFolderName(projectName);
 
-        StreamingResponseBody stream = outputStream -> {
-            try (ZipOutputStream zipOut = new ZipOutputStream(outputStream)) {
-                for (Long jobId : jobIds) {
-                    try {
-                        Job job = jobService.getJobById(jobId);
-                        Path filePath = jobService.getTranslatedFilePath(jobId);
+        // Resolve every job's file up front so we know which ones will be skipped
+        // before the zip is built.
+        List<ResolvedZipEntry> resolved = new ArrayList<>();
+        List<SkippedJobInfo> skipped = new ArrayList<>();
 
-                        if (!Files.exists(filePath) || !Files.isReadable(filePath)) {
-                            logger.warn("Skipping job {}: translated file not found or not readable", jobId);
-                            continue;
-                        }
+        for (Long jobId : jobIds) {
+            Job job = null;
+            try {
+                job = jobService.getJobById(jobId);
+                Path filePath = jobService.getTranslatedFilePath(jobId);
 
-                        String zipEntryName = groupFolderName(job) + "/" + appendTargetLang(job.getTranslatedFileName(), job);
-                        ZipEntry zipEntry = new ZipEntry(zipEntryName);
-                        zipOut.putNextEntry(zipEntry);
-                        Files.copy(filePath, zipOut);
-                        zipOut.closeEntry();
-                    } catch (Exception e) {
-                        logger.warn("Skipping translated file for job {}: {}", jobId, e.getMessage());
-                    }
+                if (!Files.exists(filePath) || !Files.isReadable(filePath)) {
+                    logger.warn("Skipping job {}: translated file not found or not readable", jobId);
+                    skipped.add(new SkippedJobInfo(jobId, describeJob(job), "file not found"));
+                    continue;
                 }
+
+                String zipEntryName = groupFolderName(job) + "/" + appendTargetLang(job.getTranslatedFileName(), job);
+                resolved.add(new ResolvedZipEntry(filePath, zipEntryName));
+            } catch (Exception e) {
+                logger.warn("Skipping translated file for job {}: {}", jobId, e.getMessage());
+                String label = job != null ? describeJob(job) : "Job " + jobId;
+                skipped.add(new SkippedJobInfo(jobId, label, sanitizeHeaderValue(e.getMessage())));
             }
-        };
+        }
 
-        String zipFileName = finalProjectName + "-translated.zip";
-
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + zipFileName + "\"")
-                .body(stream);
+        try {
+            return buildZipDownloadResponse(finalProjectName + "-translated.zip", resolved, skipped);
+        } catch (IOException e) {
+            logger.error("Error building translated zip for jobs {}", jobIds, e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     private boolean isJobCompleted(Job job, Long workflowStepId) {
@@ -530,7 +536,7 @@ public class JobController {
 
     // Download target files for multiple jobs at once
     @PostMapping("/download/target/multiple")
-    public ResponseEntity<StreamingResponseBody> downloadTargetFilesByJobs(@RequestBody DownloadJobsRequest request) {
+    public ResponseEntity<?> downloadTargetFilesByJobs(@RequestBody DownloadJobsRequest request) {
         if (request.getJobIds() == null || request.getJobIds().isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -562,7 +568,7 @@ public class JobController {
         }
     }
 
-    private ResponseEntity<StreamingResponseBody> downloadMultipleTargetFilesAsZip(List<Long> jobIds) {
+    private ResponseEntity<?> downloadMultipleTargetFilesAsZip(List<Long> jobIds) {
 
         String projectName = "project"; // Default fallback
 
@@ -578,38 +584,39 @@ public class JobController {
 
         final String finalProjectName = sanitizeFolderName(projectName);
 
-        StreamingResponseBody stream = outputStream -> {
-            try (ZipOutputStream zipOut = new ZipOutputStream(outputStream)) {
-                for (Long jobId : jobIds) {
-                    try {
-                        Job job = jobService.getJobById(jobId);
-                        Path relativeTargetPath = jobService.generateTargetFile(jobId);
-                        Path absolutePath = Paths.get(baseUploadDir).resolve(relativeTargetPath);
+        // Resolve every job's file up front so we know which ones will be skipped
+        // before the zip is built.
+        List<ResolvedZipEntry> resolved = new ArrayList<>();
+        List<SkippedJobInfo> skipped = new ArrayList<>();
 
-                        if (!Files.exists(absolutePath) || !Files.isReadable(absolutePath)) {
-                            logger.warn("Skipping job {}: target file not found or not readable", jobId);
-                            continue;
-                        }
+        for (Long jobId : jobIds) {
+            Job job = null;
+            try {
+                job = jobService.getJobById(jobId);
+                Path relativeTargetPath = jobService.generateTargetFile(jobId);
+                Path absolutePath = Paths.get(baseUploadDir).resolve(relativeTargetPath);
 
-                        String zipEntryName = groupFolderName(job) + "/" + appendTargetLang(absolutePath.getFileName().toString(), job);
-                        ZipEntry zipEntry = new ZipEntry(zipEntryName);
-                        zipOut.putNextEntry(zipEntry);
-                        Files.copy(absolutePath, zipOut);
-                        zipOut.closeEntry();
-                    } catch (Exception e) {
-                        logger.warn("Skipping target file for job {}: {}", jobId, e.getMessage());
-                    }
+                if (!Files.exists(absolutePath) || !Files.isReadable(absolutePath)) {
+                    logger.warn("Skipping job {}: target file not found or not readable", jobId);
+                    skipped.add(new SkippedJobInfo(jobId, describeJob(job), "file not found"));
+                    continue;
                 }
+
+                String zipEntryName = groupFolderName(job) + "/" + appendTargetLang(absolutePath.getFileName().toString(), job);
+                resolved.add(new ResolvedZipEntry(absolutePath, zipEntryName));
+            } catch (Exception e) {
+                logger.warn("Skipping target file for job {}: {}", jobId, e.getMessage());
+                String label = job != null ? describeJob(job) : "Job " + jobId;
+                skipped.add(new SkippedJobInfo(jobId, label, sanitizeHeaderValue(e.getMessage())));
             }
-        };
+        }
 
-        String zipFileName = finalProjectName + "-target.zip";
-
-        return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + zipFileName + "\"")
-                .body(stream);
+        try {
+            return buildZipDownloadResponse(finalProjectName + "-target.zip", resolved, skipped);
+        } catch (IOException e) {
+            logger.error("Error building target zip for jobs {}", jobIds, e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     // Download by project IDs
@@ -838,6 +845,96 @@ public class JobController {
                 .header(HttpHeaders.CONTENT_DISPOSITION,
                         "attachment; filename=\"" + zipFileName + ".zip\"")
                 .body(stream);
+    }
+
+    // A file resolved and ready to be written into the zip: its source path on disk
+    // and the entry name it should be written under.
+    private record ResolvedZipEntry(Path path, String zipEntryName) {
+    }
+
+    // A job whose file could not be added to the zip, and why. `label` is the
+    // human-readable "fileName (sourceLang-targetLang)" identifier shown in the manifest.
+    private record SkippedJobInfo(Long jobId, String label, String reason) {
+    }
+
+    // "fileName.ext (EN-KO)" identifier for a job, used anywhere a skipped file needs to be
+    // described to a human without making them look up the job id.
+    private String describeJob(Job job) {
+        String fileName = job.getFileName() != null ? job.getFileName() : "job" + job.getId();
+        String sourceLang = job.getSourceLang() != null ? job.getSourceLang() : "";
+        String targetLang = (job.getTargetLangs() != null && !job.getTargetLangs().isEmpty())
+                ? job.getTargetLangs().stream().sorted().collect(Collectors.joining("-"))
+                : "";
+        String langPair = !sourceLang.isEmpty() && !targetLang.isEmpty()
+                ? " (" + sourceLang + "-" + targetLang + ")" : "";
+        return fileName + langPair;
+    }
+
+    // Trims control characters and caps length on a raw exception message before it's
+    // embedded in a JSON response or the in-zip manifest.
+    private String sanitizeHeaderValue(String value) {
+        if (value == null || value.isBlank()) {
+            return "error";
+        }
+        String cleaned = value.replaceAll("[\\r\\n]", " ").trim();
+        return cleaned.length() > 100 ? cleaned.substring(0, 100) : cleaned;
+    }
+
+    // Human-readable manifest written into the zip itself (as "_skipped_files.txt") as a
+    // secondary record of what was omitted, in case someone opens the archive directly.
+    private byte[] buildSkippedFilesManifest(List<SkippedJobInfo> skipped) {
+        String header = "The following " + skipped.size() + " file(s) could not be included in this archive:\n\n";
+        String body = skipped.stream()
+                .map(s -> s.label() + ": " + s.reason())
+                .collect(Collectors.joining("\n"));
+        return (header + body + "\n").getBytes(StandardCharsets.UTF_8);
+    }
+
+    // Builds the zip in memory and returns it as a JSON body ({fileName, data: base64,
+    // skippedJobs}) rather than a raw octet-stream. The skipped-file list needs to reach the
+    // frontend reliably in every deployment (including cross-origin ones), and a JSON body is
+    // always readable by fetch() regardless of CORS exposedHeaders config - unlike a custom
+    // response header, which silently disappears cross-origin unless explicitly exposed.
+    private ResponseEntity<Map<String, Object>> buildZipDownloadResponse(
+            String zipFileName, List<ResolvedZipEntry> resolved, List<SkippedJobInfo> skipped) throws IOException {
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try (ZipOutputStream zipOut = new ZipOutputStream(baos)) {
+            for (ResolvedZipEntry entry : resolved) {
+                try {
+                    zipOut.putNextEntry(new ZipEntry(entry.zipEntryName()));
+                    Files.copy(entry.path(), zipOut);
+                    zipOut.closeEntry();
+                } catch (Exception e) {
+                    logger.warn("Failed to add {} to zip: {}", entry.zipEntryName(), e.getMessage());
+                }
+            }
+
+            if (!skipped.isEmpty()) {
+                zipOut.putNextEntry(new ZipEntry("_skipped_files.txt"));
+                zipOut.write(buildSkippedFilesManifest(skipped));
+                zipOut.closeEntry();
+            }
+        }
+
+        List<Map<String, Object>> skippedJobsJson = skipped.stream()
+                .map(s -> {
+                    Map<String, Object> entry = new LinkedHashMap<>();
+                    entry.put("jobId", s.jobId());
+                    entry.put("file_detail", s.label());
+                    entry.put("reason", s.reason());
+                    return entry;
+                })
+                .toList();
+
+        logger.info("Zip download built: fileName={}, skippedJobs={}", zipFileName, skippedJobsJson);
+
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("fileName", zipFileName);
+        body.put("data", Base64.getEncoder().encodeToString(baos.toByteArray()));
+        body.put("skippedJobs", skippedJobsJson);
+
+        return ResponseEntity.ok(body);
     }
 
     private String sanitizeFolderName(String name) {
