@@ -112,6 +112,12 @@ public class TranslationMemoryService {
         return allTms;
     }
 
+    public byte[] exportTmx(Long tmId) {
+        String url = tomatoBaseUrl + "/api/TM/" + tmId + "/export-tmx";
+        ResponseEntity<byte[]> response = restTemplate.getForEntity(url, byte[].class);
+        return response.getBody();
+    }
+
     public TmxImportJobStatusDTO fetchImportStatusOnce(String jobId) {
         try {
             ResponseEntity<String> response = restTemplate.getForEntity(

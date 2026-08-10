@@ -1,5 +1,7 @@
 package com.tms.backend.projectTmAssignment;
 
+import java.time.LocalDateTime;
+
 import com.tms.backend.project.Project;
 import com.tms.backend.workflowSteps.WorkflowStep;
 
@@ -51,6 +53,11 @@ public class ProjectTmAssignment {
     private Long penalty;
     private Long priorityOrder;
 
+    @Column(length = 1024)
+    private String tmxFilePath;
+    private Long tmxFileSizeBytes;
+    private LocalDateTime tmxCopiedAt;
+
     public boolean isReadAccess() { return readAccess; }
     public void setReadAccess(boolean readAccess) { this.readAccess = readAccess; }
 
@@ -77,4 +84,13 @@ public class ProjectTmAssignment {
 
     public Project getProject() { return project; }
     public void setProject(Project project) { this.project = project; }
+
+    public String getTmxFilePath() { return tmxFilePath; }
+    public void setTmxFilePath(String tmxFilePath) { this.tmxFilePath = tmxFilePath; }
+
+    public Long getTmxFileSizeBytes() { return tmxFileSizeBytes; }
+    public void setTmxFileSizeBytes(Long tmxFileSizeBytes) { this.tmxFileSizeBytes = tmxFileSizeBytes; }
+
+    public LocalDateTime getTmxCopiedAt() { return tmxCopiedAt; }
+    public void setTmxCopiedAt(LocalDateTime tmxCopiedAt) { this.tmxCopiedAt = tmxCopiedAt; }
 }

@@ -10,6 +10,11 @@ public interface ProjectTmAssignmentRepository
 
     List<ProjectTmAssignment> findByProjectId(Long projectId);
 
+    List<ProjectTmAssignment> findByProjectIdAndWorkflowStepId(
+        Long projectId,
+        Long workflowStepId
+    );
+
     Optional<ProjectTmAssignment>
         findByProjectIdAndTmIdAndWorkflowStepId(
             Long projectId,
