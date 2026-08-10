@@ -20,8 +20,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tms.backend.auth.LoginHistoryService;
 import com.tms.backend.dto.ChangePasswordDTO;
 import com.tms.backend.dto.CreateUserDTO;
+import com.tms.backend.dto.LoginHistoryDTO;
 import com.tms.backend.dto.OwnerDTO;
 import com.tms.backend.dto.ProviderDTO;
 import com.tms.backend.dto.SetPasswordDTO;
@@ -37,9 +39,11 @@ import jakarta.servlet.http.HttpServletResponse;
 public class UserController {
 
     private final UserService userService;
+    private final LoginHistoryService loginHistoryService;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService, LoginHistoryService loginHistoryService) {
         this.userService = userService;
+        this.loginHistoryService = loginHistoryService;
     }
 
     @PostMapping("/register")
@@ -109,6 +113,20 @@ public class UserController {
     @GetMapping("/{id}")
     public ResponseEntity<User> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
+    }
+
+    @GetMapping("/{id}/login-history")
+    public ResponseEntity<List<LoginHistoryDTO>> getLoginHistory(@PathVariable Long id, Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        boolean isSelf = userDetails.getId().equals(id);
+        boolean isAdmin = authentication.getAuthorities().stream()
+            .anyMatch(authority -> authority.getAuthority().equals("administrator"));
+
+        if (!isSelf && !isAdmin) {
+            return ResponseEntity.status(403).build();
+        }
+
+        return ResponseEntity.ok(loginHistoryService.getHistoryForUser(id));
     }
 
     @PatchMapping("/update-user")

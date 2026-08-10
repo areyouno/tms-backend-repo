@@ -12,22 +12,27 @@ import com.tms.backend.jwt.JwtService;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserRepository;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @Service
 public class AuthService {
 
     private final UserRepository userRepository;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final LoginHistoryService loginHistoryService;
 
     public AuthService(UserRepository userRepository,
                        AuthenticationManager authenticationManager,
-                       JwtService jwtService) {
+                       JwtService jwtService,
+                       LoginHistoryService loginHistoryService) {
         this.userRepository = userRepository;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.loginHistoryService = loginHistoryService;
     }
 
-    public LoginDTO login(String identifier, String password) {
+    public LoginDTO login(String identifier, String password, HttpServletRequest request) {
         try {
             authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(identifier, password)
@@ -43,6 +48,8 @@ public class AuthService {
 
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
+
+        loginHistoryService.recordLogin(user, request);
 
         // Generate JWT
         String token = jwtService.generateToken(user);

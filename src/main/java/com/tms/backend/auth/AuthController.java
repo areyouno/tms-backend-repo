@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.tms.backend.dto.LoginDTO;
 import com.tms.backend.dto.LoginRequest;
 
+import jakarta.servlet.http.HttpServletRequest;
+
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -19,8 +21,8 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<LoginDTO> login(@RequestBody LoginRequest request) {
-        LoginDTO response = authService.login(request.email(), request.password());
+    public ResponseEntity<LoginDTO> login(@RequestBody LoginRequest request, HttpServletRequest httpRequest) {
+        LoginDTO response = authService.login(request.email(), request.password(), httpRequest);
         return ResponseEntity.ok(response);
     }
 }
