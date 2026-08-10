@@ -129,6 +129,12 @@ public class UserController {
         return ResponseEntity.ok(loginHistoryService.getHistoryForUser(id));
     }
 
+    @GetMapping("/me/login-history")
+    public ResponseEntity<List<LoginHistoryDTO>> getMyLoginHistory(Authentication authentication) {
+        CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+        return ResponseEntity.ok(loginHistoryService.getHistoryForUser(userDetails.getId()));
+    }
+
     @PatchMapping("/update-user")
     public ResponseEntity<?> updateUser(@RequestBody UpdateUserDTO request, Authentication authentication) {
         // extract uid
