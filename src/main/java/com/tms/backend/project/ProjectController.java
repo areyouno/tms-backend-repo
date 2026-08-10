@@ -34,6 +34,7 @@ import com.tms.backend.dto.ProjectTmAssignmentRequest;
 import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.dto.ProjectWithJobsCreateDTO;
 import com.tms.backend.dto.TmxCopyDTO;
+import com.tms.backend.dto.WorkflowStepOptionDTO;
 import com.tms.backend.job.JobService;
 import com.tms.backend.projectTbAssignment.ProjectTbAssignmentService;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
@@ -95,6 +96,11 @@ public class ProjectController {
         @RequestBody ProjectTmAssignmentRequest request) {
             List<ProjectTmAssignmentDTO> savedAssignments = tmAssignmentService.assignTMs(projectId, request);
             return ResponseEntity.ok(savedAssignments);
+    }
+
+    @GetMapping("/{projectId}/workflow-steps")
+    public ResponseEntity<List<WorkflowStepOptionDTO>> getWorkflowStepsForProject(@PathVariable Long projectId) {
+        return ResponseEntity.ok(projectService.getWorkflowStepsForProject(projectId));
     }
 
     @GetMapping("/{projectId}/workflow-steps/{workflowStepId}/tmx-file")

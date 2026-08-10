@@ -36,6 +36,7 @@ import com.tms.backend.dto.ProjectTbAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.dto.QuoteResponseDTO;
+import com.tms.backend.dto.WorkflowStepOptionDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.job.Job;
 import com.tms.backend.job.JobRepository;
@@ -313,6 +314,15 @@ public class ProjectService {
             .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + projectId));
 
         return ProjectDTO.fromEntity(project);
+    }
+
+    public List<WorkflowStepOptionDTO> getWorkflowStepsForProject(Long projectId) {
+        Project project = projectRepo.findById(projectId)
+            .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + projectId));
+
+        return project.getWorkflowSteps().stream()
+            .map(step -> new WorkflowStepOptionDTO(step.getId(), step.getName()))
+            .collect(Collectors.toList());
     }
 
     // Get soft deleted projects for user
