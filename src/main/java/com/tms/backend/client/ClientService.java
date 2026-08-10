@@ -12,6 +12,8 @@ import com.tms.backend.dto.CreateClientRequest;
 import com.tms.backend.dto.UpdateClientRequest;
 import com.tms.backend.netRateScheme.NetRateScheme;
 import com.tms.backend.netRateScheme.NetRateSchemeRepository;
+import com.tms.backend.project.ProjectRepository;
+import com.tms.backend.projectTemplate.ProjectTemplateRepository;
 
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
@@ -24,6 +26,12 @@ public class ClientService {
     @Autowired
     private NetRateSchemeRepository netRateSchemeRepository;
 
+    @Autowired
+    private ProjectRepository projectRepository;
+
+    @Autowired
+    private ProjectTemplateRepository projectTemplateRepository;
+
     @Transactional
     public ClientResponseDTO createClient(CreateClientRequest req) {
         if (repo.existsByNameIgnoreCase(req.name())) {
@@ -34,6 +42,10 @@ public class ClientService {
         client.setName(req.name());
         client.setExternalId(req.externalId());
         client.setActive(true);
+        client.setEmail(req.email());
+        client.setContactPerson(req.contactPerson());
+        client.setContactNumber(req.contactNumber());
+        client.setIndustry(req.industry());
 
         if (req.netRateSchemeId() != null) {
             NetRateScheme scheme = netRateSchemeRepository.findById(req.netRateSchemeId())
@@ -71,6 +83,10 @@ public class ClientService {
 
         client.setName(req.name());
         client.setExternalId(req.externalId());
+        client.setEmail(req.email());
+        client.setContactPerson(req.contactPerson());
+        client.setContactNumber(req.contactNumber());
+        client.setIndustry(req.industry());
 
         if (req.netRateSchemeId() != null) {
             NetRateScheme scheme = netRateSchemeRepository.findById(req.netRateSchemeId())
@@ -90,18 +106,22 @@ public class ClientService {
             : repo.existsByNameIgnoreCaseAndIdNot(name, excludeId);
     }
 
-    public void softDeleteClient(Long id) {
+    @Transactional
+    public void deleteClient(Long id) {
         Client cl = repo.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("Client not found"));
-        cl.setActive(false);
-        repo.save(cl);
+
+        if (isReferenced(id)) {
+            cl.setActive(false);
+            repo.save(cl);
+        } else {
+            repo.delete(cl);
+        }
     }
 
-    public void hardDeleteClient(Long id) {
-        if (!repo.existsById(id)) {
-            throw new EntityNotFoundException("Client not found");
-        }
-        repo.deleteById(id);
+    private boolean isReferenced(Long clientId) {
+        return projectRepository.existsByClientId(clientId)
+            || projectTemplateRepository.existsByClientId(clientId);
     }
 
     private ClientResponseDTO toDTO(Client client) {
@@ -113,7 +133,11 @@ public class ClientService {
             client.getExternalId(),
             client.isActive(),
             scheme != null ? scheme.getId() : null,
-            scheme != null ? scheme.getName() : null
+            scheme != null ? scheme.getName() : null,
+            client.getEmail(),
+            client.getContactPerson(),
+            client.getContactNumber(),
+            client.getIndustry()
         );
     }
 }

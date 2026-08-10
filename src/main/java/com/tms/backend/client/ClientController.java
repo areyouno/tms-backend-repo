@@ -64,14 +64,8 @@ public class ClientController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> softDeleteClient(@PathVariable Long id) {
-        clientService.softDeleteClient(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @DeleteMapping("/{id}/hard")
-    public ResponseEntity<Void> hardDeleteClient(@PathVariable Long id) {
-        clientService.hardDeleteClient(id);
+    public ResponseEntity<Void> deleteClient(@PathVariable Long id) {
+        clientService.deleteClient(id);
         return ResponseEntity.noContent().build();
     }
 }

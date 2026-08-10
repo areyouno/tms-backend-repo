@@ -7,5 +7,9 @@ public record ClientResponseDTO(
     String externalId,
     boolean active,
     Long netRateSchemeId,
-    String netRateSchemeName
+    String netRateSchemeName,
+    String email,
+    String contactPerson,
+    String contactNumber,
+    String industry
 ) {}

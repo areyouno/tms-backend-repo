@@ -14,6 +14,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ProjectRepository extends JpaRepository<Project, Long>{
+    boolean existsByClientId(Long clientId);
+
     @Query("SELECT p FROM Project p WHERE p.owner.id = :id AND p.deleted = false")
     List<Project> findByOwnerId(Long id);
 

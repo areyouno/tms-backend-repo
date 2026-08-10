@@ -24,6 +24,10 @@ public class Client {
     private String name;
     private String externalId;
     private boolean active;
+    private String email;
+    private String contactPerson;
+    private String contactNumber;
+    private String industry;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "net_rate_scheme_id")
@@ -53,4 +57,16 @@ public class Client {
 
     public NetRateScheme getNetRateScheme() { return netRateScheme; }
     public void setNetRateScheme(NetRateScheme netRateScheme) { this.netRateScheme = netRateScheme; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getContactPerson() { return contactPerson; }
+    public void setContactPerson(String contactPerson) { this.contactPerson = contactPerson; }
+
+    public String getContactNumber() { return contactNumber; }
+    public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
+
+    public String getIndustry() { return industry; }
+    public void setIndustry(String industry) { this.industry = industry; }
 }

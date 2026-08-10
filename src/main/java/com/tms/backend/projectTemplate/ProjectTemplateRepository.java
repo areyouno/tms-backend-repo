@@ -10,6 +10,8 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface ProjectTemplateRepository extends JpaRepository<ProjectTemplate, Long>{
+    boolean existsByClientId(Long clientId);
+
     List<ProjectTemplate> findByUserId(Long userId);
 
     // find all non-delete templates
