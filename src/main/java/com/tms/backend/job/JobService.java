@@ -752,6 +752,13 @@ public class JobService {
         return jobRepo.findByProject_IdAndDeletedFalse(projectId);
     }
 
+    public List<Long> getJobIdsByProjectId(Long projectId) {
+        return jobRepo.findByProject_IdAndDeletedFalse(projectId)
+                .stream()
+                .map(Job::getId)
+                .collect(Collectors.toList());
+    }
+
     public List<JobSoftDeleteDTO> getDeletedJobsByUser(String uid) {
     // Find all deleted jobs owned by this user
     List<Job> deletedJobs = jobRepo.findByJobOwnerUidAndDeletedTrue(uid);

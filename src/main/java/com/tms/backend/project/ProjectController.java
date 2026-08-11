@@ -147,6 +147,13 @@ public class ProjectController {
         return jobService.getJobsByProjectId(projectId);
     }
 
+    @GetMapping("/{projectId}/job-ids")
+    @PreAuthorize("isAuthenticated()")
+    @Transactional(readOnly = true)
+    public List<Long> getJobIdsByProject(@PathVariable Long projectId) {
+        return jobService.getJobIdsByProjectId(projectId);
+    }
+
     //get projects by role
     @GetMapping
     public List<ProjectDTO> getProjects(@AuthenticationPrincipal CustomUserDetails userDetails) {
