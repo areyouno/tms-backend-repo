@@ -2,6 +2,7 @@ package com.tms.backend.project;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -43,12 +44,14 @@ import com.tms.backend.job.JobRepository;
 import com.tms.backend.job.JobService;
 import com.tms.backend.job.JobWorkflowStatus;
 import com.tms.backend.job.JobWorkflowStep;
+import com.tms.backend.job.JobWorkflowStepRepository;
 import com.tms.backend.machineTranslation.MachineTranslation;
 import com.tms.backend.machineTranslation.MachineTranslationRepository;
 import com.tms.backend.netRateScheme.NetRateScheme;
 import com.tms.backend.netRateScheme.NetRateSchemeRepository;
 import com.tms.backend.priceList.PriceList;
 import com.tms.backend.priceList.PriceListRepository;
+import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
 import com.tms.backend.role.RoleConstants;
 import com.tms.backend.setting.AutomationSetting;
 import com.tms.backend.setting.AutomationSettingService;
@@ -75,10 +78,12 @@ public class ProjectService {
     private CostCenterRepository ccRepo;
     private WorkflowStepRepository wfRepo;
     private JobRepository jobRepo;
+    private JobWorkflowStepRepository jobWfRepo;
     private final AutomationSettingService automationSettingService;
     private final JobService jobService;
     private final NetRateSchemeRepository netRateSchemeRepo;
     private final PriceListRepository priceListRepo;
+    private final ProjectTmAssignmentService tmAssignmentService;
 
 
     public ProjectService(
@@ -93,10 +98,12 @@ public class ProjectService {
         CostCenterRepository ccRepo,
         WorkflowStepRepository wfRepo,
         JobRepository jobRepo,
+        JobWorkflowStepRepository jobWfRepo,
         AutomationSettingService automationSettingService,
         @Lazy JobService jobService,
         NetRateSchemeRepository netRateSchemeRepo,
-        PriceListRepository priceListRepo
+        PriceListRepository priceListRepo,
+        ProjectTmAssignmentService tmAssignmentService
     ) {
         this.projectRepo = projectRepo;
         this.businessUnitRepo = businessUnitRepo;
@@ -109,10 +116,12 @@ public class ProjectService {
         this.ccRepo = ccRepo;
         this.wfRepo = wfRepo;
         this.jobRepo = jobRepo;
+        this.jobWfRepo = jobWfRepo;
         this.automationSettingService = automationSettingService;
         this.jobService = jobService;
         this.netRateSchemeRepo = netRateSchemeRepo;
         this.priceListRepo = priceListRepo;
+        this.tmAssignmentService = tmAssignmentService;
     }
 
     public ProjectDTO createProject(ProjectCreateDTO createDTO, String userEmail) throws UsernameNotFoundException {
@@ -588,13 +597,22 @@ public class ProjectService {
                     .map(jws -> jws.getWorkflowStep().getId())
                     .collect(Collectors.toSet());
 
+                List<JobWorkflowStep> newSteps = new ArrayList<>();
                 for (WorkflowStep step : steps) {
                     if (!existingStepIds.contains(step.getId())) {
                         JobWorkflowStep jws = new JobWorkflowStep();
                         jws.setJob(job);
                         jws.setWorkflowStep(step);
-                        job.getWorkflowSteps().add(jws);
+                        newSteps.add(jws);
                     }
+                }
+
+                if (!newSteps.isEmpty()) {
+                    // Save explicitly (rather than relying on cascade at commit time) so each new
+                    // JobWorkflowStep has an id before we derive TMX copies from it below.
+                    List<JobWorkflowStep> savedNewSteps = jobWfRepo.saveAll(newSteps);
+                    job.getWorkflowSteps().addAll(savedNewSteps);
+                    tmAssignmentService.copyTmxForJobWorkflowSteps(job, savedNewSteps);
                 }
             }
         }

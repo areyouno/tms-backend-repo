@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +21,11 @@ import org.springframework.stereotype.Service;
 import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentRequest;
 import com.tms.backend.dto.TmxCopyDTO;
+import com.tms.backend.job.Job;
+import com.tms.backend.job.JobWorkflowStep;
+import com.tms.backend.job.JobWorkflowStepRepository;
+import com.tms.backend.jobWorkflowStepTmxCopy.JobWorkflowStepTmxCopy;
+import com.tms.backend.jobWorkflowStepTmxCopy.JobWorkflowStepTmxCopyRepository;
 import com.tms.backend.project.Project;
 import com.tms.backend.project.ProjectRepository;
 import com.tms.backend.translationMemory.TranslationMemoryService;
@@ -36,6 +42,8 @@ public class ProjectTmAssignmentService {
     private WorkflowStepRepository wfRepo;
     private ProjectTmAssignmentRepository tmAssignmentRepo;
     private TranslationMemoryService tmService;
+    private JobWorkflowStepTmxCopyRepository jobTmxCopyRepo;
+    private JobWorkflowStepRepository jobWfRepo;
 
     @Value("${file.upload-dir}")
     private String uploadDir;
@@ -44,12 +52,16 @@ public class ProjectTmAssignmentService {
         ProjectRepository projectRepo,
         WorkflowStepRepository wfRepo,
         ProjectTmAssignmentRepository tmAssignmentRepo,
-        TranslationMemoryService tmService
+        TranslationMemoryService tmService,
+        JobWorkflowStepTmxCopyRepository jobTmxCopyRepo,
+        JobWorkflowStepRepository jobWfRepo
     ){
         this.projectRepo = projectRepo;
         this.wfRepo = wfRepo;
         this.tmAssignmentRepo = tmAssignmentRepo;
         this.tmService = tmService;
+        this.jobTmxCopyRepo = jobTmxCopyRepo;
+        this.jobWfRepo = jobWfRepo;
     }
 
 
@@ -83,6 +95,14 @@ public class ProjectTmAssignmentService {
         for (ProjectTmAssignment existing : existingAssignments) {
             String existingKey = existing.getTmId() + "_" + existing.getWorkflowStep().getId();
             if (!requestedKeys.contains(existingKey)) {
+                // Cascade: any job-level copies derived from this assignment must go first, since
+                // they hold a not-null FK to it.
+                List<JobWorkflowStepTmxCopy> derivedCopies = jobTmxCopyRepo.findByProjectTmAssignmentId(existing.getId());
+                for (JobWorkflowStepTmxCopy derivedCopy : derivedCopies) {
+                    deleteTmxCopy(derivedCopy.getTmxFilePath());
+                }
+                jobTmxCopyRepo.deleteAll(derivedCopies);
+
                 deleteTmxCopy(existing.getTmxFilePath());
                 project.getTmAssignments().remove(existing);
                 tmAssignmentRepo.delete(existing);
@@ -132,6 +152,10 @@ public class ProjectTmAssignmentService {
                 copyTmxForStep(assignment, projectFolderName, tmxBytes);
             }
 
+            // TM assignment and job creation can happen in either order: backfill copies onto any
+            // jobs that already exist and match this assignment's workflow step + language pair.
+            syncTmxCopyToExistingJobs(assignment, projectFolderName);
+
             savedAssignments.add(assignment);
         }
 
@@ -160,6 +184,91 @@ public class ProjectTmAssignmentService {
             throw new UncheckedIOException(
                     "Failed to copy TMX file for TM " + assignment.getTmId()
                             + " to workflow step " + assignment.getWorkflowStep().getId(), e);
+        }
+    }
+
+    // Job-creation trigger: for a newly created job (single, fixed language pair by this point) and
+    // its freshly created JobWorkflowStep rows, back-fill job-level copies from whichever
+    // ProjectTmAssignments already exist for the matching workflow step + language pair.
+    public void copyTmxForJobWorkflowSteps(Job job, Collection<JobWorkflowStep> jobWorkflowSteps) {
+        if (jobWorkflowSteps == null || jobWorkflowSteps.isEmpty()) {
+            return;
+        }
+        if (job.getProject() == null || job.getSourceLang() == null
+                || job.getTargetLangs() == null || job.getTargetLangs().isEmpty()) {
+            return;
+        }
+
+        Long projectId = job.getProject().getId();
+        String sourceLang = job.getSourceLang();
+        String targetLang = job.getTargetLangs().iterator().next();
+        String projectFolderName = buildProjectFolderName(job.getProject());
+
+        for (JobWorkflowStep jws : jobWorkflowSteps) {
+            List<ProjectTmAssignment> matches = tmAssignmentRepo
+                    .findByProjectIdAndWorkflowStepIdAndSourceLangAndTargetLang(
+                            projectId, jws.getWorkflowStep().getId(), sourceLang, targetLang);
+            for (ProjectTmAssignment assignment : matches) {
+                createJobTmxCopyIfMissing(job, jws, assignment, projectFolderName);
+            }
+        }
+    }
+
+    // TM-assignment trigger: the mirror image of the above. When a TM gets (re)assigned to a
+    // project's workflow step, back-fill job-level copies onto any jobs that already exist and
+    // match that assignment's workflow step + language pair.
+    private void syncTmxCopyToExistingJobs(ProjectTmAssignment assignment, String projectFolderName) {
+        if (assignment.getSourceLang() == null || assignment.getTargetLang() == null) {
+            return;
+        }
+
+        List<JobWorkflowStep> matchingSteps = jobWfRepo
+                .findByWorkflowStep_IdAndJob_Project_IdAndJob_SourceLangAndJob_DeletedFalse(
+                        assignment.getWorkflowStep().getId(),
+                        assignment.getProject().getId(),
+                        assignment.getSourceLang());
+
+        for (JobWorkflowStep jws : matchingSteps) {
+            Job job = jws.getJob();
+            if (job.getTargetLangs() == null || !job.getTargetLangs().contains(assignment.getTargetLang())) {
+                continue;
+            }
+            createJobTmxCopyIfMissing(job, jws, assignment, projectFolderName);
+        }
+    }
+
+    private void createJobTmxCopyIfMissing(Job job, JobWorkflowStep jws, ProjectTmAssignment assignment, String projectFolderName) {
+        if (jobTmxCopyRepo.existsByJobWorkflowStepIdAndProjectTmAssignmentId(jws.getId(), assignment.getId())) {
+            return;
+        }
+
+        try {
+            Path baseDir = Paths.get(uploadDir);
+            byte[] tmxBytes = assignment.getTmxFilePath() != null
+                    ? Files.readAllBytes(baseDir.resolve(assignment.getTmxFilePath()))
+                    : tmService.exportTmx(assignment.getTmId());
+
+            String stepFolderName = "step-" + jws.getWorkflowStep().getId()
+                    + "-" + sanitizeForPath(jws.getWorkflowStep().getName());
+            Path targetDir = baseDir.resolve("projects").resolve(projectFolderName)
+                    .resolve("jobs").resolve("job-" + job.getId())
+                    .resolve("tmx").resolve(stepFolderName);
+            Files.createDirectories(targetDir);
+
+            Path targetFile = targetDir.resolve("tm-" + assignment.getTmId() + ".tmx");
+            Files.write(targetFile, tmxBytes);
+
+            JobWorkflowStepTmxCopy copy = new JobWorkflowStepTmxCopy();
+            copy.setJobWorkflowStep(jws);
+            copy.setProjectTmAssignment(assignment);
+            copy.setTmxFilePath(baseDir.relativize(targetFile).toString());
+            copy.setTmxFileSizeBytes((long) tmxBytes.length);
+            copy.setTmxCopiedAt(LocalDateTime.now());
+            jobTmxCopyRepo.save(copy);
+        } catch (IOException e) {
+            throw new UncheckedIOException(
+                    "Failed to copy TMX file for TM " + assignment.getTmId()
+                            + " to job " + job.getId() + " workflow step " + jws.getWorkflowStep().getId(), e);
         }
     }
 
@@ -195,6 +304,19 @@ public class ProjectTmAssignmentService {
                         a.getTmxFilePath(),
                         a.getTmxFileSizeBytes(),
                         a.getTmxCopiedAt()))
+                .collect(Collectors.toList());
+    }
+
+    public List<TmxCopyDTO> getTmxFileByJobWorkflowStep(Long jobId, Long workflowStepId) {
+        return jobTmxCopyRepo
+                .findByJobWorkflowStep_Job_IdAndJobWorkflowStep_WorkflowStep_Id(jobId, workflowStepId).stream()
+                .filter(c -> c.getTmxFilePath() != null)
+                .map(c -> new TmxCopyDTO(
+                        c.getProjectTmAssignment().getTmId(),
+                        c.getJobWorkflowStep().getWorkflowStep().getId(),
+                        c.getTmxFilePath(),
+                        c.getTmxFileSizeBytes(),
+                        c.getTmxCopiedAt()))
                 .collect(Collectors.toList());
     }
 

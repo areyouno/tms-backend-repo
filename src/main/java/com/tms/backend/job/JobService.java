@@ -42,6 +42,7 @@ import com.tms.backend.mapper.ProjectMapper;
 import com.tms.backend.project.Project;
 import com.tms.backend.project.ProjectRepository;
 import com.tms.backend.project.ProjectService;
+import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
 import com.tms.backend.role.RoleConstants;
 import com.tms.backend.tomato.FileConversionService;
 import com.tms.backend.tomato.SizingService;
@@ -68,6 +69,7 @@ public class JobService {
     private final ProjectService projectService;
     private final EmailService emailService;
     private final TranslationMemoryService tmService;
+    private final ProjectTmAssignmentService tmAssignmentService;
 
     private final ProjectMapper projectMapper;
 
@@ -80,7 +82,7 @@ public class JobService {
     private static final Logger logger = LoggerFactory.getLogger(JobService.class);
 
 
-    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, JobCheckoutRepository jobCheckoutRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService, EmailService emailService, TranslationMemoryService tmService){
+    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, JobCheckoutRepository jobCheckoutRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService, EmailService emailService, TranslationMemoryService tmService, ProjectTmAssignmentService tmAssignmentService){
         this.jobRepo = jobRepo;
         this.projectRepo = projectRepo;
         this.userRepo = userRepo;
@@ -93,6 +95,7 @@ public class JobService {
         this.projectService = projectService;
         this.emailService = emailService;
         this.tmService = tmService;
+        this.tmAssignmentService = tmAssignmentService;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -196,6 +199,7 @@ public class JobService {
 
         List<JobWorkflowStep> savedSteps = jobWfRepo.saveAll(jobSteps);
         savedJob.setWorkflowSteps(new HashSet<>(savedSteps));
+        tmAssignmentService.copyTmxForJobWorkflowSteps(savedJob, savedSteps);
 
         // Persist file paths, sizing stats, and workflow steps
         savedJob = jobRepo.save(savedJob);
@@ -302,6 +306,7 @@ public class JobService {
         }
         List<JobWorkflowStep> savedSiblingSteps = jobWfRepo.saveAll(siblingSteps);
         savedSibling.setWorkflowSteps(new HashSet<>(savedSiblingSteps));
+        tmAssignmentService.copyTmxForJobWorkflowSteps(savedSibling, savedSiblingSteps);
     }
 
     // Creates a new Job for an additional target language of an existing "document", copying the

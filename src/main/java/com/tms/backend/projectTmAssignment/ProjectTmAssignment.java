@@ -31,6 +31,8 @@ public class ProjectTmAssignment {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    public Long getId() { return id; }
+
     // Project
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "project_id", nullable = false)

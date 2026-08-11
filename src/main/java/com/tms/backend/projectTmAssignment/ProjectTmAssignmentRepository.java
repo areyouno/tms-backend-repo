@@ -34,4 +34,12 @@ public interface ProjectTmAssignmentRepository
             String sourceLang,
             String targetLang
         );
+
+    List<ProjectTmAssignment>
+        findByProjectIdAndWorkflowStepIdAndSourceLangAndTargetLang(
+            Long projectId,
+            Long workflowStepId,
+            String sourceLang,
+            String targetLang
+        );
 }
