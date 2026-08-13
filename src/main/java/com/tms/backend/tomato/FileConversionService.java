@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -376,6 +378,10 @@ public class FileConversionService {
                 Path siblingConvertedPath = siblingConvertedDir.resolve(sourceJob.getConvertedFileName());
                 Files.copy(sourceConvertedPath, siblingConvertedPath, StandardCopyOption.REPLACE_EXISTING);
 
+                if (siblingJob.getTargetLangs() != null && !siblingJob.getTargetLangs().isEmpty()) {
+                    updateXliffTargetLanguage(siblingConvertedPath, siblingJob.getTargetLangs().iterator().next());
+                }
+
                 siblingJob.setConvertedFileName(sourceJob.getConvertedFileName());
                 siblingJob.setConvertedFilePath(baseDir.relativize(siblingConvertedPath).toString().replace("\\", "/"));
             }
@@ -387,6 +393,21 @@ public class FileConversionService {
         siblingJob.setOriginalFileFormat(sourceJob.getOriginalFileFormat());
 
         logger.info("Copied source files from job {} to sibling job {}", sourceJob.getId(), siblingJob.getId());
+    }
+
+    // Sibling jobs are created by copying the representative job's already-converted XLIFF file
+    // (see copySourceFilesToSiblingJob), so the <file target-language="..."> attribute in the
+    // original conversion still reflects the representative's language. This rewrites it to the sibling's own
+    // target language so the file content matches the Job record's target language.
+    private static final Pattern TARGET_LANGUAGE_ATTR = Pattern.compile("target-language=\"[^\"]*\"");
+
+    private void updateXliffTargetLanguage(Path xliffPath, String newTargetLang) throws IOException {
+        String content = Files.readString(xliffPath, StandardCharsets.UTF_8);
+        Matcher matcher = TARGET_LANGUAGE_ATTR.matcher(content);
+        String updated = matcher.replaceFirst(Matcher.quoteReplacement("target-language=\"" + newTargetLang + "\""));
+        if (!updated.equals(content)) {
+            Files.writeString(xliffPath, updated, StandardCharsets.UTF_8);
+        }
     }
 
     public Path convertXliffBackToOriginalFormat(
