@@ -325,6 +325,7 @@ public class ProjectService {
         return ProjectDTO.fromEntity(project);
     }
 
+    @Transactional(readOnly = true)
     public List<WorkflowStepOptionDTO> getWorkflowStepsForProject(Long projectId) {
         Project project = projectRepo.findById(projectId)
             .orElseThrow(() -> new EntityNotFoundException("Project not found with id: " + projectId));
