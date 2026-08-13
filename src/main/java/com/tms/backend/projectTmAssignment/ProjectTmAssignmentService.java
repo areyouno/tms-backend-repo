@@ -15,8 +15,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClientException;
 
 import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentRequest;
@@ -37,6 +40,8 @@ import jakarta.transaction.Transactional;
 
 @Service
 public class ProjectTmAssignmentService {
+
+    private static final Logger log = LoggerFactory.getLogger(ProjectTmAssignmentService.class);
 
     private ProjectRepository projectRepo;
     private WorkflowStepRepository wfRepo;
@@ -242,12 +247,26 @@ public class ProjectTmAssignmentService {
             return;
         }
 
+        byte[] tmxBytes;
         try {
             Path baseDir = Paths.get(uploadDir);
-            byte[] tmxBytes = assignment.getTmxFilePath() != null
+            tmxBytes = assignment.getTmxFilePath() != null
                     ? Files.readAllBytes(baseDir.resolve(assignment.getTmxFilePath()))
                     : tmService.exportTmx(assignment.getTmId());
+        } catch (RestClientException e) {
+            // A TM with no translation units yet is a valid state (e.g. a brand new project) -
+            // Tomato returns 400 for it, not an empty file, so there is nothing to copy.
+            log.warn("Skipping TMX copy for TM {} on job {}: export failed ({})",
+                    assignment.getTmId(), job.getId(), e.getMessage());
+            return;
+        } catch (IOException e) {
+            throw new UncheckedIOException(
+                    "Failed to copy TMX file for TM " + assignment.getTmId()
+                            + " to job " + job.getId() + " workflow step " + jws.getWorkflowStep().getId(), e);
+        }
 
+        try {
+            Path baseDir = Paths.get(uploadDir);
             String stepFolderName = "step-" + jws.getWorkflowStep().getId()
                     + "-" + sanitizeForPath(jws.getWorkflowStep().getName());
             Path targetDir = baseDir.resolve("projects").resolve(projectFolderName)
