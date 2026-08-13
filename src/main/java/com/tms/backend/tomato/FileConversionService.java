@@ -427,6 +427,15 @@ public class FileConversionService {
             throw new FileNotFoundException("XLIFF file not found: " + xliffPath);
         }
 
+        if (Files.size(xliffPath) == 0) {
+            logger.warn("Translated file is empty. Using converted file instead. File: {}", job.getFileName());
+            xliffPath = baseDir.resolve(job.getConvertedFilePath());
+
+            if (!Files.exists(xliffPath)) {
+                throw new FileNotFoundException("Converted XLIFF file not found: " + xliffPath);
+            }
+        }
+
         // Choose API endpoint & output extension
         String endpoint;
         String targetExtension;
@@ -445,11 +454,12 @@ public class FileConversionService {
         }
 
         // Build multipart request
+        Path resolvedXliffPath = xliffPath;
         MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        body.add("file", new ByteArrayResource(Files.readAllBytes(xliffPath)) {
+        body.add("file", new ByteArrayResource(Files.readAllBytes(resolvedXliffPath)) {
             @Override
             public String getFilename() {
-                return xliffPath.getFileName().toString();
+                return resolvedXliffPath.getFileName().toString();
             }
         });
 
