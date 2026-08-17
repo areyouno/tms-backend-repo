@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -13,7 +14,7 @@ import org.springframework.stereotype.Repository;
 
 
 @Repository
-public interface ProjectRepository extends JpaRepository<Project, Long>{
+public interface ProjectRepository extends JpaRepository<Project, Long>, JpaSpecificationExecutor<Project> {
     boolean existsByClientId(Long clientId);
 
     @Query("SELECT p FROM Project p WHERE p.owner.id = :id AND p.deleted = false")
@@ -22,7 +23,7 @@ public interface ProjectRepository extends JpaRepository<Project, Long>{
     // Find all non-deleted projects
     @Query("SELECT p FROM Project p WHERE p.deleted = false")
     List<Project> findAllActive();
-    
+
     // Find by ID (non-deleted only)
     @Query("SELECT p FROM Project p WHERE p.id = :id AND p.deleted = false")
     Optional<Project> findByIdAndNotDeleted(@Param("id") Long id);

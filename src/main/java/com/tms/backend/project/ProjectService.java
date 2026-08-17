@@ -13,6 +13,9 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.context.annotation.Lazy;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -52,7 +55,6 @@ import com.tms.backend.netRateScheme.NetRateSchemeRepository;
 import com.tms.backend.priceList.PriceList;
 import com.tms.backend.priceList.PriceListRepository;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
-import com.tms.backend.role.RoleConstants;
 import com.tms.backend.setting.AutomationSetting;
 import com.tms.backend.setting.AutomationSettingService;
 import com.tms.backend.subDomain.SubDomain;
@@ -432,20 +434,21 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProjectDTO> getProjectsForUser(User user) {
-        List<Project> projects;
+    public Page<ProjectDTO> getProjectsForUser(
+            User user, Pageable pageable, String search, Map<String, List<String>> filters) {
+        Specification<Project> spec = ProjectSpecifications.visibleTo(user);
 
-
-        if (user.hasAnyRole(RoleConstants.ADMIN, RoleConstants.PM)) {
-            projects = projectRepo.findAllActive();
-        } else {
-            // translator (or any non-admin/PM role)
-            projects = projectRepo.findByOwnerId(user.getId());
+        Specification<Project> searchSpec = ProjectSpecifications.search(search);
+        if (searchSpec != null) {
+            spec = spec.and(searchSpec);
         }
 
-        return projects.stream()
-            .map(this::convertToFullDTO)
-            .toList();
+        Specification<Project> filterSpec = ProjectSpecifications.fromFilters(filters);
+        if (filterSpec != null) {
+            spec = spec.and(filterSpec);
+        }
+
+        return projectRepo.findAll(spec, pageable).map(this::convertToFullDTO);
     }
 
     @Transactional

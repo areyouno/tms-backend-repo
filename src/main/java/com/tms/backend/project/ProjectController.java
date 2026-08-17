@@ -3,8 +3,12 @@ package com.tms.backend.project;
 import java.io.IOException;
 import java.nio.file.AccessDeniedException;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,11 +22,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.tms.backend.dto.JobDTO;
+import com.tms.backend.dto.PagedResponseDTO;
 import com.tms.backend.dto.ProjectCreateDTO;
 import com.tms.backend.dto.ProjectDTO;
 import com.tms.backend.dto.ProjectSoftDeleteDTO;
@@ -41,6 +47,10 @@ import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
 import com.tms.backend.user.CustomUserDetails;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserService;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.validation.Valid;
 
@@ -154,15 +164,66 @@ public class ProjectController {
         return jobService.getJobIdsByProjectId(projectId);
     }
 
-    //get projects by role
+    // Maps frontend project-table column keys to sortable JPA property paths.
+    // Columns with no meaningful backend equivalent (e.g. a collection column,
+    // or a display-only field with no backing entity property) are omitted,
+    // and sorting on them is silently ignored.
+    private static final Map<String, String> PROJECT_SORT_PROPERTIES = Map.ofEntries(
+            Map.entry("id", "id"),
+            Map.entry("name", "name"),
+            Map.entry("progress", "progress"),
+            Map.entry("createDate", "createDate"),
+            Map.entry("clientName", "client.name"),
+            Map.entry("ownerName", "createdBy"),
+            Map.entry("status", "status"),
+            Map.entry("dueDate", "dueDate"),
+            Map.entry("sourceLang", "sourceLang"),
+            Map.entry("createdBy", "createdBy"),
+            Map.entry("purchaseOrder", "purchaseOrderNum"),
+            Map.entry("note", "note"),
+            Map.entry("type", "type"),
+            Map.entry("businessUnit", "businessUnit.name"),
+            Map.entry("costCenter", "costCenter.name"),
+            Map.entry("domain", "domain.name"),
+            Map.entry("subDomain", "subdomain.name"));
+
+    //get projects by role, paginated, searchable, filterable and sortable
     @GetMapping
-    public List<ProjectDTO> getProjects(@AuthenticationPrincipal CustomUserDetails userDetails) {
+    public PagedResponseDTO<ProjectDTO> getProjects(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int pageSize,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(defaultValue = "asc") String sortDir,
+            @RequestParam(required = false) String filters) {
         // Get current user
         String uid = userDetails.getUid();
         User currentUser = userService.findByUid(uid)
             .orElseThrow(() -> new RuntimeException("User not found with uid: " + uid));
 
-        return projectService.getProjectsForUser(currentUser);
+        // Default to newest-first, matching the list's previous default order
+        Sort sort = Sort.by(Sort.Direction.DESC, "createDate");
+        String sortProperty = sortBy != null ? PROJECT_SORT_PROPERTIES.get(sortBy) : null;
+        if (sortProperty != null) {
+            sort = Sort.by("desc".equalsIgnoreCase(sortDir) ? Sort.Direction.DESC : Sort.Direction.ASC, sortProperty);
+        }
+
+        Pageable pageable = PageRequest.of(Math.max(page - 1, 0), pageSize, sort);
+        Map<String, List<String>> parsedFilters = parseFilters(filters);
+
+        return PagedResponseDTO.from(projectService.getProjectsForUser(currentUser, pageable, search, parsedFilters));
+    }
+
+    private Map<String, List<String>> parseFilters(String filtersJson) {
+        if (filtersJson == null || filtersJson.isBlank()) {
+            return null;
+        }
+        try {
+            return new ObjectMapper().readValue(filtersJson, new TypeReference<Map<String, List<String>>>() {});
+        } catch (JsonProcessingException e) {
+            return null;
+        }
     }
 
     @PatchMapping("/{id}")
