@@ -33,7 +33,9 @@ public class VerificationToken {
     
     @Column(nullable = false)
     private LocalDateTime createdAt;
-    
+
+    private LocalDateTime expiresAt;
+
     public enum TokenType {
         EMAIL_VERIFICATION,
         PASSWORD_RESET,
@@ -52,6 +54,7 @@ public class VerificationToken {
         this.user = user;
         this.token = token;
         this.createdAt = LocalDateTime.now();
+        this.expiresAt = expirationHours > 0 ? this.createdAt.plusHours(expirationHours) : null;
     }
     
     public Long getId() {
@@ -84,6 +87,18 @@ public class VerificationToken {
 
     public void setCreatedAt(LocalDateTime createdAt) {
         this.createdAt = createdAt;
+    }
+
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
+    }
+
+    public boolean isExpired() {
+        return expiresAt != null && LocalDateTime.now().isAfter(expiresAt);
     }
 
     public TokenType getTokenType() {

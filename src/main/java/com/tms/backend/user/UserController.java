@@ -23,9 +23,11 @@ import org.springframework.web.bind.annotation.RestController;
 import com.tms.backend.auth.LoginHistoryService;
 import com.tms.backend.dto.ChangePasswordDTO;
 import com.tms.backend.dto.CreateUserDTO;
+import com.tms.backend.dto.ForgotPasswordDTO;
 import com.tms.backend.dto.LoginHistoryDTO;
 import com.tms.backend.dto.OwnerDTO;
 import com.tms.backend.dto.ProviderDTO;
+import com.tms.backend.dto.ResetPasswordDTO;
 import com.tms.backend.dto.SetPasswordDTO;
 import com.tms.backend.dto.UpdateUserByIdDTO;
 import com.tms.backend.dto.UpdateUserDTO;
@@ -102,6 +104,22 @@ public class UserController {
     public ResponseEntity<Void> setPassword(@RequestBody SetPasswordDTO dto) {
         userService.setPassword(dto);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<String> forgotPassword(@RequestBody ForgotPasswordDTO request) {
+        userService.forgotPassword(request.email());
+        return ResponseEntity.ok("If that email is registered, a password reset link has been sent.");
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<String> resetPassword(@RequestBody ResetPasswordDTO request) {
+        try {
+            userService.resetPassword(request);
+            return ResponseEntity.ok("Password reset successful");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @GetMapping

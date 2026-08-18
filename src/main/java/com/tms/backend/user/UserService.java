@@ -19,6 +19,7 @@ import com.tms.backend.dto.ChangePasswordDTO;
 import com.tms.backend.dto.CreateUserDTO;
 import com.tms.backend.dto.OwnerDTO;
 import com.tms.backend.dto.ReferenceDTO;
+import com.tms.backend.dto.ResetPasswordDTO;
 import com.tms.backend.dto.SetPasswordDTO;
 import com.tms.backend.dto.UpdateUserByIdDTO;
 import com.tms.backend.dto.UpdateUserDTO;
@@ -237,6 +238,41 @@ public class UserService {
         tokenRepo.delete(token);
     }
     
+    @Transactional
+    public void forgotPassword(String email) {
+        Optional<User> userOpt = userRepo.findByEmail(email);
+        if (userOpt.isEmpty()) {
+            // don't reveal whether the email is registered
+            return;
+        }
+        User user = userOpt.get();
+
+        String tokenValue = UUID.randomUUID().toString();
+        VerificationToken token = new VerificationToken(user, tokenValue, 1);
+        token.setTokenType(VerificationToken.TokenType.PASSWORD_RESET);
+        tokenRepo.save(token);
+
+        emailService.sendPasswordResetEmail(user.getEmail(), tokenValue);
+    }
+
+    @Transactional
+    public void resetPassword(ResetPasswordDTO dto) {
+        VerificationToken token = tokenRepo
+            .findByToken(dto.token())
+            .orElseThrow(() -> new RuntimeException("Invalid or expired token"));
+
+        if (token.getTokenType() != VerificationToken.TokenType.PASSWORD_RESET
+                || token.isUsed() || token.isExpired()) {
+            throw new RuntimeException("Invalid or expired token");
+        }
+
+        User user = token.getUser();
+        user.setPassword(passwordEncoder.encode(dto.newPassword()));
+        userRepo.save(user);
+
+        tokenRepo.delete(token);
+    }
+
     @Transactional
     public void changePassword(String uid, ChangePasswordDTO dto) {
         User user = userRepo.findByUid(uid)

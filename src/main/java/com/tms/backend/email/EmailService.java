@@ -44,6 +44,13 @@ public class EmailService {
         sendEmail(toEmail, subject, htmlContent);
     }
 
+    public void sendPasswordResetEmail(String toEmail, String resetToken) {
+        String subject = "Reset Your Password - " + appName;
+        String resetLink = frontendUrl + "/reset-password?token=" + resetToken;
+        String htmlContent = buildPasswordResetEmailHTML(resetLink);
+        sendEmail(toEmail, subject, htmlContent);
+    }
+
     private String buildVerificationEmailHTML(String verificationLink) {
         return "<!DOCTYPE html>\n"
                 + "<html>\n"
@@ -70,6 +77,34 @@ public class EmailService {
                 + "      </div>\n"
                 + "  </body>\n"
                 + "</html>".formatted(appName, verificationLink, verificationLink, appName);
+    }
+
+    private String buildPasswordResetEmailHTML(String resetLink) {
+        return "<!DOCTYPE html>\n"
+                + "<html>\n"
+                + "  <head>\n"
+                + "    <meta charset=\"UTF-8\">\n"
+                + "    <title>Reset Your Password</title>\n"
+                + "  </head>\n"
+                + "  <body style=\"margin: 0; padding: 0; background-color: #f9f9f9; font-family: sans-serif;\">\n"
+                + "    <div style=\"width: 100%; text-align: center; padding: 40px 0;\">\n"
+                + "      <div style=\"display: inline-block; max-width: 600px; padding: 30px; border-radius: 8px; \">\n"
+                + "        <h2 style=\"text-align: center; color: #333333;\">Reset Your Password</h2>\n"
+                + "        <p style=\"text-align: left; color: #555555; font-size: 16px; line-height: 1.6;\">\n"
+                + "          Hello,<br>\n"
+                + "          We received a request to reset your password. <br>\n"
+                + "          Click the button below to choose a new password. This link will expire in 1 hour.\n"
+                + "        </p>\n"
+                + "        <a href=\"" + resetLink + "\"\n"
+                + "           style=\"display: inline-block; margin-top: 25px; padding: 13px 16px; font-size: 14px; font-weight: 600;\n"
+                + "                  color: black; background-color:rgb(61, 138, 206); text-decoration: none;\n"
+                + "                  border-radius: 26px; min-width: 50px; text-align: center;\">\n"
+                + "          Reset password\n"
+                + "        </a>\n"
+                + "        <p style=\"margin-top: 25px; color: #999999; font-size: 12px;\">If you did not request a password reset, you can safely ignore this email.</p>\n"
+                + "      </div>\n"
+                + "  </body>\n"
+                + "</html>";
     }
 
     private String buildInvitationEmailHTML(String invitationLink, String username) {
