@@ -51,10 +51,12 @@ import com.tms.backend.dto.DownloadJobsRequest;
 import com.tms.backend.dto.DownloadProjectsRequest;
 import com.tms.backend.dto.JobCheckoutStatusDTO;
 import com.tms.backend.dto.JobDTO;
+import com.tms.backend.dto.JobRowDTO;
 import com.tms.backend.dto.JobSoftDeleteDTO;
 import com.tms.backend.dto.JobWorkflowStepDTO;
 import com.tms.backend.dto.JobWorkflowStepEditDTO;
 import com.tms.backend.dto.JobWorkflowStepStatusUpdateDTO;
+import com.tms.backend.dto.PagedResponseDTO;
 import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.dto.TmxCopyDTO;
 import com.tms.backend.dto.TranslatedFileUploadRequest;
@@ -66,6 +68,10 @@ import com.tms.backend.tomato.FileConversionService;
 import com.tms.backend.user.CustomUserDetails;
 import com.tms.backend.user.User;
 import com.tms.backend.user.UserService;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -175,6 +181,39 @@ public class JobController {
         User currentUser = userService.findByUid(uid)
             .orElseThrow(() -> new RuntimeException("User not found with uid: " + uid));
         return jobService.getJobs(currentUser);
+    }
+
+    // Flattened (one row per workflow step), paginated/filtered/sorted/searchable job list.
+    // Same role/owner scoping as getAllJobs above, applied over the expanded row set.
+    @GetMapping
+    @PreAuthorize("isAuthenticated()")
+    @Transactional(readOnly = true)
+    public PagedResponseDTO<JobRowDTO> getJobRows(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "10") int pageSize,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(required = false) String filters) {
+        String uid = userDetails.getUid();
+        User currentUser = userService.findByUid(uid)
+            .orElseThrow(() -> new RuntimeException("User not found with uid: " + uid));
+
+        Map<String, List<String>> parsedFilters = parseFilters(filters);
+        return PagedResponseDTO.from(
+                jobService.getJobRows(currentUser, page, pageSize, search, sortBy, sortDir, parsedFilters));
+    }
+
+    private Map<String, List<String>> parseFilters(String filtersJson) {
+        if (filtersJson == null || filtersJson.isBlank()) {
+            return null;
+        }
+        try {
+            return new ObjectMapper().readValue(filtersJson, new TypeReference<Map<String, List<String>>>() {});
+        } catch (JsonProcessingException e) {
+            return null;
+        }
     }
 
     @GetMapping("/{id}")

@@ -20,6 +20,7 @@ import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -30,6 +31,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.tms.backend.dto.FileDownloadDTO;
 import com.tms.backend.dto.JobCheckoutStatusDTO;
 import com.tms.backend.dto.JobDTO;
+import com.tms.backend.dto.JobRowDTO;
 import com.tms.backend.dto.JobSoftDeleteDTO;
 import com.tms.backend.dto.JobWorkflowStepDTO;
 import com.tms.backend.dto.JobWorkflowStepEditDTO;
@@ -70,6 +72,7 @@ public class JobService {
     private final EmailService emailService;
     private final TranslationMemoryService tmService;
     private final ProjectTmAssignmentService tmAssignmentService;
+    private final JobRowQueryService jobRowQueryService;
 
     private final ProjectMapper projectMapper;
 
@@ -82,7 +85,7 @@ public class JobService {
     private static final Logger logger = LoggerFactory.getLogger(JobService.class);
 
 
-    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, JobCheckoutRepository jobCheckoutRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService, EmailService emailService, TranslationMemoryService tmService, ProjectTmAssignmentService tmAssignmentService){
+    public JobService(JobRepository jobRepo, ProjectRepository projectRepo, UserRepository userRepo, WorkflowStepRepository wfRepo, JobWorkflowStepRepository jobWfRepo, JobCheckoutRepository jobCheckoutRepo, ProjectMapper projectMapper, SizingService sizingService, FileConversionService fileConversionService, ProjectService projectService, EmailService emailService, TranslationMemoryService tmService, ProjectTmAssignmentService tmAssignmentService, JobRowQueryService jobRowQueryService){
         this.jobRepo = jobRepo;
         this.projectRepo = projectRepo;
         this.userRepo = userRepo;
@@ -96,6 +99,7 @@ public class JobService {
         this.emailService = emailService;
         this.tmService = tmService;
         this.tmAssignmentService = tmAssignmentService;
+        this.jobRowQueryService = jobRowQueryService;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -650,6 +654,14 @@ public class JobService {
         return jobs.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
+    }
+
+    // Flattened, paginated/filtered/sorted/searchable row set backing GET /api/jobs: one row per
+    // workflow step (same role/owner scoping as getJobs above). See JobRowQueryService.
+    @Transactional(readOnly = true)
+    public Page<JobRowDTO> getJobRows(User user, int page, int pageSize, String search, String sortBy,
+            String sortDir, Map<String, List<String>> filters) {
+        return jobRowQueryService.findJobRows(user, page, pageSize, search, sortBy, sortDir, filters);
     }
 
     public JobDTO getJobDTOById(Long id) {
