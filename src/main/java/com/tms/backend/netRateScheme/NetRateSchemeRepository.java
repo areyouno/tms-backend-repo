@@ -15,5 +15,7 @@ public interface NetRateSchemeRepository extends JpaRepository<NetRateScheme, Lo
 
     boolean existsByIsDefaultTrue();
 
+    boolean existsByCreatedById(Long userId);
+
     Optional<NetRateScheme> findByIsDefaultTrue();
 }

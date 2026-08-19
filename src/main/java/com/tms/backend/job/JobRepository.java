@@ -15,6 +15,8 @@ public interface JobRepository extends JpaRepository<Job, Long>{
 
     List<Job> findByJobOwnerIdAndDeletedFalse(Long id);
 
+    boolean existsByJobOwnerId(Long id);
+
     @Query("SELECT j FROM Job j WHERE j.deleted = false")
     List<Job> findAllActive(); // all active
 

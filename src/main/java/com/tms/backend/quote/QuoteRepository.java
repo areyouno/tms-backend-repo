@@ -13,4 +13,6 @@ public interface QuoteRepository extends JpaRepository<Quote, Long> {
     void clearNetRateSchemeByIds(@Param("ids") List<Long> ids);
 
     List<Quote> findByProject_Id(Long projectId);
+
+    boolean existsByProviderId(Long userId);
 }

@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface JobAnalysisRepository extends JpaRepository<JobAnalysis, Long> {
     List<JobAnalysis> findByProjectId(Long projectId);
+
+    boolean existsByProviderId(Long userId);
 }

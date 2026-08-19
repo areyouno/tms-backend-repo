@@ -11,6 +11,10 @@ public interface GroupRepository extends JpaRepository<Group, Long> {
 
     boolean existsByName(String name);
 
+    boolean existsByTeamLeaderId(Long userId);
+
+    boolean existsByTeamMembersId(Long userId);
+
     @Query("SELECT g FROM Group g LEFT JOIN FETCH g.teamLeader LEFT JOIN FETCH g.teamMembers LEFT JOIN FETCH g.teamProjects WHERE g.id = :id")
     Optional<Group> findByIdWithDetails(@Param("id") Long id);
 

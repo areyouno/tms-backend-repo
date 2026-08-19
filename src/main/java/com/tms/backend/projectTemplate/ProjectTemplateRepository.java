@@ -14,6 +14,12 @@ public interface ProjectTemplateRepository extends JpaRepository<ProjectTemplate
 
     List<ProjectTemplate> findByUserId(Long userId);
 
+    boolean existsByUserId(Long userId);
+
+    boolean existsByOwnerId(Long userId);
+
+    boolean existsByCreatedById(Long userId);
+
     // find all non-delete templates
     @Query("SELECT t FROM ProjectTemplate t WHERE t.deleted = false")
     List<ProjectTemplate> findAllActive();

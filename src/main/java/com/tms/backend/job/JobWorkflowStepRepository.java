@@ -12,4 +12,8 @@ public interface JobWorkflowStepRepository extends JpaRepository<JobWorkflowStep
         Long projectId,
         String sourceLang
     );
+
+    boolean existsByProviderId(Long userId);
+
+    boolean existsByNotifyUserId(Long userId);
 }

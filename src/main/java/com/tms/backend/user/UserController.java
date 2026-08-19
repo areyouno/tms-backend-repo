@@ -186,14 +186,8 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> softDeleteUser(@PathVariable Long id) {
-        userService.softDeleteUser(id);
-        return ResponseEntity.noContent().build();
-    }
-
-    @DeleteMapping("/{id}/hard")
-    public ResponseEntity<Void> hardDeleteUser(@PathVariable Long id) {
-        userService.hardDeleteUser(id);
+    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
 

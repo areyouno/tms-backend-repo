@@ -28,8 +28,18 @@ import com.tms.backend.email.EmailService;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.group.Group;
 import com.tms.backend.group.GroupRepository;
+import com.tms.backend.job.JobRepository;
+import com.tms.backend.job.JobWorkflowStepRepository;
+import com.tms.backend.jobAnalysis.JobAnalysisRepository;
+import com.tms.backend.jobAnalysis.PendingSizingJobRepository;
+import com.tms.backend.netRateScheme.NetRateSchemeRepository;
+import com.tms.backend.priceList.PriceListRepository;
+import com.tms.backend.project.ProjectRepository;
+import com.tms.backend.projectTemplate.ProjectTemplateRepository;
+import com.tms.backend.quote.QuoteRepository;
 import com.tms.backend.role.Role;
 import com.tms.backend.role.RoleRepository;
+import com.tms.backend.taskList.TaskListRepository;
 import com.tms.backend.verificationToken.VerificationToken;
 import com.tms.backend.verificationToken.VerificationTokenRepository;
 
@@ -44,15 +54,40 @@ public class UserService {
     private EmailService emailService;
     private VerificationTokenRepository tokenRepo;
     private GroupRepository groupRepo;
+    private final JobRepository jobRepo;
+    private final JobWorkflowStepRepository jobWorkflowStepRepo;
+    private final JobAnalysisRepository jobAnalysisRepo;
+    private final PendingSizingJobRepository pendingSizingJobRepo;
+    private final NetRateSchemeRepository netRateSchemeRepo;
+    private final PriceListRepository priceListRepo;
+    private final ProjectRepository projectRepo;
+    private final ProjectTemplateRepository projectTemplateRepo;
+    private final QuoteRepository quoteRepo;
+    private final TaskListRepository taskListRepo;
 
     public UserService(PasswordEncoder passwordEncoder, UserRepository userRepo, RoleRepository roleRepo, EmailService emailService,
-                       VerificationTokenRepository tokenRepo, GroupRepository groupRepo) {
+                       VerificationTokenRepository tokenRepo, GroupRepository groupRepo, JobRepository jobRepo,
+                       JobWorkflowStepRepository jobWorkflowStepRepo, JobAnalysisRepository jobAnalysisRepo,
+                       PendingSizingJobRepository pendingSizingJobRepo, NetRateSchemeRepository netRateSchemeRepo,
+                       PriceListRepository priceListRepo, ProjectRepository projectRepo,
+                       ProjectTemplateRepository projectTemplateRepo, QuoteRepository quoteRepo,
+                       TaskListRepository taskListRepo) {
         this.passwordEncoder = passwordEncoder;
         this.userRepo = userRepo;
         this.roleRepo = roleRepo;
         this.emailService = emailService;
         this.tokenRepo = tokenRepo;
         this.groupRepo = groupRepo;
+        this.jobRepo = jobRepo;
+        this.jobWorkflowStepRepo = jobWorkflowStepRepo;
+        this.jobAnalysisRepo = jobAnalysisRepo;
+        this.pendingSizingJobRepo = pendingSizingJobRepo;
+        this.netRateSchemeRepo = netRateSchemeRepo;
+        this.priceListRepo = priceListRepo;
+        this.projectRepo = projectRepo;
+        this.projectTemplateRepo = projectTemplateRepo;
+        this.quoteRepo = quoteRepo;
+        this.taskListRepo = taskListRepo;
     }
 
     @Transactional
@@ -324,7 +359,38 @@ public class UserService {
             .orElseThrow(() -> new RuntimeException("User not found"));
     }
 
-    public void softDeleteUser(Long id) {
+    @Transactional
+    public void deleteUser(Long id) {
+        if (!userRepo.existsById(id)) {
+            throw new EntityNotFoundException("User not found");
+        }
+
+        if (isUserReferenced(id)) {
+            softDeleteUser(id);
+        } else {
+            hardDeleteUser(id);
+        }
+    }
+
+    private boolean isUserReferenced(Long id) {
+        return groupRepo.existsByTeamLeaderId(id)
+            || groupRepo.existsByTeamMembersId(id)
+            || jobRepo.existsByJobOwnerId(id)
+            || jobWorkflowStepRepo.existsByProviderId(id)
+            || jobWorkflowStepRepo.existsByNotifyUserId(id)
+            || jobAnalysisRepo.existsByProviderId(id)
+            || pendingSizingJobRepo.existsByUserId(id)
+            || netRateSchemeRepo.existsByCreatedById(id)
+            || priceListRepo.existsByCreatedById(id)
+            || projectRepo.existsByOwnerId(id)
+            || projectTemplateRepo.existsByUserId(id)
+            || projectTemplateRepo.existsByOwnerId(id)
+            || projectTemplateRepo.existsByCreatedById(id)
+            || quoteRepo.existsByProviderId(id)
+            || taskListRepo.existsByAssigneeId(id);
+    }
+
+    private void softDeleteUser(Long id) {
         User user = userRepo.findById(id)
             .orElseThrow(() -> new EntityNotFoundException("User not found"));
         if (!user.isDeleted()) {
@@ -336,10 +402,7 @@ public class UserService {
         userRepo.save(user);
     }
 
-    public void hardDeleteUser(Long id) {
-        if (!userRepo.existsById(id)) {
-            throw new EntityNotFoundException("User not found");
-        }
+    private void hardDeleteUser(Long id) {
         userRepo.deleteById(id);
     }
 

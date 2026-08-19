@@ -5,4 +5,5 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PriceListRepository extends JpaRepository<PriceList, Long> {
+    boolean existsByCreatedById(Long userId);
 }

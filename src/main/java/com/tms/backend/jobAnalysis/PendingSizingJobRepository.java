@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PendingSizingJobRepository extends JpaRepository<PendingSizingJob, String> {
     List<PendingSizingJob> findByProjectId(Long projectId);
+
+    boolean existsByUserId(Long userId);
 }

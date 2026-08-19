@@ -11,6 +11,8 @@ import org.springframework.stereotype.Repository;
 public interface TaskListRepository extends JpaRepository<TaskList, Long> {
     List<TaskList> findByAssignee_UidOrderByCreateDateDesc(String assigneeUid);
 
+    boolean existsByAssigneeId(Long assigneeId);
+
     @Query("SELECT DISTINCT tl FROM TaskList tl JOIN tl.jobs j "
         + "WHERE (:projectId IS NULL OR j.project.id = :projectId) "
         + "AND (:targetLangCode IS NULL OR tl.targetLang.rfcCode = :targetLangCode) "
