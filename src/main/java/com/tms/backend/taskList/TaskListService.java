@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,6 +32,7 @@ public class TaskListService {
     private final UserRepository userRepo;
     private final JobWorkflowStepRepository jobWorkflowStepRepo;
     private final EmailService emailService;
+    private final TaskListRowQueryService taskListRowQueryService;
 
     public TaskListService(
         TaskListRepository taskListRepo,
@@ -38,13 +40,15 @@ public class TaskListService {
         LanguageRepository languageRepo,
         UserRepository userRepo,
         JobWorkflowStepRepository jobWorkflowStepRepo,
-        EmailService emailService) {
+        EmailService emailService,
+        TaskListRowQueryService taskListRowQueryService) {
         this.taskListRepo = taskListRepo;
         this.jobRepo = jobRepo;
         this.languageRepo = languageRepo;
         this.userRepo = userRepo;
         this.jobWorkflowStepRepo = jobWorkflowStepRepo;
         this.emailService = emailService;
+        this.taskListRowQueryService = taskListRowQueryService;
     }
 
     @Transactional
@@ -170,11 +174,13 @@ public class TaskListService {
         return toDetailDto(taskList);
     }
 
+    // Paginated/filtered/sorted/searchable task-list listing backing GET /api/task-lists, scoped
+    // by role: admins see every task list, everyone else only their assigned ones. See
+    // TaskListRowQueryService.
     @Transactional(readOnly = true)
-    public List<TaskListSummaryDTO> getAllTaskLists(Long projectId, String targetLangCode, Long workflowStepId) {
-        return taskListRepo.findByFilters(projectId, targetLangCode, workflowStepId).stream()
-            .map(TaskListSummaryDTO::from)
-            .collect(Collectors.toList());
+    public Page<TaskListSummaryDTO> getAllTaskLists(User user, int page, int pageSize, String search, String sortBy,
+            String sortDir, Map<String, List<String>> filters) {
+        return taskListRowQueryService.findTaskLists(user, page, pageSize, search, sortBy, sortDir, filters);
     }
 
     @Transactional(readOnly = true)

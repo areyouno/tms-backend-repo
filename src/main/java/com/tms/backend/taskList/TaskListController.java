@@ -1,6 +1,7 @@
 package com.tms.backend.taskList;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -14,21 +15,30 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tms.backend.dto.PagedResponseDTO;
 import com.tms.backend.dto.TaskListCreateDTO;
 import com.tms.backend.dto.TaskListDTO;
 import com.tms.backend.dto.TaskListSummaryDTO;
 import com.tms.backend.exception.ResourceNotFoundException;
 import com.tms.backend.security.AccessRolesConstants;
 import com.tms.backend.user.CustomUserDetails;
+import com.tms.backend.user.User;
+import com.tms.backend.user.UserService;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
 @RequestMapping("/api/task-lists")
 public class TaskListController {
 
     private final TaskListService taskListService;
+    private final UserService userService;
 
-    public TaskListController(TaskListService taskListService) {
+    public TaskListController(TaskListService taskListService, UserService userService) {
         this.taskListService = taskListService;
+        this.userService = userService;
     }
 
     @PostMapping
@@ -40,13 +50,35 @@ public class TaskListController {
         return ResponseEntity.ok(created);
     }
 
+    // Paginated/filtered/sorted/searchable task-list listing. `filters` mirrors the sidebar's
+    // activeFilters shape ({ [filterName]: string[] }, JSON-encoded), same convention as
+    // GET /api/jobs and GET /api/projects.
     @GetMapping
     @PreAuthorize(AccessRolesConstants.AUTHENTICATED)
-    public List<TaskListSummaryDTO> getAllTaskLists(
-        @RequestParam(required = false) Long projectId,
-        @RequestParam(required = false) String targetLanguageCode,
-        @RequestParam(required = false) Long workflowStepId) {
-        return taskListService.getAllTaskLists(projectId, targetLanguageCode, workflowStepId);
+    public PagedResponseDTO<TaskListSummaryDTO> getAllTaskLists(
+        @RequestParam(defaultValue = "1") int page,
+        @RequestParam(defaultValue = "10") int pageSize,
+        @RequestParam(required = false) String search,
+        @RequestParam(required = false) String sortBy,
+        @RequestParam(defaultValue = "desc") String sortDir,
+        @RequestParam(required = false) String filters,
+        @AuthenticationPrincipal CustomUserDetails userDetails) {
+        User currentUser = userService.findByUid(userDetails.getUid())
+            .orElseThrow(() -> new ResourceNotFoundException("User not found with uid: " + userDetails.getUid()));
+        Map<String, List<String>> parsedFilters = parseFilters(filters);
+        return PagedResponseDTO.from(taskListService.getAllTaskLists(
+            currentUser, page, pageSize, search, sortBy, sortDir, parsedFilters));
+    }
+
+    private Map<String, List<String>> parseFilters(String filtersJson) {
+        if (filtersJson == null || filtersJson.isBlank()) {
+            return null;
+        }
+        try {
+            return new ObjectMapper().readValue(filtersJson, new TypeReference<Map<String, List<String>>>() {});
+        } catch (JsonProcessingException e) {
+            return null;
+        }
     }
 
     @GetMapping("/{id}")
