@@ -167,7 +167,7 @@ public class JobRowQueryService {
 
     private Predicate visibleTo(CriteriaBuilder cb, Root<Job> root, Join<Job, User> owner, User user) {
         Predicate notDeleted = cb.isFalse(root.get("deleted"));
-        if (user.hasAnyRole(RoleConstants.ADMIN, RoleConstants.PM)) {
+        if (user.hasAnyRole(RoleConstants.ADMIN)) {
             return notDeleted;
         }
         return cb.and(notDeleted, cb.equal(owner.get("id"), user.getId()));

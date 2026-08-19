@@ -27,9 +27,12 @@ public final class ProjectSpecifications {
     }
 
     public static Specification<Project> visibleTo(User user) {
+        // root: the Project entity being queried; 
+        // query: the CriteriaQuery under construction;
+        // cb: CriteriaBuilder, used to build predicate expressions (WHERE-clause fragments).
         return (root, query, cb) -> {
             Predicate notDeleted = cb.isFalse(root.get("deleted"));
-            if (user.hasAnyRole(RoleConstants.ADMIN, RoleConstants.PM)) {
+            if (user.hasAnyRole(RoleConstants.ADMIN)) {
                 return notDeleted;
             }
             return cb.and(notDeleted, cb.equal(root.get("owner").get("id"), user.getId()));
