@@ -15,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.tms.backend.auth.LoginHistoryRepository;
 import com.tms.backend.dto.ChangePasswordDTO;
 import com.tms.backend.dto.CreateUserDTO;
 import com.tms.backend.dto.OwnerDTO;
@@ -64,6 +65,7 @@ public class UserService {
     private final ProjectTemplateRepository projectTemplateRepo;
     private final QuoteRepository quoteRepo;
     private final TaskListRepository taskListRepo;
+    private final LoginHistoryRepository loginHistoryRepo;
 
     public UserService(PasswordEncoder passwordEncoder, UserRepository userRepo, RoleRepository roleRepo, EmailService emailService,
                        VerificationTokenRepository tokenRepo, GroupRepository groupRepo, JobRepository jobRepo,
@@ -71,7 +73,7 @@ public class UserService {
                        PendingSizingJobRepository pendingSizingJobRepo, NetRateSchemeRepository netRateSchemeRepo,
                        PriceListRepository priceListRepo, ProjectRepository projectRepo,
                        ProjectTemplateRepository projectTemplateRepo, QuoteRepository quoteRepo,
-                       TaskListRepository taskListRepo) {
+                       TaskListRepository taskListRepo, LoginHistoryRepository loginHistoryRepo) {
         this.passwordEncoder = passwordEncoder;
         this.userRepo = userRepo;
         this.roleRepo = roleRepo;
@@ -88,6 +90,7 @@ public class UserService {
         this.projectTemplateRepo = projectTemplateRepo;
         this.quoteRepo = quoteRepo;
         this.taskListRepo = taskListRepo;
+        this.loginHistoryRepo = loginHistoryRepo;
     }
 
     @Transactional
@@ -387,7 +390,8 @@ public class UserService {
             || projectTemplateRepo.existsByOwnerId(id)
             || projectTemplateRepo.existsByCreatedById(id)
             || quoteRepo.existsByProviderId(id)
-            || taskListRepo.existsByAssigneeId(id);
+            || taskListRepo.existsByAssigneeId(id)
+            || loginHistoryRepo.existsByUserId(id);
     }
 
     private void softDeleteUser(Long id) {

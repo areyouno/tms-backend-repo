@@ -8,4 +8,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface LoginHistoryRepository extends JpaRepository<LoginHistory, Long> {
     List<LoginHistory> findByUserIdOrderByLoginAtDesc(Long userId);
+
+    boolean existsByUserId(Long userId);
 }
