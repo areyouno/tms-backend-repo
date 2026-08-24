@@ -1,12 +1,15 @@
 package com.tms.backend.language;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 import org.springframework.stereotype.Service;
 
+import com.tms.backend.dto.CountryDTO;
 import com.tms.backend.dto.LanguageStatusUpdateRequest;
 
 import jakarta.transaction.Transactional;
@@ -18,6 +21,29 @@ public class LanguageService {
 
     public LanguageService(LanguageRepository languageRepository) {
         this.languageRepository = languageRepository;
+    }
+
+    // Get the distinct list of countries represented in the languages table
+    public List<CountryDTO> getAvailableCountries() {
+        Map<String, String> countriesByCode = new HashMap<>();
+
+        for (String rfcCode : languageRepository.findAllRfcCodes()) {
+            Locale locale = Locale.forLanguageTag(rfcCode);
+            String countryCode = locale.getCountry();
+
+            // Skip tags with no region, or with UN M49 numeric region codes
+            // (e.g. "en-001" for World, "en-029" for Caribbean) which are not countries
+            if (!countryCode.matches("[A-Z]{2}")) {
+                continue;
+            }
+
+            countriesByCode.putIfAbsent(countryCode, locale.getDisplayCountry(Locale.ENGLISH));
+        }
+
+        return countriesByCode.entrySet().stream()
+                .map(entry -> new CountryDTO(entry.getKey(), entry.getValue()))
+                .sorted(Comparator.comparing(CountryDTO::name))
+                .toList();
     }
 
     // Get all active languages

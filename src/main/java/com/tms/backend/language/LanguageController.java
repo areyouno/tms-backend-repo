@@ -5,12 +5,12 @@ import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tms.backend.dto.CountryDTO;
 import com.tms.backend.dto.LanguageStatusUpdateRequest;
 
 @RestController
@@ -36,6 +36,11 @@ public class LanguageController {
     @GetMapping("/inactive")
     public ResponseEntity<List<Language>> getInactiveLanguages() {
         return ResponseEntity.ok(languageService.getInactiveLanguages());
+    }
+
+    @GetMapping("/countries")
+    public ResponseEntity<List<CountryDTO>> getAvailableCountries() {
+        return ResponseEntity.ok(languageService.getAvailableCountries());
     }
 
     @PutMapping("/activate")
