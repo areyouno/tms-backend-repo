@@ -14,5 +14,7 @@ public record LoginDTO(
     String token,
     Boolean isActive,
     String username,
-    String uid
+    String uid,
+    String organizationName,
+    String country
 ) {}

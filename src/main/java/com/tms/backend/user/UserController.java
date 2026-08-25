@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -20,10 +21,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.tms.backend.auth.AuthService;
 import com.tms.backend.auth.LoginHistoryService;
 import com.tms.backend.dto.ChangePasswordDTO;
 import com.tms.backend.dto.CreateUserDTO;
 import com.tms.backend.dto.ForgotPasswordDTO;
+import com.tms.backend.dto.LoginDTO;
 import com.tms.backend.dto.LoginHistoryDTO;
 import com.tms.backend.dto.OwnerDTO;
 import com.tms.backend.dto.ProviderDTO;
@@ -34,6 +37,7 @@ import com.tms.backend.dto.UpdateUserDTO;
 import com.tms.backend.dto.UserDTO;
 import com.tms.backend.request.RegisterRequest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
 @RestController
@@ -42,10 +46,15 @@ public class UserController {
 
     private final UserService userService;
     private final LoginHistoryService loginHistoryService;
+    private final AuthService authService;
 
-    public UserController(UserService userService, LoginHistoryService loginHistoryService) {
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
+    public UserController(UserService userService, LoginHistoryService loginHistoryService, AuthService authService) {
         this.userService = userService;
         this.loginHistoryService = loginHistoryService;
+        this.authService = authService;
     }
 
     @PostMapping("/register")
@@ -101,9 +110,9 @@ public class UserController {
     }
 
     @PostMapping("/set-password")
-    public ResponseEntity<Void> setPassword(@RequestBody SetPasswordDTO dto) {
-        userService.setPassword(dto);
-        return ResponseEntity.ok().build();
+    public ResponseEntity<LoginDTO> setPassword(@RequestBody SetPasswordDTO dto, HttpServletRequest request) {
+        User user = userService.setPassword(dto);
+        return ResponseEntity.ok(authService.buildSession(user, request));
     }
 
     @PostMapping("/forgot-password")
@@ -216,10 +225,10 @@ public class UserController {
         try {
             userService.markUserAsVerified(token);
             // Redirect to login page after successful verification
-            response.sendRedirect("https://xliffl10n.latispass.net/?verified=true");
+            response.sendRedirect(frontendUrl + "/?verified=true");
         } catch (Exception e) {
             // Redirect to error page or login with error message
-            response.sendRedirect("https://xliffl10n.latispass.net/?error=verification_failed");
+            response.sendRedirect(frontendUrl + "/?error=verification_failed");
         }
     }
 
@@ -228,10 +237,10 @@ public class UserController {
         try {
             userService.markUserAsVerified(token);
             // Redirect to login page after successful verification
-            response.sendRedirect("https://xliffl10n.latispass.net/setPassword?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8));
+            response.sendRedirect(frontendUrl + "/setPassword?token=" + URLEncoder.encode(token, StandardCharsets.UTF_8));
         } catch (Exception e) {
             // Redirect to error page or login with error message
-            response.sendRedirect("https://xliffl10n.latispass.net/?error=verification_failed");
+            response.sendRedirect(frontendUrl + "/?error=verification_failed");
         }
     }
 }

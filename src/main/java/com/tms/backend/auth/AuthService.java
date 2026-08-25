@@ -46,6 +46,16 @@ public class AuthService {
                 .or(() -> userRepository.findByUsername(identifier))
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
+        return buildSession(user, request);
+    }
+
+    /**
+     * Establishes an authenticated session for an already-resolved, trusted
+     * user (no credential check) — used by the login flow above, and by the
+     * set-password flow (the caller already proved ownership via a single-use
+     * verification token).
+     */
+    public LoginDTO buildSession(User user, HttpServletRequest request) {
         user.setLastLoginAt(LocalDateTime.now());
         userRepository.save(user);
 
@@ -66,7 +76,9 @@ public class AuthService {
             token,
             user.isActive(),
             user.getUsername(),
-            user.getUid()
+            user.getUid(),
+            user.getOrganizationName(),
+            user.getCountry()
         );
     }
 }

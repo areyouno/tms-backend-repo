@@ -1,6 +1,5 @@
 package com.tms.backend.dto;
 
-import java.time.ZoneId;
 import java.util.Set;
 
 public record CreateUserDTO(
@@ -11,8 +10,7 @@ public record CreateUserDTO(
     Long roleId,
     boolean isActive,
 
-    ZoneId timeZone,
-    String note,
+    String organization,
 
     //optional fields
     String sourceLang,

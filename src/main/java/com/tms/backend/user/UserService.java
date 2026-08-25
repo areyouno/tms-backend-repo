@@ -1,6 +1,5 @@
 package com.tms.backend.user;
 import java.time.LocalDateTime;
-import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -11,6 +10,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,6 +67,9 @@ public class UserService {
     private final TaskListRepository taskListRepo;
     private final LoginHistoryRepository loginHistoryRepo;
 
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
     public UserService(PasswordEncoder passwordEncoder, UserRepository userRepo, RoleRepository roleRepo, EmailService emailService,
                        VerificationTokenRepository tokenRepo, GroupRepository groupRepo, JobRepository jobRepo,
                        JobWorkflowStepRepository jobWorkflowStepRepo, JobAnalysisRepository jobAnalysisRepo,
@@ -115,7 +118,7 @@ public class UserService {
         tokenRepo.save(token);
         
         // Send verification email
-        String verLink = "https://xliffl10n.latispass.net/api/users/verify?token=" + tokenValue;
+        String verLink = frontendUrl + "/api/users/verify?token=" + tokenValue;
         emailService.sendVerificationEmail(user.getEmail(), verLink);
     }
 
@@ -235,12 +238,17 @@ public class UserService {
         user.setRole(role);
         user.setActive(dto.isActive());
         
-        user.setTimeZone(dto.timeZone() != null ? dto.timeZone() : ZoneId.of("Asia/Manila"));
+        user.setOrganizationName(dto.organization());
         user.setSourceLang(dto.sourceLang());
         user.setTargetLanguages(dto.targetLanguages() != null ? dto.targetLanguages() : new HashSet<>());
 
-        user.setNote(dto.note());
-        user.setProfileComplete(true);
+        // The invited user still has to set a password and complete their
+        // profile (name/country/org confirmation) before they're routed into
+        // the app — see setPassword() below, which now auto-logs them in and
+        // sends them to the finalization flow. Until they submit that form,
+        // isProfileComplete stays false, so every future login (and the
+        // router guard on every navigation) keeps sending them back to it.
+        user.setProfileComplete(false);
 
         userRepo.save(user);
 
@@ -250,12 +258,12 @@ public class UserService {
         tokenRepo.save(token);
 
         // Send verification email
-        String verLink = "https://xliffl10n.latispass.net/api/users/verifyUserCreated?token=" + tokenValue;
+        String verLink = frontendUrl + "/api/users/verifyUserCreated?token=" + tokenValue;
         emailService.sendInvitationEmail(user.getEmail(), verLink, username);
     }
 
     @Transactional
-    public void setPassword(SetPasswordDTO dto) {
+    public User setPassword(SetPasswordDTO dto) {
 
         VerificationToken token = tokenRepo
             .findByToken(dto.token())
@@ -274,6 +282,8 @@ public class UserService {
 
         // token should be single-use
         tokenRepo.delete(token);
+
+        return user;
     }
     
     @Transactional
