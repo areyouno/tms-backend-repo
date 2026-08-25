@@ -11,6 +11,7 @@ public record CreateUserDTO(
     boolean isActive,
 
     String organization,
+    String country,
 
     //optional fields
     String sourceLang,

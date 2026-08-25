@@ -239,6 +239,7 @@ public class UserService {
         user.setActive(dto.isActive());
         
         user.setOrganizationName(dto.organization());
+        user.setCountry(dto.country());
         user.setSourceLang(dto.sourceLang());
         user.setTargetLanguages(dto.targetLanguages() != null ? dto.targetLanguages() : new HashSet<>());
 
