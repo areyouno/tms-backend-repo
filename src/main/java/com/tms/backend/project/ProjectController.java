@@ -39,7 +39,6 @@ import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentRequest;
 import com.tms.backend.dto.ProjectWithJobDTO;
 import com.tms.backend.dto.ProjectWithJobsCreateDTO;
-import com.tms.backend.dto.TmxCopyDTO;
 import com.tms.backend.dto.WorkflowStepOptionDTO;
 import com.tms.backend.job.JobService;
 import com.tms.backend.projectTbAssignment.ProjectTbAssignmentService;
@@ -113,14 +112,7 @@ public class ProjectController {
         return ResponseEntity.ok(projectService.getWorkflowStepsForProject(projectId));
     }
 
-    @GetMapping("/{projectId}/workflow-steps/{workflowStepId}/tmx-file")
-    public ResponseEntity<List<TmxCopyDTO>> getTmxFileByWorkflowStep(
-        @PathVariable Long projectId,
-        @PathVariable Long workflowStepId) {
-            return ResponseEntity.ok(tmAssignmentService.getTmxFileByWorkflowStep(projectId, workflowStepId));
-    }
-
-    @PostMapping("{projectId}/assign-TBs")
+@PostMapping("{projectId}/assign-TBs")
     public ResponseEntity<List<ProjectTbAssignmentDTO>> assignTB(
         @PathVariable Long projectId,
         @RequestBody ProjectTbAssignmentRequest request

@@ -58,10 +58,8 @@ import com.tms.backend.dto.JobWorkflowStepEditDTO;
 import com.tms.backend.dto.JobWorkflowStepStatusUpdateDTO;
 import com.tms.backend.dto.PagedResponseDTO;
 import com.tms.backend.dto.ProjectWithJobDTO;
-import com.tms.backend.dto.TmxCopyDTO;
 import com.tms.backend.dto.TranslatedFileUploadRequest;
 import com.tms.backend.exception.ResourceNotFoundException;
-import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
 import com.tms.backend.settingCompletedFilesNaming.CompletedFilesNamingSetting;
 import com.tms.backend.settingCompletedFilesNaming.CompletedFilesNamingSettingService;
 import com.tms.backend.tomato.FileConversionService;
@@ -84,7 +82,6 @@ public class JobController {
     private final FileConversionService fileService;
     private final UserService userService;
     private final CompletedFilesNamingSettingService completedFilesNamingSettingService;
-    private final ProjectTmAssignmentService tmAssignmentService;
 
     private static final Logger logger = LoggerFactory.getLogger(JobController.class);
 
@@ -95,23 +92,14 @@ public class JobController {
         JobService jobService,
         FileConversionService fileService,
         UserService userService,
-        CompletedFilesNamingSettingService completedFilesNamingSettingService,
-        ProjectTmAssignmentService tmAssignmentService){
+        CompletedFilesNamingSettingService completedFilesNamingSettingService){
         this.jobService = jobService;
         this.fileService = fileService;
         this.userService = userService;
         this.completedFilesNamingSettingService = completedFilesNamingSettingService;
-        this.tmAssignmentService = tmAssignmentService;
     }
 
-    @GetMapping("/{jobId}/workflow-steps/{workflowStepId}/tmx-file")
-    public ResponseEntity<List<TmxCopyDTO>> getTmxFileByJobWorkflowStep(
-        @PathVariable Long jobId,
-        @PathVariable Long workflowStepId) {
-            return ResponseEntity.ok(tmAssignmentService.getTmxFileByJobWorkflowStep(jobId, workflowStepId));
-    }
-    
-    @PostMapping("/upload")
+@PostMapping("/upload")
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<Map<String, Object>> createJob(
         @RequestPart("file") MultipartFile file,

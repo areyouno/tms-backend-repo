@@ -54,7 +54,6 @@ import com.tms.backend.netRateScheme.NetRateScheme;
 import com.tms.backend.netRateScheme.NetRateSchemeRepository;
 import com.tms.backend.priceList.PriceList;
 import com.tms.backend.priceList.PriceListRepository;
-import com.tms.backend.projectTmAssignment.ProjectTmAssignmentService;
 import com.tms.backend.setting.AutomationSetting;
 import com.tms.backend.setting.AutomationSettingService;
 import com.tms.backend.subDomain.SubDomain;
@@ -85,7 +84,6 @@ public class ProjectService {
     private final JobService jobService;
     private final NetRateSchemeRepository netRateSchemeRepo;
     private final PriceListRepository priceListRepo;
-    private final ProjectTmAssignmentService tmAssignmentService;
 
 
     public ProjectService(
@@ -104,8 +102,7 @@ public class ProjectService {
         AutomationSettingService automationSettingService,
         @Lazy JobService jobService,
         NetRateSchemeRepository netRateSchemeRepo,
-        PriceListRepository priceListRepo,
-        ProjectTmAssignmentService tmAssignmentService
+        PriceListRepository priceListRepo
     ) {
         this.projectRepo = projectRepo;
         this.businessUnitRepo = businessUnitRepo;
@@ -123,7 +120,6 @@ public class ProjectService {
         this.jobService = jobService;
         this.netRateSchemeRepo = netRateSchemeRepo;
         this.priceListRepo = priceListRepo;
-        this.tmAssignmentService = tmAssignmentService;
     }
 
     public ProjectDTO createProject(ProjectCreateDTO createDTO, String userEmail) throws UsernameNotFoundException {
@@ -612,11 +608,8 @@ public class ProjectService {
                 }
 
                 if (!newSteps.isEmpty()) {
-                    // Save explicitly (rather than relying on cascade at commit time) so each new
-                    // JobWorkflowStep has an id before we derive TMX copies from it below.
                     List<JobWorkflowStep> savedNewSteps = jobWfRepo.saveAll(newSteps);
                     job.getWorkflowSteps().addAll(savedNewSteps);
-                    tmAssignmentService.copyTmxForJobWorkflowSteps(job, savedNewSteps);
                 }
             }
         }
