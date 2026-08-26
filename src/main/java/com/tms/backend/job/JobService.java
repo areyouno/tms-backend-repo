@@ -775,22 +775,12 @@ public class JobService {
         .collect(Collectors.toList());
     }
 
-    @Transactional
-    public Path generateTargetFile(Long jobId) throws IOException {
+    @Transactional(readOnly = true)
+    public FileConversionService.GeneratedFile generateTargetFile(Long jobId) throws IOException {
         Job job = jobRepo.findById(jobId)
             .orElseThrow(() -> new IllegalArgumentException("Job not found: " + jobId));
 
-        // Reuse the job's existing folder (derived from its original file path) rather than
-        // rebuilding it, so the target file lands alongside the job's other files.
-        Path jobDirectory = resolveJobDirectory(job);
-
-        Path relativeTargetPath =
-            fileConversionService.convertXliffBackToOriginalFormat(job, jobDirectory);
-
-        // save
-        jobRepo.save(job);
-
-        return relativeTargetPath;
+        return fileConversionService.convertXliffBackToOriginalFormat(job);
     }
 
     @Transactional

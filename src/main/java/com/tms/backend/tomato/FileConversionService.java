@@ -410,10 +410,12 @@ public class FileConversionService {
         }
     }
 
-    public Path convertXliffBackToOriginalFormat(
-        Job job,
-        Path jobDirectory
-        ) throws IOException {
+    // In-memory result of a reverse conversion: the file name it should be downloaded as,
+    // and its bytes. Never written to disk - the caller streams it straight to the client.
+    public record GeneratedFile(String fileName, byte[] data) {
+    }
+
+    public GeneratedFile convertXliffBackToOriginalFormat(Job job) throws IOException {
 
         if (job.getOriginalFileFormat() == null) {
             throw new IllegalStateException("Original file format is not set for job " + job.getId());
@@ -478,26 +480,14 @@ public class FileConversionService {
             throw new RuntimeException("Reverse conversion failed. Status: " + response.getStatusCode());
         }
 
-        // Save target file
-        Path targetDir = baseDir.resolve(jobDirectory).resolve("target");
-
-        Files.createDirectories(targetDir);
-
         String targetFileName = job.getOriginalFileName().replaceFirst("\\.[^.]+$", targetExtension);
 
-        Path targetFilePath = targetDir.resolve(targetFileName);
-        Files.write(targetFilePath, response.getBody());
-
-        // Update target file path
-        Path relativeTargetPath = baseDir.relativize(targetFilePath);
-        job.setTargetFilePath(relativeTargetPath.toString().replace("\\", "/"));
-
         logger.info(
-            "Reverse conversion completed. Original format: {}, Target path: {}",
+            "Reverse conversion completed. Original format: {}, Target file: {}",
             job.getOriginalFileFormat(),
-            job.getTargetFilePath());
+            targetFileName);
 
-        return relativeTargetPath;
+        return new GeneratedFile(targetFileName, response.getBody());
     }
 
 

@@ -5,7 +5,6 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -21,7 +20,6 @@ import java.util.zip.ZipOutputStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -84,9 +82,6 @@ public class JobController {
     private final CompletedFilesNamingSettingService completedFilesNamingSettingService;
 
     private static final Logger logger = LoggerFactory.getLogger(JobController.class);
-
-    @Value("${file.upload-dir}")
-    private String baseUploadDir;
 
     public JobController(
         JobService jobService,
@@ -472,7 +467,7 @@ public class JobController {
                 }
 
                 String zipEntryName = groupFolderName(job) + "/" + appendTargetLang(job.getTranslatedFileName(), job);
-                resolved.add(new ResolvedZipEntry(filePath, zipEntryName));
+                resolved.add(new ResolvedZipEntry(Files.readAllBytes(filePath), zipEntryName));
             } catch (Exception e) {
                 logger.warn("Skipping translated file for job {}: {}", jobId, e.getMessage());
                 String label = job != null ? describeJob(job) : "Job " + jobId;
@@ -557,20 +552,17 @@ public class JobController {
     }
 
     @PostMapping("/{jobId}/download/target")
-    public ResponseEntity<Resource> downloadTargetFile(@PathVariable Long jobId) throws IOException {
+    public ResponseEntity<byte[]> downloadTargetFile(@PathVariable Long jobId) throws IOException {
 
-        // delegate to service
-        Path relativeTargetPath = jobService.generateTargetFile(jobId);
-
-        Path absolutePath = Paths.get(baseUploadDir).resolve(relativeTargetPath);
-        Resource resource = new UrlResource(absolutePath.toUri());
+        // delegate to service - generated in memory, never written to disk
+        FileConversionService.GeneratedFile targetFile = jobService.generateTargetFile(jobId);
 
         return ResponseEntity.ok()
                 .header(
                         HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + absolutePath.getFileName() + "\"")
+                        "attachment; filename=\"" + targetFile.fileName() + "\"")
                 .contentType(MediaType.APPLICATION_OCTET_STREAM)
-                .body(resource);
+                .body(targetFile.data());
     }
 
     // Download target files for multiple jobs at once
@@ -589,17 +581,14 @@ public class JobController {
 
     private ResponseEntity<StreamingResponseBody> downloadSingleTargetFile(Long jobId) {
         try {
-            Path relativeTargetPath = jobService.generateTargetFile(jobId);
-            Path absolutePath = Paths.get(baseUploadDir).resolve(relativeTargetPath);
+            FileConversionService.GeneratedFile targetFile = jobService.generateTargetFile(jobId);
 
-            StreamingResponseBody stream = outputStream -> {
-                Files.copy(absolutePath, outputStream);
-            };
+            StreamingResponseBody stream = outputStream -> outputStream.write(targetFile.data());
 
             return ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_OCTET_STREAM)
                     .header(HttpHeaders.CONTENT_DISPOSITION,
-                            "attachment; filename=\"" + absolutePath.getFileName() + "\"")
+                            "attachment; filename=\"" + targetFile.fileName() + "\"")
                     .body(stream);
         } catch (Exception e) {
             logger.error("Error downloading target file for job {}", jobId, e);
@@ -632,17 +621,10 @@ public class JobController {
             Job job = null;
             try {
                 job = jobService.getJobById(jobId);
-                Path relativeTargetPath = jobService.generateTargetFile(jobId);
-                Path absolutePath = Paths.get(baseUploadDir).resolve(relativeTargetPath);
+                FileConversionService.GeneratedFile targetFile = jobService.generateTargetFile(jobId);
 
-                if (!Files.exists(absolutePath) || !Files.isReadable(absolutePath)) {
-                    logger.warn("Skipping job {}: target file not found or not readable", jobId);
-                    skipped.add(new SkippedJobInfo(jobId, describeJob(job), "file not found"));
-                    continue;
-                }
-
-                String zipEntryName = groupFolderName(job) + "/" + appendTargetLang(absolutePath.getFileName().toString(), job);
-                resolved.add(new ResolvedZipEntry(absolutePath, zipEntryName));
+                String zipEntryName = groupFolderName(job) + "/" + appendTargetLang(targetFile.fileName(), job);
+                resolved.add(new ResolvedZipEntry(targetFile.data(), zipEntryName));
             } catch (Exception e) {
                 logger.warn("Skipping target file for job {}: {}", jobId, e.getMessage());
                 String label = job != null ? describeJob(job) : "Job " + jobId;
@@ -886,9 +868,9 @@ public class JobController {
                 .body(stream);
     }
 
-    // A file resolved and ready to be written into the zip: its source path on disk
-    // and the entry name it should be written under.
-    private record ResolvedZipEntry(Path path, String zipEntryName) {
+    // A file resolved and ready to be written into the zip: its bytes (already in memory,
+    // never written to disk) and the entry name it should be written under.
+    private record ResolvedZipEntry(byte[] data, String zipEntryName) {
     }
 
     // A job whose file could not be added to the zip, and why. `label` is the
@@ -942,7 +924,7 @@ public class JobController {
             for (ResolvedZipEntry entry : resolved) {
                 try {
                     zipOut.putNextEntry(new ZipEntry(entry.zipEntryName()));
-                    Files.copy(entry.path(), zipOut);
+                    zipOut.write(entry.data());
                     zipOut.closeEntry();
                 } catch (Exception e) {
                     logger.warn("Failed to add {} to zip: {}", entry.zipEntryName(), e.getMessage());
