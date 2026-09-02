@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tms.backend.dto.ImportTmxRequestDTO;
+import com.tms.backend.dto.TmCleanupResponseDTO;
 import com.tms.backend.dto.TmListResponseDTO;
 import com.tms.backend.dto.TmxImportJobStatusDTO;
 import com.tms.backend.dto.TmxImportStartResponseDTO;
@@ -110,6 +111,31 @@ public class TranslationMemoryService {
         } while (hasNextPage);
 
         return allTms;
+    }
+
+    public TmCleanupResponseDTO cleanupTm(Long tmId, MultipartFile xliffFile, String userName) throws IOException {
+        String url = tomatoBaseUrl + "/api/TM/" + tmId + "/cleanup";
+
+        ByteArrayResource fileResource = new ByteArrayResource(xliffFile.getBytes()) {
+            @Override
+            public String getFilename() { return xliffFile.getOriginalFilename(); }
+        };
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("xliffFile", fileResource);
+        body.add("userName", userName);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        ResponseEntity<String> response = restTemplate.postForEntity(
+                url, new HttpEntity<>(body, headers), String.class);
+
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        TmCleanupResponseDTO dto = mapper.readValue(response.getBody(), TmCleanupResponseDTO.class);
+        log.info("TM {} cleaned up: {} translation units merged by {}", tmId, dto.transUnitCount(), userName);
+        return dto;
     }
 
     public byte[] exportTmx(Long tmId) {

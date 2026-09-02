@@ -2,8 +2,13 @@ package com.tms.backend.netRateScheme;
 
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tms.backend.client.Client;
 import com.tms.backend.client.ClientRepository;
 import com.tms.backend.dto.MatchTypeRateDTO;
@@ -11,6 +16,7 @@ import com.tms.backend.dto.MatchTypeRateResponseDTO;
 import com.tms.backend.dto.NetRateSchemeCreateDTO;
 import com.tms.backend.dto.NetRateSchemeResponseDTO;
 import com.tms.backend.dto.NetRateSchemeUpdateDTO;
+import com.tms.backend.project.Project;
 import com.tms.backend.project.ProjectRepository;
 import com.tms.backend.quote.QuoteRepository;
 import com.tms.backend.user.User;
@@ -20,6 +26,8 @@ import jakarta.transaction.Transactional;
 
 @Service
 public class NetRateSchemeService {
+    private static final Logger log = LoggerFactory.getLogger(NetRateSchemeService.class);
+
     private final NetRateSchemeRepository netRateSchemeRepository;
     private final UserRepository userRepository;
     private final ClientRepository clientRepository;
@@ -229,6 +237,62 @@ public class NetRateSchemeService {
             new MatchTypeRate(MatchType.PERCENT_50, 100L /*, 100L, 100L, 100L*/),
             new MatchTypeRate(MatchType.PERCENT_0, 100L /*, 100L, 100L, 100L*/)
         );
+    }
+
+    /**
+     * Resolves which NetRateScheme to use for sizing a project's files: the project's own
+     * scheme, falling back to its client's scheme, falling back to the global default —
+     * skipping any scheme along the way that has no match type rates configured.
+     */
+    public NetRateSchemeResponseDTO resolveSchemeForProject(Project project) {
+        NetRateScheme projectScheme = project.getNetRateScheme();
+        if (projectScheme != null) {
+            NetRateSchemeResponseDTO dto = toDTO(projectScheme);
+            if (!dto.matchTypeRates().isEmpty()) return dto;
+            log.warn("Project scheme '{}' (id={}) has no match type rates, falling back to default", dto.name(), dto.id());
+        }
+        if (project.getClient() != null) {
+            NetRateScheme clientScheme = project.getClient().getNetRateScheme();
+            if (clientScheme != null) {
+                NetRateSchemeResponseDTO dto = toDTO(clientScheme);
+                if (!dto.matchTypeRates().isEmpty()) return dto;
+                log.warn("Client scheme '{}' (id={}) has no match type rates, falling back to default", dto.name(), dto.id());
+            }
+        }
+        return getDefaultScheme();
+    }
+
+    /**
+     * Builds the sizingRequestJson field sent to Tomato's sizing APIs: the resolved
+     * NetRateScheme (match-type rates + NT rules) plus the projectId, as a JSON string.
+     */
+    public String buildSizingRequestJson(NetRateSchemeResponseDTO scheme, Long projectId) {
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode root = mapper.createObjectNode();
+            root.put("id", scheme.id());
+            root.put("name", scheme.name());
+            root.put("projectId", projectId);
+
+            ObjectNode ntRules = root.putObject("ntRules");
+            ntRules.putArray("regexPatterns");
+            ntRules.putArray("staticTerms");
+            ntRules.putArray("exactTerms");
+            ntRules.putArray("inlineElements");
+
+            ArrayNode matchTypeRates = root.putArray("matchTypeRates");
+            for (MatchTypeRateResponseDTO rate : scheme.matchTypeRates()) {
+                ObjectNode rateNode = matchTypeRates.addObject();
+                rateNode.put("matchType", rate.matchType().name());
+                rateNode.put("transMemoryPercent", rate.transMemoryPercent() != null ? rate.transMemoryPercent() : 0L);
+            }
+            String json = mapper.writeValueAsString(root);
+            String prettyJson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(root);
+            log.info("sizingRequestJson sent to Tomato:\n{}", prettyJson);
+            return json;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to build sizingRequestJson", e);
+        }
     }
 
     private MatchTypeRate toMatchTypeRate(MatchTypeRateDTO dto) {

@@ -1,15 +1,22 @@
 package com.tms.backend.projectTmAssignment;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import com.tms.backend.dto.ProjectTmAssignmentDTO;
 import com.tms.backend.dto.ProjectTmAssignmentRequest;
+import com.tms.backend.job.Job;
 import com.tms.backend.project.Project;
 import com.tms.backend.project.ProjectRepository;
 import com.tms.backend.workflowSteps.WorkflowStep;
@@ -21,23 +28,29 @@ import jakarta.transaction.Transactional;
 @Service
 public class ProjectTmAssignmentService {
 
+    private static final Logger log = LoggerFactory.getLogger(ProjectTmAssignmentService.class);
+
     private ProjectRepository projectRepo;
     private WorkflowStepRepository wfRepo;
     private ProjectTmAssignmentRepository tmAssignmentRepo;
+    private ProjectTmSizingService tmSizingService;
 
     public ProjectTmAssignmentService(
         ProjectRepository projectRepo,
         WorkflowStepRepository wfRepo,
-        ProjectTmAssignmentRepository tmAssignmentRepo
+        ProjectTmAssignmentRepository tmAssignmentRepo,
+        ProjectTmSizingService tmSizingService
     ){
         this.projectRepo = projectRepo;
         this.wfRepo = wfRepo;
         this.tmAssignmentRepo = tmAssignmentRepo;
+        this.tmSizingService = tmSizingService;
     }
 
 
     @Transactional
-    public List<ProjectTmAssignmentDTO> assignTMs(Long projectId, ProjectTmAssignmentRequest req) {
+    public List<ProjectTmAssignmentDTO> assignTMs(Long projectId, ProjectTmAssignmentRequest req,
+            String requestingUsername) {
         Project project = projectRepo.findById(projectId)
                 .orElseThrow(() -> new EntityNotFoundException("Project not found"));
 
@@ -105,11 +118,66 @@ public class ProjectTmAssignmentService {
             savedAssignments.add(assignment);
         }
 
+        triggerTmSizing(project, savedAssignments, requestingUsername);
+
         // Convert to DTOs and return
         return savedAssignments.stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
+
+    /**
+     * Kicks off one Tomato sizing call per distinct (sourceLang, targetLang) among the just-saved
+     * assignments, batching every TM that shares a language pair into a single call (Tomato's
+     * tmId is repeatable in the sizing request). Runs after this transaction commits so the
+     * background sizing service's own transaction is guaranteed to see the saved rows.
+     */
+    private void triggerTmSizing(Project project, List<ProjectTmAssignment> assignments, String requestingUsername) {
+        Map<LanguagePair, List<Long>> tmIdsByPair = assignments.stream()
+                .filter(a -> a.getSourceLang() != null && a.getTargetLang() != null)
+                .collect(Collectors.groupingBy(
+                        a -> new LanguagePair(a.getSourceLang(), a.getTargetLang()),
+                        LinkedHashMap::new,
+                        Collectors.mapping(ProjectTmAssignment::getTmId, Collectors.toList())));
+
+        for (Map.Entry<LanguagePair, List<Long>> entry : tmIdsByPair.entrySet()) {
+            LanguagePair pair = entry.getKey();
+            List<Long> tmIds = entry.getValue().stream().distinct().collect(Collectors.toList());
+
+            List<String> filePaths = project.getJobs().stream()
+                    .filter(job -> pair.source().equals(job.getSourceLang())
+                            && job.getTargetLangs() != null && job.getTargetLangs().contains(pair.target()))
+                    .map(Job::getOriginalFilePath)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            if (filePaths.isEmpty()) {
+                log.warn("Skipping TM sizing for project {} ({} -> {}): no matching job files",
+                        project.getId(), pair.source(), pair.target());
+                continue;
+            }
+
+            String templateTmName = project.getName() + "-" + pair.source() + "-" + pair.target()
+                    + "-" + System.currentTimeMillis();
+            Long projectId = project.getId();
+
+            Runnable submit = () -> tmSizingService.submitAndTrackSizing(
+                    projectId, pair.source(), pair.target(), tmIds, filePaths, templateTmName, requestingUsername);
+
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        submit.run();
+                    }
+                });
+            } else {
+                submit.run();
+            }
+        }
+    }
+
+    private record LanguagePair(String source, String target) {}
 
     private ProjectTmAssignmentDTO convertToDTO(ProjectTmAssignment assignment) {
         return new ProjectTmAssignmentDTO(

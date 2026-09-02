@@ -2,10 +2,13 @@ package com.tms.backend.email;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.tms.backend.job.JobWorkflowStatus;
@@ -15,6 +18,8 @@ import jakarta.mail.internet.MimeMessage;
 
 @Service
 public class EmailService {
+
+    private static final Logger log = LoggerFactory.getLogger(EmailService.class);
 
     @Autowired
     private JavaMailSender mailSender;
@@ -135,7 +140,6 @@ public class EmailService {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true);
 
-            System.out.println("Using email: " + fromEmail);
             helper.setFrom(fromEmail);
             helper.setTo(to);
             helper.setSubject(subject);
@@ -143,7 +147,7 @@ public class EmailService {
 
             mailSender.send(message);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to send email to {} (subject: {}): {}", to, subject, e.getMessage(), e);
         }
     }
 
@@ -180,6 +184,9 @@ public class EmailService {
         + "</html>";
 }
 
+    // @Async so a slow/unreachable SMTP server can never block the caller's request thread
+    // (this previously made TaskListService.deleteTaskList/createTaskList hang on send).
+    @Async
     public void sendTaskUnassignmentEmail(String toEmail, String assigneeFirstName, String taskName) {
         String subject = appName + " - Task Unassigned: " + taskName;
         String htmlContent = buildTaskUnassignmentEmailHTML(assigneeFirstName, taskName);
@@ -208,6 +215,7 @@ public class EmailService {
             + "</html>";
     }
 
+    @Async
     public void sendTaskAssignmentEmail(String toEmail, String assigneeFirstName, String taskName, String workflowStepName,
                                          String sourceLang, String targetLang,
                                          LocalDateTime startDate, LocalDateTime dueDate, String description, Long taskListId) {

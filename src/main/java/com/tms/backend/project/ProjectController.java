@@ -102,8 +102,12 @@ public class ProjectController {
     @PostMapping("/{projectId}/assign-TMs")
     public ResponseEntity<List<ProjectTmAssignmentDTO>> assignTM(
         @PathVariable Long projectId,
-        @RequestBody ProjectTmAssignmentRequest request) {
-            List<ProjectTmAssignmentDTO> savedAssignments = tmAssignmentService.assignTMs(projectId, request);
+        @RequestBody ProjectTmAssignmentRequest request,
+        @AuthenticationPrincipal CustomUserDetails userDetails) {
+            User currentUser = userService.findByUid(userDetails.getUid())
+                    .orElseThrow(() -> new RuntimeException("User not found with uid: " + userDetails.getUid()));
+            List<ProjectTmAssignmentDTO> savedAssignments = tmAssignmentService.assignTMs(
+                    projectId, request, currentUser.getUsername());
             return ResponseEntity.ok(savedAssignments);
     }
 

@@ -16,17 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.tms.backend.dto.JobAnalysisResponseDTO;
-import com.tms.backend.dto.MatchTypeRateResponseDTO;
 import com.tms.backend.dto.NetRateSchemeResponseDTO;
 import com.tms.backend.dto.SizingStatusDTO;
 import com.tms.backend.dto.TomatoSizingResponse;
 import com.tms.backend.exception.MissingTmAssignmentException;
 import com.tms.backend.job.Job;
 import com.tms.backend.job.JobRepository;
-import com.tms.backend.netRateScheme.NetRateScheme;
 import com.tms.backend.netRateScheme.NetRateSchemeService;
 import com.tms.backend.project.Project;
 import com.tms.backend.projectTmAssignment.ProjectTmAssignment;
@@ -115,14 +111,14 @@ public class JobAnalysisService {
         Project project = primaryJob.getProject();
         Long projectId = project.getId();
 
-        NetRateSchemeResponseDTO scheme = resolveSchemeForProject(project);
+        NetRateSchemeResponseDTO scheme = netRateSchemeService.resolveSchemeForProject(project);
 
         String sourceLanguage = languagePair.source();
         String targetLanguage = languagePair.target();
 
         log.info("Sizing request for project {} using tmIds: {}", projectId, tmIds);
 
-        String sizingRequestJson = buildSizingRequestJson(scheme, projectId);
+        String sizingRequestJson = netRateSchemeService.buildSizingRequestJson(scheme, projectId);
 
         List<String> filePaths = jobs.stream()
                 .map(Job::getOriginalFilePath)
@@ -497,27 +493,6 @@ public class JobAnalysisService {
         jobAnalysisRepository.deleteById(id);
     }
 
-    private NetRateSchemeResponseDTO resolveSchemeForProject(Project project) {
-        // 1. Project's own scheme
-        NetRateScheme projectScheme = project.getNetRateScheme();
-        if (projectScheme != null) {
-            NetRateSchemeResponseDTO dto = netRateSchemeService.toDTO(projectScheme);
-            if (!dto.matchTypeRates().isEmpty()) return dto;
-            log.warn("Project scheme '{}' (id={}) has no match type rates, falling back to default", dto.name(), dto.id());
-        }
-        // 2. Client's scheme
-        if (project.getClient() != null) {
-            NetRateScheme clientScheme = project.getClient().getNetRateScheme();
-            if (clientScheme != null) {
-                NetRateSchemeResponseDTO dto = netRateSchemeService.toDTO(clientScheme);
-                if (!dto.matchTypeRates().isEmpty()) return dto;
-                log.warn("Client scheme '{}' (id={}) has no match type rates, falling back to default", dto.name(), dto.id());
-            }
-        }
-        // 3. Global default
-        return netRateSchemeService.getDefaultScheme();
-    }
-
     private String resolveNameMacros(String template, Job job, String targetLanguage) {
         if (template == null) {
             return "Analysis";
@@ -539,46 +514,6 @@ public class JobAnalysisService {
         }
 
         return resolved;
-    }
-
-    private String buildSizingRequestJson(NetRateSchemeResponseDTO scheme, Long projectId) {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            ObjectNode root = mapper.createObjectNode();
-            root.put("id", scheme.id());
-            root.put("name", scheme.name());
-            root.put("projectId", projectId);
-
-            ObjectNode ntRules = root.putObject("ntRules");
-            ntRules.putArray("regexPatterns");
-            // ntRules.putArray("regexPatterns")
-            //     .add("^Model\\s+[A-Z0-9]+$")
-            //     .add("\\bBMW\\s+X[0-9]\\b");
-            ntRules.putArray("staticTerms");
-            // ntRules.putArray("staticTerms")
-            //     .add("API").add("USB").add("ABS");
-            ntRules.putArray("exactTerms");
-            // ntRules.putArray("exactTerms")
-            //     .add("OK").add("Cancel").add("Yes").add("No");
-            ntRules.putArray("inlineElements");
-            // ntRules.putArray("inlineElements")
-            //     .add("xref").add("userinput");
-
-            ArrayNode matchTypeRates = root.putArray("matchTypeRates");
-            for (MatchTypeRateResponseDTO rate : scheme.matchTypeRates()) {
-                ObjectNode rateNode = matchTypeRates.addObject();
-                rateNode.put("matchType", rate.matchType().name());
-                rateNode.put("transMemoryPercent", rate.transMemoryPercent() != null ? rate.transMemoryPercent() : 0L);
-                // rateNode.put("nonTranslatablePercent", rate.nonTranslatablePercent() != null ? rate.nonTranslatablePercent() : 0L);
-                // rateNode.put("machineTransPercent", rate.machineTransPercent() != null ? rate.machineTransPercent() : 0L);
-            }
-            String json = mapper.writeValueAsString(root);
-            String prettyJson = mapper.writerWithDefaultPrettyPrinter().writeValueAsString(root);
-            log.info("sizingRequestJson sent to Tomato:\n{}", prettyJson);
-            return json;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to build sizingRequestJson", e);
-        }
     }
 
     private long safeLong(Long value) {

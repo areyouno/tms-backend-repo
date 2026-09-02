@@ -15,6 +15,7 @@ import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -26,6 +27,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.tms.backend.dto.TemplateSizingResultResponse;
 import com.tms.backend.dto.TomatoSizingResponse;
 
 
@@ -43,7 +45,10 @@ public class SizingService {
     private String uploadDir;
 
     public SizingService(RestTemplateBuilder builder) {
-        this.restTemplate = builder.build();
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(30_000);
+        factory.setReadTimeout(60_000);
+        this.restTemplate = builder.requestFactory(() -> factory).build();
     }
 
     public TomatoSizingResponse sendFilesToTomatoAPI(List<MultipartFile> files) {
@@ -93,6 +98,102 @@ public class SizingService {
      */
     public String sendFilesToTomatoAPIByPath(List<String> filePaths, String sizingRequestJson, List<Long> tmIds,
             String sourceLanguage, String targetLanguage, Integer minSimilarity) {
+        FileUploadRequest upload = prepareFileUpload(filePaths);
+
+        try {
+            if (tmIds != null) {
+                for (Long tmId : tmIds) {
+                    upload.body().add("tmId", String.valueOf(tmId));
+                }
+            }
+            if (sizingRequestJson != null) {
+                upload.body().add("sizingRequestJson", sizingRequestJson);
+            }
+            if (sourceLanguage != null) {
+                upload.body().add("sourceLanguage", sourceLanguage);
+            }
+            if (targetLanguage != null) {
+                upload.body().add("targetLanguage", targetLanguage);
+            }
+            if (minSimilarity != null) {
+                upload.body().add("minSimilarity", minSimilarity);
+            }
+
+            String tomatoJobId = extractTomatoJobId(postMultipart(upload));
+            log.info("Tomato sizing job submitted, jobId: {}", tomatoJobId);
+            return tomatoJobId;
+        } catch (Exception e) {
+            log.error("Failed to submit sizing job to Tomato API: {}", e.getMessage());
+            throw new RuntimeException("Failed to submit sizing job to Tomato API", e);
+        }
+    }
+
+    /**
+     * Submits files to the Tomato sizing API to build a fresh template TM (identified by
+     * templateTmName) instead of sizing against existing TMs. Tomato requires at least one
+     * base tmId to derive the template from (400s with "At least one tmId is required to
+     * create a template TM" otherwise). Returns the Tomato sizingJobId; use
+     * fetchTemplateSizingResultOnce(jobId) to poll for the resulting templateTm.
+     */
+    public String submitTemplateSizing(List<String> filePaths, String templateTmName, String username,
+            List<Long> tmIds, String sourceLanguage, String targetLanguage, String sizingRequestJson) {
+        return submitTemplateSizing(filePaths, templateTmName, username, tmIds, sourceLanguage, targetLanguage,
+                sizingRequestJson, null, null);
+    }
+
+    /**
+     * Same as the six-arg overload, plus minSimilarity (pretranslation threshold) and
+     * templateTmId (an existing template TM to size into; null derives a brand-new one).
+     */
+    public String submitTemplateSizing(List<String> filePaths, String templateTmName, String username,
+            List<Long> tmIds, String sourceLanguage, String targetLanguage, String sizingRequestJson,
+            Integer minSimilarity, Long templateTmId) {
+        FileUploadRequest upload = prepareFileUpload(filePaths);
+
+        try {
+            if (tmIds != null) {
+                for (Long tmId : tmIds) {
+                    upload.body().add("tmId", String.valueOf(tmId));
+                }
+            }
+            if (templateTmName != null) {
+                upload.body().add("templateTmName", templateTmName);
+            }
+            if (username != null) {
+                upload.body().add("username", username);
+            }
+            if (sourceLanguage != null) {
+                upload.body().add("sourceLanguage", sourceLanguage);
+            }
+            if (targetLanguage != null) {
+                upload.body().add("targetLanguage", targetLanguage);
+            }
+            if (sizingRequestJson != null) {
+                upload.body().add("sizingRequestJson", sizingRequestJson);
+            }
+            if (minSimilarity != null) {
+                upload.body().add("minSimilarity", minSimilarity);
+            }
+            if (templateTmId != null) {
+                upload.body().add("templateTmId", templateTmId);
+            }
+
+            log.info("Submitting template TM sizing to {}: files={}, tmIds={}, templateTmName={}, "
+                    + "username={}, sourceLanguage={}, targetLanguage={}, sizingRequestJson={}, "
+                    + "minSimilarity={}, templateTmId={}",
+                    upload.endpoint(), filePaths, tmIds, templateTmName, username, sourceLanguage, targetLanguage,
+                    sizingRequestJson, minSimilarity, templateTmId);
+
+            String sizingJobId = extractTomatoJobId(postMultipart(upload));
+            log.info("Template TM sizing job submitted, jobId: {}", sizingJobId);
+            return sizingJobId;
+        } catch (Exception e) {
+            log.error("Failed to submit template sizing job to Tomato API: {}", e.getMessage());
+            throw new RuntimeException("Failed to submit template sizing job to Tomato API", e);
+        }
+    }
+
+    private FileUploadRequest prepareFileUpload(List<String> filePaths) {
         String firstFilename = Paths.get(filePaths.get(0)).getFileName().toString();
         boolean isXliff = firstFilename.endsWith(".xliff") || firstFilename.endsWith(".xlf");
         String fileKey = isXliff ? "xliffFiles" : "ditaFiles";
@@ -119,42 +220,20 @@ public class SizingService {
             });
         }
 
-        try {
-            if (tmIds != null) {
-                for (Long tmId : tmIds) {
-                    body.add("tmId", String.valueOf(tmId));
-                }
-            }
-            if (sizingRequestJson != null) {
-                body.add("sizingRequestJson", sizingRequestJson);
-            }
-            if (sourceLanguage != null) {
-                body.add("sourceLanguage", sourceLanguage);
-            }
-            if (targetLanguage != null) {
-                body.add("targetLanguage", targetLanguage);
-            }
-            if (minSimilarity != null) {
-                body.add("minSimilarity", minSimilarity);
-            }
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-
-            ResponseEntity<String> rawResponse = restTemplate.postForEntity(
-                    baseUrl + endpoint, requestEntity, String.class
-            );
-
-            String tomatoJobId = extractTomatoJobId(rawResponse.getBody());
-            log.info("Tomato sizing job submitted, jobId: {}", tomatoJobId);
-            return tomatoJobId;
-        } catch (Exception e) {
-            log.error("Failed to submit sizing job to Tomato API: {}", e.getMessage());
-            throw new RuntimeException("Failed to submit sizing job to Tomato API", e);
-        }
+        return new FileUploadRequest(endpoint, body);
     }
+
+    private String postMultipart(FileUploadRequest upload) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(upload.body(), headers);
+        ResponseEntity<String> rawResponse = restTemplate.postForEntity(
+                baseUrl + upload.endpoint(), requestEntity, String.class
+        );
+        return rawResponse.getBody();
+    }
+
+    private record FileUploadRequest(String endpoint, MultiValueMap<String, Object> body) {}
 
     /**
      * Polls GET /api/Sizing/sizing-progress/{jobId} once.
@@ -215,6 +294,66 @@ public class SizingService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to fetch sizing result for jobId: " + tomatoJobId, e);
         }
+    }
+
+    /**
+     * Polls GET /api/Sizing/sizing-result/{jobId} once for a template-TM sizing job.
+     * Returns completed=false while the job is still pending/processing. Once Tomato reports
+     * status "completed", returns the resulting templateTm (tmId/name/unitCount).
+     * Throws if status is "failed", the job is not found (404), or a completed job is missing
+     * its templateTm result.
+     */
+    public TemplateSizingPollStatus fetchTemplateSizingResultOnce(String sizingJobId) {
+        try {
+            ResponseEntity<String> response = restTemplate.getForEntity(
+                    baseUrl + "/api/Sizing/sizing-result/" + sizingJobId, String.class
+            );
+
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            JsonNode root = mapper.readTree(response.getBody());
+
+            String status = root.path("status").asText(null);
+            log.info("Template sizing job {} status: {}", sizingJobId, status);
+
+            if ("failed".equalsIgnoreCase(status)) {
+                String apiError = firstNonBlank(
+                        root.path("error").asText(null),
+                        root.path("message").asText(null),
+                        root.path("result").path("error").asText(null),
+                        root.path("result").path("logContent").asText(null)
+                );
+                String message = "Tomato template sizing job " + sizingJobId + " failed";
+                message += apiError != null ? ": " + apiError : " (raw response: " + response.getBody() + ")";
+                throw new RuntimeException(message);
+            }
+            if (!"completed".equalsIgnoreCase(status)) {
+                return new TemplateSizingPollStatus(false, null);
+            }
+
+            TemplateSizingResultResponse parsed = mapper.treeToValue(root, TemplateSizingResultResponse.class);
+            if (parsed.result() == null || parsed.result().templateTm() == null) {
+                throw new RuntimeException(
+                        "Tomato template sizing job " + sizingJobId + " completed without a templateTm result");
+            }
+            return new TemplateSizingPollStatus(true, parsed.result().templateTm());
+
+        } catch (HttpClientErrorException.NotFound e) {
+            throw new RuntimeException("Tomato template sizing job not found: " + sizingJobId, e);
+        } catch (RuntimeException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to fetch template sizing result for jobId: " + sizingJobId, e);
+        }
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value;
+            }
+        }
+        return null;
     }
 
     /**

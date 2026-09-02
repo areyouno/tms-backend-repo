@@ -27,9 +27,18 @@ public record TaskListDTO(
     String assigneeName,
     String createdBy,
     LocalDateTime createDate,
-    List<TaskListItemDTO> items
+    List<TaskListItemDTO> items,
+    String tmProvisioningStatus,
+    Long templateTmId,
+    String templateTmName,
+    Integer templateTmUnitCount,
+    Long assignedTmId,
+    Boolean tmAssignWasExisting,
+    String tmProvisioningError,
+    Long masterTmId
 ) {
-    public static TaskListDTO from(TaskList taskList, Map<Long, JobWorkflowStep> jobWorkflowStepByJobId) {
+    public static TaskListDTO from(
+            TaskList taskList, Map<Long, JobWorkflowStep> jobWorkflowStepByJobId, Long masterTmId) {
         Project project = taskList.getJobs().stream()
             .findFirst()
             .map(Job::getProject)
@@ -62,7 +71,15 @@ public record TaskListDTO(
                 : null,
             taskList.getCreatedBy(),
             taskList.getCreateDate(),
-            items
+            items,
+            taskList.getTmProvisioningStatus(),
+            taskList.getTemplateTmId(),
+            taskList.getTemplateTmName(),
+            taskList.getTemplateTmUnitCount(),
+            taskList.getAssignedTmId(),
+            taskList.getTmAssignWasExisting(),
+            taskList.getTmProvisioningError(),
+            masterTmId
         );
     }
 }
