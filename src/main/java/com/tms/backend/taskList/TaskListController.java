@@ -91,6 +91,16 @@ public class TaskListController {
         }
     }
 
+    @GetMapping("/by-job/{jobId}")
+    @PreAuthorize(AccessRolesConstants.AUTHENTICATED)
+    public ResponseEntity<TaskListDTO> getTaskListByJobAndWorkflowStep(
+        @PathVariable Long jobId,
+        @RequestParam Long workflowStepId) {
+        return taskListService.getTaskListByJobAndWorkflowStep(jobId, workflowStepId)
+            .map(ResponseEntity::ok)
+            .orElse(ResponseEntity.notFound().build());
+    }
+
     @GetMapping("/assignee/{assigneeUid}")
     @PreAuthorize(AccessRolesConstants.AUTHENTICATED)
     public List<TaskListSummaryDTO> getTaskListsByAssignee(@PathVariable String assigneeUid) {

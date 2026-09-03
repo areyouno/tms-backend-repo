@@ -335,6 +335,13 @@ public class TaskListService {
         }
     }
 
+    public Optional<TaskListDTO> getTaskListByJobAndWorkflowStep(Long jobId, Long workflowStepId) {
+        return taskListRepo.findByJobs_IdAndWorkflowStep_IdOrderByCreateDateDesc(jobId, workflowStepId)
+            .stream()
+            .findFirst()
+            .map(this::toDetailDto);
+    }
+
     private TaskListDTO toDetailDto(TaskList taskList) {
         Map<Long, JobWorkflowStep> jobWorkflowStepByJobId = Map.of();
         if (taskList.getWorkflowStep() != null && !taskList.getJobs().isEmpty()) {
