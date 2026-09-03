@@ -197,6 +197,8 @@ public class TaskListService {
      * from ProjectTmAssignmentService.assignTMs), and assigns it to the task's workflow step.
      * Mutates taskList in place; does not persist (caller saves it as part of task creation).
      * Failures here don't block task list creation, they're just recorded on the task list.
+     * If sizing hasn't completed yet, records who asked so retryPendingTmProvisioning (invoked
+     * once sizing finishes, see ProjectTmSizingService.pollAndStore) can pick this up later.
      */
     private void assignPersonalTm(TaskList taskList, User assignee, User creator) {
         Job primaryJob = taskList.getJobs().stream().findFirst().orElse(null);
@@ -205,36 +207,72 @@ public class TaskListService {
         }
 
         Long projectId = primaryJob.getProject().getId();
+        LangPair pair = resolveLangPair(taskList, primaryJob);
+        taskList.setProvisioningRequestedByUsername(creator.getUsername());
+
+        Optional<ProjectTmSizing> sizing = tmSizingRepo
+            .findFirstByProject_IdAndSourceLangAndTargetLangAndStatusOrderByCreatedAtDesc(
+                projectId, pair.sourceLang(), pair.targetLang(), "COMPLETED");
+
+        if (sizing.isEmpty() || sizing.get().getTemplateTmId() == null) {
+            log.warn("No completed TM sizing found for project {} ({} -> {}); skipping personal TM assignment",
+                projectId, pair.sourceLang(), pair.targetLang());
+            taskList.setTmProvisioningStatus("SKIPPED_NO_TEMPLATE_TM");
+            return;
+        }
+
+        applyPersonalTmAssignment(taskList, assignee, creator.getUsername(), sizing.get().getTemplateTmId());
+    }
+
+    /**
+     * Retries assignPersonalTm for tasklists that were left SKIPPED_NO_TEMPLATE_TM because TM
+     * sizing hadn't finished at creation time. Called from ProjectTmSizingService.pollAndStore
+     * right after a sizing job completes and a templateTmId becomes available for this exact
+     * project + language pair.
+     */
+    @Transactional
+    public void retryPendingTmProvisioning(Long projectId, String sourceLang, String targetLang, Long templateTmId) {
+        List<TaskList> candidates = taskListRepo.findPendingTmProvisioningForProject(projectId);
+        for (TaskList taskList : candidates) {
+            Job primaryJob = taskList.getJobs().stream().findFirst().orElse(null);
+            if (primaryJob == null || taskList.getAssignee() == null || taskList.getWorkflowStep() == null) {
+                continue;
+            }
+
+            LangPair pair = resolveLangPair(taskList, primaryJob);
+            if (!sourceLang.equals(pair.sourceLang()) || !targetLang.equals(pair.targetLang())) {
+                continue;
+            }
+
+            applyPersonalTmAssignment(
+                taskList, taskList.getAssignee(), taskList.getProvisioningRequestedByUsername(), templateTmId);
+            taskListRepo.save(taskList);
+        }
+    }
+
+    private record LangPair(String sourceLang, String targetLang) {}
+
+    private LangPair resolveLangPair(TaskList taskList, Job primaryJob) {
         String sourceLang = primaryJob.getSourceLang();
         String targetLang = taskList.getTargetLang() != null
             ? taskList.getTargetLang().getRfcCode()
             : (primaryJob.getTargetLangs() != null
                 ? primaryJob.getTargetLangs().stream().findFirst().orElse(null)
                 : null);
+        return new LangPair(sourceLang, targetLang);
+    }
 
-        Optional<ProjectTmSizing> sizing = tmSizingRepo
-            .findFirstByProject_IdAndSourceLangAndTargetLangAndStatusOrderByCreatedAtDesc(
-                projectId, sourceLang, targetLang, "COMPLETED");
-
-        if (sizing.isEmpty() || sizing.get().getTemplateTmId() == null) {
-            log.warn("No completed TM sizing found for project {} ({} -> {}); skipping personal TM assignment",
-                projectId, sourceLang, targetLang);
-            taskList.setTmProvisioningStatus("SKIPPED_NO_TEMPLATE_TM");
-            return;
-        }
-
+    private void applyPersonalTmAssignment(TaskList taskList, User assignee, String requestedByUsername, Long templateTmId) {
         try {
             TmTemplateAssignResponse response = tomatoTmService.assignTemplate(
-                sizing.get().getTemplateTmId(), assignee.getUsername(), taskList.getWorkflowStep().getName(),
-                creator.getUsername());
+                templateTmId, assignee.getUsername(), taskList.getWorkflowStep().getName(), requestedByUsername);
 
             taskList.setTemplateTmId(response.templateTmId());
             taskList.setAssignedTmId(response.tmId());
             taskList.setTmAssignWasExisting(response.wasExisting());
             taskList.setTmProvisioningStatus("COMPLETED");
         } catch (Exception e) {
-            log.error("Failed to assign personal TM for project {} ({} -> {}): {}",
-                projectId, sourceLang, targetLang, e.getMessage());
+            log.error("Failed to assign personal TM for task list {}: {}", taskList.getId(), e.getMessage());
             taskList.setTmProvisioningStatus("FAILED");
             taskList.setTmProvisioningError(e.getMessage());
         }

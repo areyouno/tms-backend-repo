@@ -15,6 +15,7 @@ import com.tms.backend.dto.TemplateSizingResultResponse.TemplateTmInfo;
 import com.tms.backend.netRateScheme.NetRateSchemeService;
 import com.tms.backend.project.Project;
 import com.tms.backend.project.ProjectRepository;
+import com.tms.backend.taskList.TaskListService;
 import com.tms.backend.tomato.SizingService;
 import com.tms.backend.tomato.TemplateSizingPollStatus;
 
@@ -38,18 +39,21 @@ public class ProjectTmSizingService {
     private final NetRateSchemeService netRateSchemeService;
     private final SizingService sizingService;
     private final PlatformTransactionManager transactionManager;
+    private final TaskListService taskListService;
 
     public ProjectTmSizingService(
             ProjectTmSizingRepository sizingRepo,
             ProjectRepository projectRepo,
             NetRateSchemeService netRateSchemeService,
             SizingService sizingService,
-            PlatformTransactionManager transactionManager) {
+            PlatformTransactionManager transactionManager,
+            TaskListService taskListService) {
         this.sizingRepo = sizingRepo;
         this.projectRepo = projectRepo;
         this.netRateSchemeService = netRateSchemeService;
         this.sizingService = sizingService;
         this.transactionManager = transactionManager;
+        this.taskListService = taskListService;
     }
 
     /**
@@ -97,7 +101,7 @@ public class ProjectTmSizingService {
             sizingRepo.save(sizing);
         });
 
-        pollAndStore(ctx.sizingId(), sizingJobId);
+        pollAndStore(ctx.sizingId(), sizingJobId, projectId, sourceLang, targetLang);
     }
 
     private record Context(Long sizingId, String sizingRequestJson) {}
@@ -114,10 +118,11 @@ public class ProjectTmSizingService {
             markFailed(sizing.getId(), "No sizing job id recorded; cannot resume after restart");
             return;
         }
-        pollAndStore(sizing.getId(), sizing.getSizingJobId());
+        pollAndStore(sizing.getId(), sizing.getSizingJobId(),
+                sizing.getProject().getId(), sizing.getSourceLang(), sizing.getTargetLang());
     }
 
-    private void pollAndStore(Long sizingId, String sizingJobId) {
+    private void pollAndStore(Long sizingId, String sizingJobId, Long projectId, String sourceLang, String targetLang) {
         TemplateTmInfo templateTm = null;
         try {
             for (int attempt = 1; attempt <= MAX_POLL_ATTEMPTS; attempt++) {
@@ -155,6 +160,13 @@ public class ProjectTmSizingService {
             sizing.setStatus("COMPLETED");
             sizingRepo.save(sizing);
         });
+
+        try {
+            taskListService.retryPendingTmProvisioning(projectId, sourceLang, targetLang, resolved.tmId());
+        } catch (Exception e) {
+            log.error("Failed to retry personal TM provisioning for project {} ({} -> {}): {}",
+                    projectId, sourceLang, targetLang, e.getMessage());
+        }
     }
 
     private void markFailed(Long sizingId, String error) {
