@@ -24,6 +24,7 @@ public record TaskListDTO(
     LocalDateTime dueDate,
     String description,
     String assigneeUid,
+    String assigneeUsername,
     String assigneeName,
     String createdBy,
     LocalDateTime createDate,
@@ -64,6 +65,7 @@ public record TaskListDTO(
             taskList.getDueDate(),
             taskList.getDescription(),
             assignee != null ? assignee.getUid() : null,
+            assignee != null ? assignee.getUsername() : null,
             assignee != null
                 ? (assignee.isDeleted()
                     ? assignee.getLastName() + " (deleted user)"

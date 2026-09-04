@@ -15,7 +15,6 @@ import com.tms.backend.dto.TemplateSizingResultResponse.TemplateTmInfo;
 import com.tms.backend.netRateScheme.NetRateSchemeService;
 import com.tms.backend.project.Project;
 import com.tms.backend.project.ProjectRepository;
-import com.tms.backend.taskList.TaskListService;
 import com.tms.backend.tomato.SizingService;
 import com.tms.backend.tomato.TemplateSizingPollStatus;
 
@@ -39,21 +38,18 @@ public class ProjectTmSizingService {
     private final NetRateSchemeService netRateSchemeService;
     private final SizingService sizingService;
     private final PlatformTransactionManager transactionManager;
-    private final TaskListService taskListService;
 
     public ProjectTmSizingService(
             ProjectTmSizingRepository sizingRepo,
             ProjectRepository projectRepo,
             NetRateSchemeService netRateSchemeService,
             SizingService sizingService,
-            PlatformTransactionManager transactionManager,
-            TaskListService taskListService) {
+            PlatformTransactionManager transactionManager) {
         this.sizingRepo = sizingRepo;
         this.projectRepo = projectRepo;
         this.netRateSchemeService = netRateSchemeService;
         this.sizingService = sizingService;
         this.transactionManager = transactionManager;
-        this.taskListService = taskListService;
     }
 
     /**
@@ -160,13 +156,6 @@ public class ProjectTmSizingService {
             sizing.setStatus("COMPLETED");
             sizingRepo.save(sizing);
         });
-
-        try {
-            taskListService.retryPendingTmProvisioning(projectId, sourceLang, targetLang, resolved.tmId());
-        } catch (Exception e) {
-            log.error("Failed to retry personal TM provisioning for project {} ({} -> {}): {}",
-                    projectId, sourceLang, targetLang, e.getMessage());
-        }
     }
 
     private void markFailed(Long sizingId, String error) {

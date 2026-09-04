@@ -24,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tms.backend.dto.ImportTmxRequestDTO;
+import com.tms.backend.dto.TmAssignResponse;
 import com.tms.backend.dto.TmCleanupResponseDTO;
 import com.tms.backend.dto.TmListResponseDTO;
 import com.tms.backend.dto.TmxImportJobStatusDTO;
@@ -158,6 +159,42 @@ public class TranslationMemoryService {
         } catch (Exception e) {
             log.warn("Failed to fetch import status for jobId {}: {}", jobId, e.getMessage());
             return null;
+        }
+    }
+
+    /**
+     * Calls Tomato's POST /api/TM/projects/{projectId}/assign to create/reuse a personal TM
+     * for the given assignee and language pair, and assign it to a workflow step.
+     */
+    public TmAssignResponse assignPersonalTm(
+            Long projectId, String sourceLanguage, String targetLanguage, String tmName,
+            String assignedUserId, String workflowStage, String userName) {
+        try {
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("assignedUserId", assignedUserId);
+            body.add("workflowStage", workflowStage);
+            body.add("tmName", tmName);
+            body.add("sourceLanguage", sourceLanguage);
+            body.add("targetLanguage", targetLanguage);
+            body.add("userName", userName);
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            ResponseEntity<String> rawResponse = restTemplate.postForEntity(
+                    tomatoBaseUrl + "/api/TM/projects/" + projectId + "/assign", requestEntity, String.class
+            );
+
+            ObjectMapper mapper = new ObjectMapper();
+            mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            TmAssignResponse result = mapper.readValue(rawResponse.getBody(), TmAssignResponse.class);
+            log.info("Assigned personal TM for project {} ({} -> {}): tmId {} (wasExisting={})",
+                    projectId, sourceLanguage, targetLanguage, result.tmId(), result.wasExisting());
+            return result;
+        } catch (Exception e) {
+            log.error("Failed to assign personal TM for project {}: {}", projectId, e.getMessage());
+            throw new RuntimeException("Failed to assign personal TM for project " + projectId, e);
         }
     }
 }

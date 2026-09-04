@@ -1,9 +1,9 @@
 package com.tms.backend.dto;
 
-public record TmTemplateAssignResponse(
+public record TmAssignResponse(
     Long tmId,
     String name,
-    Long templateTmId,
+    Long projectId,
     String assignedUserId,
     String workflowStage,
     Boolean wasExisting
